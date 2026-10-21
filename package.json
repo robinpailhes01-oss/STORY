@@ -7,7 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "verify:export": "node scripts/verify-export.mjs"
+    "verify:export": "node scripts/verify-export.mjs",
+    "test": "vitest run",
+    "verify:render": "node scripts/verify-render.mjs",
+    "verify:photos": "node scripts/verify-photos.mjs",
+    "verify:app": "node scripts/verify-app.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.0.0",
