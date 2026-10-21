@@ -11,7 +11,8 @@
     "test": "vitest run",
     "verify:render": "node scripts/verify-render.mjs",
     "verify:photos": "node scripts/verify-photos.mjs",
-    "verify:app": "node scripts/verify-app.mjs"
+    "verify:app": "node scripts/verify-app.mjs",
+    "verify:segmentation": "node scripts/verify-segmentation.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.0.0",

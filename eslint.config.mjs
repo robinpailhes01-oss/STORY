@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Copies de travail temporaires des agents Claude Code.
     ".claude/**",
+    // Chargeur Emscripten de MediaPipe, copié tel quel depuis node_modules.
+    "public/mediapipe/**",
   ]),
 ]);
 
