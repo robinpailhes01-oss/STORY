@@ -12,6 +12,18 @@ export interface Remarks {
   warnings: string[];
 }
 
+/** Libellés courts des contrôles de l’IA (le message détaillé suit). */
+export const CONTROL_LABELS: Record<string, string> = {
+  phrase_coupee: "Phrase coupée",
+  preuve_inconnue: "Preuve inconnue",
+  preuve_non_citee: "Preuve non citée",
+  chiffre_hors_preuve: "Chiffre absent de la preuve",
+  chiffre_invente: "Chiffre sans source",
+  preuves_en_trop: "Trop de preuves",
+  mots_modifies: "Mots modifiés",
+  mot_interdit: "Mot interdit",
+};
+
 export const remarksCount = (r: Remarks) => r.controls.length + r.problems.length + r.warnings.length;
 
 export function RemarksSheet({ remarks, onClose, onGoToStory }: { remarks: Remarks; onClose: () => void; onGoToStory: (index: number) => void }) {
@@ -69,8 +81,11 @@ export function RemarksSheet({ remarks, onClose, onGoToStory }: { remarks: Remar
                     >
                       {c.severity === "conseil" ? "Conseil" : "À revoir"}
                     </span>
-                    <span>
-                      <span className="font-bold text-white">{c.story === null ? "Séquence" : `Story ${c.story + 1}`} : </span>
+                    <span data-code={c.code}>
+                      <span className="font-bold text-white">
+                        {c.story === null ? "Séquence" : `Story ${c.story + 1}`}
+                        {CONTROL_LABELS[c.code] ? ` · ${CONTROL_LABELS[c.code]}` : ""} :{" "}
+                      </span>
                       {c.message}
                     </span>
                   </button>

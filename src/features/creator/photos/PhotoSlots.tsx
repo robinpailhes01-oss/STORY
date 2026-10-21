@@ -1,13 +1,20 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { PHOTO_COUNT } from "@/domain/story-plan";
+import { MIN_PHOTO_COUNT, PHOTO_COUNT, STORY_COUNT, photoIndexFor } from "@/domain/story-plan";
+import { photoCount } from "../model/draft";
 import { useCreator, useStore } from "../use-creator";
-import { IconImage, IconPlus, IconSwap, IconTrash, IconWarning } from "../ui/icons";
+import { IconClose, IconImage, IconPhotos, IconSwap, IconTrash, IconWarning } from "../ui/icons";
 import { Sheet } from "../ui/Sheet";
 
-export const SLOT_LABELS = ["Accroche", "Milieu", "Fin"] as const;
-export const SLOT_STORIES = ["story 1", "stories 2 et 3", "stories 4 et 5"] as const;
+/** « story 1 », « stories 2 et 3 », « stories 1, 4 et 5 » : où sert la photo `slot` selon le nombre de photos. */
+export function storiesOfPhoto(slot: number, count: number): string {
+  const stories = Array.from({ length: STORY_COUNT }, (_, i) => i).filter((i) => photoIndexFor(i, Math.max(count, MIN_PHOTO_COUNT)) === slot);
+  if (!stories.length) return "aucune story";
+  const n = stories.map((i) => String(i + 1));
+  if (n.length === 1) return `story ${n[0]}`;
+  return `stories ${n.slice(0, -1).join(", ")} et ${n.at(-1)}`;
+}
 
 interface Props {
   /** Variante plus serrée pour le panneau Photo de l’éditeur. */
@@ -17,8 +24,9 @@ interface Props {
 }
 
 /**
- * Les 3 emplacements photo numérotés : toucher un emplacement vide ouvre la pellicule, toucher une photo
- * propose remplacer / échanger / retirer. « Ajouter 3 photos » remplit dans l’ordre.
+ * Photos 2 ou 3, comme la référence : vide = une grande zone en pointillés ; rempli = une rangée de vignettes
+ * portrait numérotées avec ✕, plus une tuile « + » tant qu’on peut en ajouter. Plusieurs photos d’un coup.
+ * Toucher une vignette : remplacer, changer l’ordre, retirer.
  */
 export function PhotoSlots({ compact = false, highlight }: Props) {
   const store = useStore();
@@ -28,9 +36,8 @@ export function PhotoSlots({ compact = false, highlight }: Props) {
   const multi = useRef<HTMLInputElement>(null);
   const [menu, setMenu] = useState<number | null>(null);
   const busy = imports !== null;
-  const filled = slots.filter(Boolean).length;
+  const count = photoCount(slots);
 
-  const pick = (slot: number) => inputs.current[slot]?.click();
   const onFiles = (files: FileList | null, slot: number | "auto") => {
     const list = files ? [...files] : [];
     if (list.length) void store.importFiles(list, slot);
@@ -43,89 +50,118 @@ export function PhotoSlots({ compact = false, highlight }: Props) {
 
   return (
     <div className="flex flex-col gap-3">
-      <ol className={`grid grid-cols-3 ${compact ? "gap-2.5" : "gap-3"}`}>
-        {slots.map((id, slot) => {
-          const photo = id ? pool.get(id) : undefined;
-          const label = `Photo ${slot + 1}, ${SLOT_LABELS[slot].toLowerCase()} (${SLOT_STORIES[slot]})`;
-          return (
-            <li key={slot} className="flex min-w-0 flex-col gap-1.5">
+      {count === 0 && !compact ? (
+        <button
+          type="button"
+          data-action="ajouter-photos"
+          disabled={busy}
+          onClick={() => multi.current?.click()}
+          aria-label="Ajouter 2 ou 3 photos"
+          className="group flex h-[178px] w-full flex-col items-center justify-center gap-3 rounded-[22px] border border-dashed border-white/25 bg-gradient-to-b from-white/[0.015] to-white/[0.04] text-white/70 transition hover:border-white/40 hover:text-white disabled:cursor-wait"
+        >
+          <IconPhotos size={40} strokeWidth={1.2} />
+          <span className="text-[13px] font-bold text-mute group-hover:text-soft">2 ou 3 photos, verticales de préférence</span>
+        </button>
+      ) : (
+        <ol className={`grid grid-cols-4 ${compact ? "gap-2" : "gap-2.5"}`} aria-label="Tes photos">
+          {slots.map((id, slot) => {
+            const photo = id ? pool.get(id) : undefined;
+            if (!photo) return null;
+            const where = storiesOfPhoto(slot, count);
+            return (
+              <li key={id} className="relative min-w-0">
+                <button
+                  type="button"
+                  data-photo-slot={slot + 1}
+                  aria-label={`Photo ${slot + 1} (${where}) : ${photo.name || "photo ajoutée"}. Remplacer ou changer l’ordre`}
+                  disabled={busy}
+                  onClick={() => setMenu(slot)}
+                  className={`relative block aspect-[4/5] w-full overflow-hidden rounded-[18px] ring-1 transition disabled:cursor-wait ${
+                    highlight === slot ? "ring-2 ring-white" : "ring-white/25"
+                  }`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- photo locale (object URL), pas d’optimisation possible */}
+                  <img src={photo.url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                  <span aria-hidden className="absolute bottom-1.5 left-2 text-[15px] font-bold text-white [text-shadow:0_1px_4px_rgba(0,0,0,0.8)]">
+                    {slot + 1}
+                  </span>
+                  {photo.warnings.length > 0 && (
+                    <span aria-hidden className="absolute bottom-1.5 right-1.5 flex size-5 items-center justify-center rounded-full bg-amber-400 text-black">
+                      <IconWarning size={13} />
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Retirer la photo ${slot + 1}`}
+                  data-remove-photo={slot + 1}
+                  disabled={busy}
+                  onClick={() => store.removePhoto(slot)}
+                  className="absolute -top-0.5 -right-0.5 flex size-11 items-center justify-center"
+                >
+                  <span className="flex size-8 items-center justify-center rounded-full bg-black/55 text-white ring-1 ring-white/20 backdrop-blur-md">
+                    <IconClose size={16} />
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+          {count < PHOTO_COUNT && (
+            <li className="min-w-0">
               <button
                 type="button"
-                data-photo-slot={slot + 1}
-                aria-label={photo ? `${label} : ${photo.name || "photo ajoutée"}. Modifier` : `${label} : ajouter une photo`}
+                data-action="ajouter-photos"
                 disabled={busy}
-                onClick={() => (photo ? setMenu(slot) : pick(slot))}
-                className={`group relative w-full overflow-hidden rounded-2xl transition disabled:cursor-wait ${compact ? "h-[78px]" : "aspect-[3/4]"} ${
-                  photo ? "ring-1 ring-white/15" : "border border-dashed border-white/25 bg-white/[0.03] hover:bg-white/[0.06]"
-                } ${highlight === slot ? "ring-2 ring-white" : ""}`}
+                onClick={() => multi.current?.click()}
+                aria-label={count < MIN_PHOTO_COUNT ? "Ajouter une photo (2 au minimum)" : "Ajouter une troisième photo (facultatif)"}
+                className="flex aspect-[4/5] w-full items-center justify-center rounded-[18px] border border-dashed border-white/25 text-white/70 transition hover:border-white/45 hover:text-white disabled:cursor-wait"
               >
-                {photo ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- photo locale (object URL), pas d’optimisation possible
-                  <img src={photo.url} alt="" className="absolute inset-0 h-full w-full object-cover" />
-                ) : (
-                  <span className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-mute">
-                    <IconPlus size={compact ? 22 : 26} />
-                    {!compact && <span className="text-xs font-bold">Ajouter</span>}
-                  </span>
-                )}
-                <span
-                  aria-hidden
-                  className="absolute bottom-1.5 left-1.5 flex size-6 items-center justify-center rounded-full bg-black/65 text-xs font-extrabold text-white ring-1 ring-white/25"
-                >
-                  {slot + 1}
-                </span>
-                {photo && photo.warnings.length > 0 && (
-                  <span aria-hidden className="absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-full bg-amber-400 text-black">
-                    <IconWarning size={15} />
-                  </span>
-                )}
+                <IconPhotos size={compact ? 26 : 32} strokeWidth={1.3} />
               </button>
-              <span className="truncate text-center text-xs font-bold text-soft">
-                {SLOT_LABELS[slot]}
-                {!compact && <span className="block truncate font-normal text-mute">{SLOT_STORIES[slot]}</span>}
-              </span>
-              <input
-                ref={(el) => {
-                  inputs.current[slot] = el;
-                }}
-                type="file"
-                accept="image/*"
-                className="sr-only"
-                tabIndex={-1}
-                aria-hidden
-                data-testid={`photo-input-${slot + 1}`}
-                onChange={(e) => {
-                  onFiles(e.target.files, slot);
-                  e.target.value = "";
-                }}
-              />
             </li>
-          );
-        })}
-      </ol>
+          )}
+        </ol>
+      )}
 
-      <div className={compact ? "contents" : "flex flex-wrap items-center gap-2"}>
-        {!compact && (
-          <button type="button" className="btn-ghost min-h-11 text-sm" disabled={busy} onClick={() => multi.current?.click()}>
-            <IconImage size={18} />
-            {filled === 0 ? "Ajouter 3 photos" : filled < PHOTO_COUNT ? "Compléter les photos" : "Changer les 3 photos"}
-          </button>
-        )}
+      {slots.map((_, slot) => (
         <input
-          ref={multi}
+          key={slot}
+          ref={(el) => {
+            inputs.current[slot] = el;
+          }}
           type="file"
           accept="image/*"
-          multiple
           className="sr-only"
           tabIndex={-1}
           aria-hidden
-          data-testid="photo-input-multi"
+          data-testid={`photo-input-${slot + 1}`}
           onChange={(e) => {
-            onFiles(e.target.files, "auto");
+            onFiles(e.target.files, slot);
             e.target.value = "";
           }}
         />
-      </div>
+      ))}
+      <input
+        ref={multi}
+        type="file"
+        accept="image/*"
+        multiple
+        className="sr-only"
+        tabIndex={-1}
+        aria-hidden
+        data-testid="photo-input-multi"
+        onChange={(e) => {
+          onFiles(e.target.files, "auto");
+          e.target.value = "";
+        }}
+      />
+
+      {count > 1 && !compact && <p className="text-[12px] text-mute">Touche une photo pour la remplacer ou changer l’ordre.</p>}
+      {count === 1 && !busy && (
+        <p className="text-[13px] text-soft" role="status">
+          Encore une photo au moins : avec 2 photos, la première sert aux stories 1, 4 et 5.
+        </p>
+      )}
 
       <div aria-live="polite" className="flex flex-col gap-2 empty:hidden">
         {imports && (
@@ -134,7 +170,7 @@ export function PhotoSlots({ compact = false, highlight }: Props) {
               Import de la photo {imports.done + 1} sur {imports.total}
               {imports.fileName ? ` (${imports.fileName})` : ""}…
             </p>
-            <div className="h-1.5 overflow-hidden rounded-full bg-white/10" role="progressbar" aria-valuemin={0} aria-valuemax={imports.total} aria-valuenow={imports.done} aria-label="Import des photos">
+            <div className="h-1 overflow-hidden rounded-full bg-white/10" role="progressbar" aria-valuemin={0} aria-valuemax={imports.total} aria-valuenow={imports.done} aria-label="Import des photos">
               <div className="h-full rounded-full bg-white transition-[width]" style={{ width: `${((imports.done + 0.5) / imports.total) * 100}%` }} />
             </div>
           </div>
@@ -155,7 +191,7 @@ export function PhotoSlots({ compact = false, highlight }: Props) {
               <span className="font-bold">{e.fileName || "Photo"} :</span> {e.message}
             </p>
           ))}
-          <button type="button" onClick={store.dismissPhotoErrors} className="self-start text-xs font-bold underline underline-offset-2">
+          <button type="button" onClick={store.dismissPhotoErrors} className="min-h-11 self-start text-xs font-bold underline underline-offset-2">
             Compris
           </button>
         </div>
@@ -164,12 +200,13 @@ export function PhotoSlots({ compact = false, highlight }: Props) {
       {menu !== null && slots[menu] && (
         <PhotoMenu
           slot={menu}
+          count={count}
           name={pool.get(slots[menu]!)?.name ?? ""}
           url={pool.get(slots[menu]!)?.url}
           onClose={() => setMenu(null)}
           onReplace={() => {
             setMenu(null);
-            pick(menu);
+            inputs.current[menu]?.click();
           }}
           onSwap={(other) => {
             store.swapPhotos(menu, other);
@@ -187,6 +224,7 @@ export function PhotoSlots({ compact = false, highlight }: Props) {
 
 function PhotoMenu({
   slot,
+  count,
   name,
   url,
   onClose,
@@ -195,6 +233,7 @@ function PhotoMenu({
   onRemove,
 }: {
   slot: number;
+  count: number;
   name: string;
   url?: string;
   onClose: () => void;
@@ -202,13 +241,13 @@ function PhotoMenu({
   onSwap: (other: number) => void;
   onRemove: () => void;
 }) {
-  const others = [0, 1, 2].filter((s) => s !== slot);
+  const others = Array.from({ length: count }, (_, i) => i).filter((s) => s !== slot);
   return (
-    <Sheet title={`Photo ${slot + 1} · ${SLOT_LABELS[slot]}`} subtitle={`Utilisée pour ${SLOT_STORIES[slot]}.`} onClose={onClose} testId="photo-menu">
+    <Sheet title={`Photo ${slot + 1}`} subtitle={`Utilisée pour ${storiesOfPhoto(slot, count)}.`} onClose={onClose} testId="photo-menu">
       <div className="flex items-center gap-4 pb-4">
         {url && (
           // eslint-disable-next-line @next/next/no-img-element -- photo locale (object URL)
-          <img src={url} alt="" className="h-24 w-[72px] shrink-0 rounded-xl object-cover ring-1 ring-white/15" />
+          <img src={url} alt="" className="h-24 w-[76px] shrink-0 rounded-xl object-cover ring-1 ring-white/15" />
         )}
         <p className="min-w-0 truncate text-sm text-mute">{name || "Photo ajoutée"}</p>
       </div>
@@ -218,7 +257,7 @@ function PhotoMenu({
         </button>
         {others.map((o) => (
           <button key={o} type="button" onClick={() => onSwap(o)} className="btn-ghost justify-start">
-            <IconSwap size={20} /> Échanger avec la photo {o + 1} ({SLOT_LABELS[o].toLowerCase()})
+            <IconSwap size={20} /> Échanger avec la photo {o + 1}
           </button>
         ))}
         <button type="button" onClick={onRemove} className="btn-ghost justify-start text-red-300">

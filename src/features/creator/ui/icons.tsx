@@ -169,3 +169,47 @@ export const IconNote = (p: IconProps) => (
     <path d="M12 7.5v5.5M12 16.2v.1" />
   </Svg>
 );
+
+/** Deux photos superposées (zone d’ajout vide, tuile « + »). */
+export const IconPhotos = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M7 7.6 6.6 6a1.8 1.8 0 0 1 1.3-2.2l9.6-2.3a1.8 1.8 0 0 1 2.2 1.3l2 8.3a1.8 1.8 0 0 1-1.3 2.2l-1.4.3" />
+    <rect x="2.5" y="8" width="15" height="13" rx="2.2" />
+    <circle cx="12.6" cy="12" r="1.4" />
+    <path d="m3 18.6 4.1-3.9a1.4 1.4 0 0 1 1.9 0l4.6 4.6" />
+  </Svg>
+);
+
+export const IconPen = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4.5 19.5h3.6L19 8.6a2.5 2.5 0 0 0-3.6-3.6L4.5 15.9v3.6Z" />
+    <path d="m14 6.4 3.6 3.6" />
+  </Svg>
+);
+
+export const IconHighlighter = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="m9 14.5 6.8-9.6a1.8 1.8 0 0 1 2.6-.4l1.1.8a1.8 1.8 0 0 1 .4 2.5l-6.8 9.6" />
+    <path d="M9 14.5 13.1 17.4 11 19.5H6.8l2.2-5Z" />
+    <path d="M3.5 21h17" />
+  </Svg>
+);
+
+export const IconOval = (p: IconProps) => (
+  <Svg {...p}>
+    <ellipse cx="12" cy="12" rx="8.5" ry="5.8" transform="rotate(-8 12 12)" />
+  </Svg>
+);
+
+export const IconInfo = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M11.2 10.8h1v5.4M12 7.6v.1" />
+  </Svg>
+);
+
+export const IconMinus = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M5 12h14" />
+  </Svg>
+);

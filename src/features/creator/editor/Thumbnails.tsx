@@ -10,6 +10,7 @@ interface Props {
   slides: readonly Slide[];
   layout: DocumentLayout;
   images: ImageTable;
+  cutouts: ImageTable;
   index: number;
   onChange: (index: number) => void;
   width: number;
@@ -17,7 +18,7 @@ interface Props {
 }
 
 /** Bandeau des 5 miniatures numérotées ; la story active est cerclée de blanc. */
-export function Thumbnails({ slides, layout, images, index, onChange, width, arrows = true }: Props) {
+export function Thumbnails({ slides, layout, images, cutouts, index, onChange, width, arrows = true }: Props) {
   return (
     <nav aria-label="Stories" className="flex items-center justify-center gap-1">
       {arrows && (
@@ -40,11 +41,11 @@ export function Thumbnails({ slides, layout, images, index, onChange, width, arr
               >
                 <span
                   className={`block overflow-hidden rounded-[9px] transition ${
-                    active ? "ring-2 ring-white ring-offset-2 ring-offset-[#0a0c12]" : "opacity-75 ring-1 ring-white/15"
+                    active ? "ring-[2.5px] ring-white" : "opacity-75 ring-1 ring-white/15"
                   }`}
                   style={{ width, height: (width * 16) / 9 }}
                 >
-                  <StoryPreview slide={slide} layout={layout} images={images} displayWidth={width} showGuides={false} />
+                  <StoryPreview slide={slide} layout={layout} images={images} cutouts={cutouts} displayWidth={width} showGuides={false} />
                 </span>
                 <span className={`text-xs font-bold tabular-nums ${active ? "text-white" : "text-mute"}`}>{i + 1}</span>
               </button>

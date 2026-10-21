@@ -1,7 +1,20 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { EXAMPLE_PLAN } from "@/domain/example-plan";
 import { parseMarkup, storyFromMarkup, toMarkup } from "./accent-markup";
-import { DRAFT_KEY, EMPTY_SNAPSHOT, clearDraft, loadDraft, pushRecent, saveDraft, type Draft } from "./draft";
+import {
+  DRAFT_KEY,
+  EMPTY_SNAPSHOT,
+  VOICE_MAX_CHARS,
+  clearDraft,
+  compactPhotos,
+  loadDraft,
+  photoCount,
+  pushRecent,
+  pushVoice,
+  saveDraft,
+  sequenceText,
+  type Draft,
+} from "./draft";
 import { HISTORY_LIMIT, allStates, canRedo, canUndo, commit, createHistory, redo, undo } from "./history";
 
 describe("astérisques ↔ accents", () => {
@@ -45,6 +58,40 @@ describe("astérisques ↔ accents", () => {
     ]);
     expect(result.dropped).toEqual(["d"]);
     expect(result.empty).toEqual([1]);
+  });
+
+  it("garde les preuves citées de chaque champ", () => {
+    const result = storyFromMarkup(["Résultat : *3 h gagnées* par jour.", "", "Sans chiffre."], [["p1"], undefined, []]);
+    expect(result.paragraphs).toEqual([
+      { text: "Résultat : 3 h gagnées par jour.", accents: ["3 h gagnées"], proofIds: ["p1"] },
+      { text: "Sans chiffre.", accents: [] },
+    ]);
+  });
+});
+
+describe("photos, voix", () => {
+  it("tasse les photos au début", () => {
+    expect(compactPhotos(["a", null, "c"])).toEqual(["a", "c", null]);
+    expect(compactPhotos([null, null, null])).toEqual([null, null, null]);
+    expect(photoCount(["a", "b", null])).toBe(2);
+  });
+
+  it("garde les 3 dernières séquences exportées, la plus récente d’abord, sans doublon", () => {
+    let voice: string[] = [];
+    voice = pushVoice(voice, "un");
+    voice = pushVoice(voice, "deux");
+    voice = pushVoice(voice, "un");
+    expect(voice).toEqual(["un", "deux"]);
+    voice = pushVoice(pushVoice(voice, "trois"), "quatre");
+    expect(voice).toEqual(["quatre", "trois", "un"]);
+    expect(pushVoice(voice, "   ")).toEqual(voice);
+  });
+
+  it("texte brut d’une séquence : stories séparées par une ligne vide", () => {
+    const text = sequenceText(EXAMPLE_PLAN);
+    expect(text.split("\n\n")).toHaveLength(5);
+    expect(text.startsWith("La plupart des PME")).toBe(true);
+    expect(text.length).toBeLessThanOrEqual(VOICE_MAX_CHARS);
   });
 });
 
@@ -102,7 +149,15 @@ describe("brouillon local", () => {
     idea: "Une idée",
     mode: "idee",
     structure: "auto",
-    snapshot: { ...EMPTY_SNAPSHOT, plan: EXAMPLE_PLAN, styleId: "bandeau", photos: ["a", null, "c"], crops: { a: { focalX: 0.2, focalY: 0.8, zoom: 1.5 } } },
+    snapshot: {
+      ...EMPTY_SNAPSHOT,
+      plan: EXAMPLE_PLAN,
+      styleId: "geant",
+      photos: ["a", "c", null],
+      crops: { a: { focalX: 0.2, focalY: 0.8, zoom: 1.5 } },
+      options: { accentColor: "#C8A25C", showAccents: false, decoration: "etoiles" },
+      drawings: { 1: [{ id: "t1", tool: "ovale", color: "#FFFFFF", width: 12, points: [100, 200, 500, 400] }] },
+    },
     recent: pushRecent([], EXAMPLE_PLAN),
   };
 
@@ -122,6 +177,21 @@ describe("brouillon local", () => {
     expect(loadDraft()).toEqual({ status: "invalid" });
     store.setItem(DRAFT_KEY, JSON.stringify({ version: 1, idea: 3 }));
     expect(loadDraft()).toEqual({ status: "invalid" });
+  });
+
+  it("relit un brouillon d’avant la phase 3 (sans options ni dessins)", () => {
+    const store = fakeStorage();
+    vi.stubGlobal("localStorage", store);
+    const { options, drawings, ...old } = draft.snapshot;
+    void options;
+    void drawings;
+    store.setItem(DRAFT_KEY, JSON.stringify({ version: 1, ...draft, snapshot: old, savedAt: 1 }));
+    const loaded = loadDraft();
+    expect(loaded.status).toBe("ok");
+    if (loaded.status === "ok") {
+      expect(loaded.draft.snapshot.options).toEqual({ accentColor: null, showAccents: true, decoration: null });
+      expect(loaded.draft.snapshot.drawings).toEqual({});
+    }
   });
 
   it("stockage indisponible : ni erreur ni plantage", () => {

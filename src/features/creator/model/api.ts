@@ -1,5 +1,5 @@
 // Appels aux deux routes de l’application. Seul src/domain/* est importé (jamais src/lib/ai, serveur).
-import type { ApiError, GenerateRequest, GenerateResponse, IdeasRequest, IdeasResponse } from "@/domain/story-plan";
+import type { ApiError, GenerateRequest, GenerateResponse, IdeasRequest, IdeasResponse, RewriteStoryRequest } from "@/domain/story-plan";
 
 export interface ApiFailure {
   ok: false;
@@ -63,6 +63,11 @@ async function post<T>(path: string, body: unknown, signal?: AbortSignal): Promi
 
 export function requestGeneration(request: GenerateRequest, signal?: AbortSignal) {
   return post<GenerateResponse>("/api/generations", request, signal);
+}
+
+/** « Refaire cette story » : seule stories[storyIndex] change dans la réponse. */
+export function requestRewrite(request: RewriteStoryRequest, signal?: AbortSignal) {
+  return post<GenerateResponse>("/api/generations/story", request, signal);
 }
 
 export function requestIdeas(request: IdeasRequest, signal?: AbortSignal) {

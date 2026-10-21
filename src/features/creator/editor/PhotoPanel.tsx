@@ -1,15 +1,15 @@
 "use client";
 
-import { SEQUENCE_LAYOUT } from "@/domain/story-plan";
-import { DEFAULT_CROP } from "../model/draft";
+import { MIN_PHOTO_COUNT, photoIndexFor } from "@/domain/story-plan";
+import { DEFAULT_CROP, photoCount } from "../model/draft";
 import { PhotoSlots } from "../photos/PhotoSlots";
 import { useCreator, useStore } from "../use-creator";
 
-/** Les 3 photos (remplacer, échanger) et le cadrage de la photo de la story courante. */
+/** Les 2 ou 3 photos (ajouter, remplacer, échanger) et le cadrage de la photo de la story courante. */
 export function PhotoPanel() {
   const store = useStore();
   const { history, storyIndex } = useCreator();
-  const slot = SEQUENCE_LAYOUT[storyIndex].photo;
+  const slot = photoIndexFor(storyIndex, Math.max(MIN_PHOTO_COUNT, photoCount(history.present.photos))) ?? 0;
   const photoId = history.present.photos[slot];
   const crop = (photoId && history.present.crops[photoId]) || DEFAULT_CROP;
   const set = (patch: Partial<typeof crop>) => photoId && store.setCrop(photoId, { ...crop, ...patch });

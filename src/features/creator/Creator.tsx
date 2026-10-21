@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CreateScreen } from "./create/CreateScreen";
+import { CreateHeader, CreateScreen } from "./create/CreateScreen";
+import { ProfileCardSkeleton } from "./profile/ProfileCard";
 import { EditorScreen } from "./editor/EditorScreen";
 import { GenerationScreen } from "./GenerationScreen";
 import { CreatorStore } from "./store";
 import { CreatorContext, useCreator } from "./use-creator";
 
-/** La page « 3 photos + une idée → 5 stories » : Créer, Génération, Éditeur. */
+/** La page « 2 ou 3 photos (+ une idée facultative) → 5 stories » : Créer, Génération, Éditeur. */
 export default function Creator() {
   const [store] = useState(() => new CreatorStore());
 
@@ -39,17 +40,19 @@ function Screens() {
     document.documentElement.dataset.screen = phase;
   }, [phase]);
 
-  if (phase === "loading") return <Loading label="Ouverture de ton brouillon…" />;
+  if (phase === "loading") return <OpeningSkeleton />;
   if (phase === "generating") return <GenerationScreen />;
   if (phase === "editor") return <EditorScreen />;
   return <CreateScreen />;
 }
 
-export function Loading({ label }: { label: string }) {
+/** Pendant l’ouverture du brouillon : l’en-tête et la carte profil en squelette (comme la référence). */
+function OpeningSkeleton() {
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-4" role="status" data-screen="loading">
-      <span className="spin block size-8 rounded-full border-2 border-white/80 border-t-transparent" aria-hidden />
-      <p className="text-sm text-mute">{label}</p>
+    <div className="mx-auto flex min-h-dvh w-full max-w-[560px] flex-col gap-3 px-5 pt-[env(safe-area-inset-top)]" role="status" data-screen="loading">
+      <CreateHeader />
+      <ProfileCardSkeleton />
+      <p className="sr-only">Ouverture de ton brouillon…</p>
     </div>
   );
 }

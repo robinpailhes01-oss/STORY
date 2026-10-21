@@ -22,13 +22,16 @@ interface Props {
 export function TextPanel({ plan, storyIndex }: Props) {
   const store = useStore();
   const [fields, setFields] = useState(() => plan.stories[storyIndex].paragraphs.map(toMarkup));
+  // Preuves citées par chaque champ (proofIds), gardées quand on retouche le texte.
+  const [proofs, setProofs] = useState(() => plan.stories[storyIndex].paragraphs.map((p) => p.proofIds));
   const continues = SEQUENCE_LAYOUT[storyIndex].continues;
   const previous = continues ? plan.stories[storyIndex - 1].paragraphs : [];
-  const parsed = storyFromMarkup(fields);
+  const parsed = storyFromMarkup(fields, proofs);
 
-  const apply = (next: string[], field?: number) => {
+  const apply = (next: string[], field?: number, nextProofs = proofs) => {
     setFields(next);
-    const result = storyFromMarkup(next);
+    setProofs(nextProofs);
+    const result = storyFromMarkup(next, nextProofs);
     if (result.paragraphs.length) store.setStoryParagraphs(storyIndex, result.paragraphs, field);
   };
 
@@ -69,7 +72,13 @@ export function TextPanel({ plan, storyIndex }: Props) {
                   className="icon-btn size-11 text-mute"
                   disabled={fields.length <= 1}
                   aria-label={`Supprimer le paragraphe ${i + 1}`}
-                  onClick={() => apply(fields.filter((_, k) => k !== i))}
+                  onClick={() =>
+                    apply(
+                      fields.filter((_, k) => k !== i),
+                      undefined,
+                      proofs.filter((_, k) => k !== i),
+                    )
+                  }
                 >
                   <IconTrash size={18} />
                 </button>
@@ -110,7 +119,10 @@ export function TextPanel({ plan, storyIndex }: Props) {
         type="button"
         className="btn-ghost self-start text-sm"
         disabled={fields.length >= MAX_PARAGRAPHS}
-        onClick={() => setFields([...fields, ""])}
+        onClick={() => {
+          setFields([...fields, ""]);
+          setProofs([...proofs, undefined]);
+        }}
       >
         <IconPlus size={18} /> Ajouter un paragraphe
       </button>

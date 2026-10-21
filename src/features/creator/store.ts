@@ -1,27 +1,38 @@
 // État métier de la page, hors React et hors Konva : idée, plan, style, photos, historique, brouillon,
 // génération. Les composants le lisent avec useSyncExternalStore (voir use-creator.ts).
 import { DEFAULT_CONTEXT, EXAMPLE_PLAN } from "@/domain/example-plan";
-import { PHOTO_COUNT, type BrandContext, type GenerateRequest, type Paragraph, type StoryPlan } from "@/domain/story-plan";
+import type { Stroke } from "@/domain/render-options";
+import { DRAWING_LIMITS } from "@/domain/story-document";
+import { MIN_PHOTO_COUNT, PHOTO_COUNT, type BrandContext, type GenerateRequest, type Paragraph, type StoryPlan } from "@/domain/story-plan";
 import { AUTO_STRUCTURE, type StructureChoice } from "@/domain/structures";
 import { fontRequirementsForSequence } from "@/lib/compose";
 import { loadFonts } from "@/lib/fonts/load-fonts";
 import { deletePhotos, importPhoto, isPhotoImportError, loadPhotos, releasePhoto, savePhotos, type ImportedPhoto } from "@/lib/photos";
-import { requestGeneration, type ApiFailure } from "./model/api";
+import { releaseAllCutouts, releaseCutout } from "@/lib/segmentation";
+import { requestGeneration, requestRewrite, type ApiFailure, type ApiResult } from "./model/api";
 import {
   EMPTY_SNAPSHOT,
-  IDEA_MIN,
   PHOTO_DRAFT_ID,
   clearDraft,
+  compactPhotos,
   hookOf,
+  loadAvatar,
   loadContext,
   loadDraft,
+  loadVoice,
+  photoCount,
   pushRecent,
+  pushVoice,
+  saveAvatar,
   saveContext,
   saveDraft,
+  saveVoice,
+  sequenceText,
   type Crop,
   type Mode,
   type RecentGeneration,
   type Snapshot,
+  type StyleOptions,
 } from "./model/draft";
 import { allStates, commit, createHistory, redo, undo, type History } from "./model/history";
 
@@ -33,6 +44,17 @@ export interface GenerationState {
   /** « ecriture » : en attente de l’IA ; « mise-en-page » : polices et composition ; « erreur ». */
   step: "ecriture" | "mise-en-page" | "erreur";
   error: ApiFailure | null;
+  /** Message d’information (demande relancée après une coupure en arrière-plan). */
+  notice: string | null;
+}
+
+/** « Refaire cette story » en cours (ou en erreur), affiché dans l’éditeur. */
+export interface RewriteState {
+  storyIndex: number;
+  instruction: string;
+  startedAt: number;
+  error: ApiFailure | null;
+  notice: string | null;
 }
 
 export interface ImportProgress {
@@ -66,12 +88,93 @@ export interface CreatorState {
   notices: string[];
   /** Change quand le plan est remplacé sans passer par le panneau Texte (annuler, génération…). */
   planVersion: number;
+  /** Mémoire de ta voix : texte des 3 dernières séquences exportées (la plus récente d’abord). */
+  voice: string[];
+  /** Photo de profil (data URL JPEG, sur l’appareil seulement, jamais envoyée). */
+  avatar: string | null;
+  /** Refus de l’API à afficher sur l’écran Créer (texte trop court en mode texte…). */
+  createError: ApiFailure | null;
+  rewrite: RewriteState | null;
 }
 
 /** Photos de test (public/samples/test/), pour l’exemple quand aucune photo n’a été ajoutée. */
 export const SAMPLE_PHOTOS = ["/samples/test/mer-plan-large.jpg", "/samples/test/salle-plan-moyen.jpg", "/samples/test/portrait.jpg"];
 
 const SAVE_DELAY_MS = 500;
+/** Le temps de voir la barre à 100 % avant d’ouvrir l’éditeur. */
+const FULL_BAR_MS = 350;
+const RESUMED =
+  "La demande a été coupée pendant que l’écran était en veille ou que la page était en arrière-plan : on la relance.";
+
+/** Résout dès que la page est au premier plan (ou que la demande est annulée). */
+function waitVisible(signal: AbortSignal): Promise<void> {
+  if (document.visibilityState === "visible" || signal.aborted) return Promise.resolve();
+  return new Promise((resolve) => {
+    const done = () => {
+      if (document.visibilityState !== "visible" && !signal.aborted) return;
+      document.removeEventListener("visibilitychange", done);
+      signal.removeEventListener("abort", done);
+      resolve();
+    };
+    document.addEventListener("visibilitychange", done);
+    signal.addEventListener("abort", done);
+  });
+}
+
+/**
+ * Garde l’écran allumé pendant `task` (Wake Lock, quand le navigateur le permet) ; le verrou, perdu quand la
+ * page passe en arrière-plan, est repris au retour, puis libéré à la fin.
+ */
+async function keepScreenOn<T>(task: () => Promise<T>): Promise<T> {
+  let lock: WakeLockSentinel | null = null;
+  let finished = false;
+  const acquire = async () => {
+    if (finished || document.visibilityState !== "visible" || !("wakeLock" in navigator)) return;
+    try {
+      const next = await navigator.wakeLock.request("screen");
+      if (finished) void next.release().catch(() => undefined);
+      else lock = next;
+    } catch {
+      // refusé (économie d’énergie…) : sans effet sur la génération
+    }
+  };
+  const onVisible = () => {
+    if (document.visibilityState === "visible" && (!lock || lock.released)) void acquire();
+  };
+  document.addEventListener("visibilitychange", onVisible);
+  await acquire();
+  try {
+    return await task();
+  } finally {
+    finished = true;
+    document.removeEventListener("visibilitychange", onVisible);
+    const held = lock as WakeLockSentinel | null; // assigné dans `acquire`
+    if (held && !held.released) void held.release().catch(() => undefined);
+  }
+}
+
+/**
+ * Envoie la demande ; si elle échoue faute de réseau ALORS que la page est passée en arrière-plan (iPhone
+ * verrouillé, autre application), la relance UNE fois au retour au premier plan.
+ */
+async function sendResuming<T>(send: () => Promise<ApiResult<T>>, signal: AbortSignal, onResume: () => void): Promise<ApiResult<T>> {
+  let wentHidden = document.visibilityState === "hidden";
+  const onChange = () => {
+    if (document.visibilityState === "hidden") wentHidden = true;
+  };
+  document.addEventListener("visibilitychange", onChange);
+  let result: ApiResult<T>;
+  try {
+    result = await send();
+  } finally {
+    document.removeEventListener("visibilitychange", onChange);
+  }
+  if (result.ok || result.code !== "reseau" || !wentHidden || signal.aborted) return result;
+  await waitVisible(signal);
+  if (signal.aborted) return result;
+  onResume();
+  return send();
+}
 const PHOTOS_UNAVAILABLE =
   "Tes photos ne pourront pas être gardées sur cet appareil (navigation privée ou stockage bloqué) : elles restent utilisables tant que la page est ouverte.";
 const DRAFT_UNAVAILABLE =
@@ -105,6 +208,10 @@ export class CreatorStore {
       exampleLoading: false,
       notices: [],
       planVersion: 0,
+      voice: [],
+      avatar: null,
+      createError: null,
+      rewrite: null,
     };
   }
 
@@ -168,6 +275,8 @@ export class CreatorStore {
         photos: pool,
         notices,
         planVersion: this.state.planVersion + 1,
+        voice: loadVoice(),
+        avatar: loadAvatar(),
       },
       false,
     );
@@ -179,6 +288,7 @@ export class CreatorStore {
     this.controller?.abort();
     this.started = false;
     this.state.photos.forEach(releasePhoto);
+    releaseAllCutouts();
     this.state = { ...this.state, phase: "loading", photos: new Map() };
   }
 
@@ -220,7 +330,13 @@ export class CreatorStore {
     const used = new Set(allStates(history).flatMap((s) => s.photos.filter((id): id is string => !!id)));
     if ([...photos.keys()].every((id) => used.has(id))) return photos;
     const kept = new Map<string, ImportedPhoto>();
-    photos.forEach((photo, id) => (used.has(id) ? kept.set(id, photo) : releasePhoto(photo)));
+    photos.forEach((photo, id) => {
+      if (used.has(id)) kept.set(id, photo);
+      else {
+        releasePhoto(photo);
+        releaseCutout(id);
+      }
+    });
     return kept;
   }
 
@@ -228,13 +344,34 @@ export class CreatorStore {
   redo = () => this.set({ history: redo(this.state.history), planVersion: this.state.planVersion + 1 });
 
   // ── Écran Créer ────────────────────────────────────────────────────────────────────────
-  setIdea = (idea: string) => this.set({ idea });
-  setMode = (mode: Mode) => this.set({ mode });
+  setIdea = (idea: string) => this.set({ idea, createError: null });
+  setMode = (mode: Mode) => this.set({ mode, createError: null });
   setStructure = (structure: StructureChoice) => this.set({ structure });
+  /** Le contexte enregistré ne contient pas la mémoire de voix (gardée à part, ajoutée à l’envoi). */
   setContext = (context: BrandContext) => {
-    const saved = saveContext(context);
-    this.set({ context });
+    const clean = { ...context, voiceExamples: [] };
+    const saved = saveContext(clean);
+    this.set({ context: clean });
     return saved;
+  };
+  /** Contexte envoyé à l’API : profil + exemples de ta voix. */
+  requestContext = (): BrandContext => ({ ...this.state.context, voiceExamples: this.state.voice });
+  setAvatar = (avatar: string | null) => {
+    const saved = saveAvatar(avatar);
+    this.set({ avatar }, false);
+    return saved;
+  };
+  clearVoice = () => {
+    saveVoice([]);
+    this.set({ voice: [] }, false);
+  };
+  /** Export réussi : la séquence exportée rejoint la mémoire de ta voix. */
+  rememberExport = () => {
+    const plan = this.present.plan;
+    if (!plan) return;
+    const voice = pushVoice(this.state.voice, sequenceText(plan));
+    saveVoice(voice);
+    this.set({ voice }, false);
   };
   goCreate = () => this.set({ phase: "create" });
   goEditor = () => this.present.plan && this.set({ phase: "editor" });
@@ -279,10 +416,11 @@ export class CreatorStore {
     this.set({ imports: null, photoErrors: errors });
   }
 
+  /** Retire une photo ; les suivantes avancent (2 photos = emplacements 1 et 2). */
   removePhoto = (slot: number) => {
     const photos = [...this.present.photos];
     photos[slot] = null;
-    this.commitSnapshot({ ...this.present, photos });
+    this.commitSnapshot({ ...this.present, photos: compactPhotos(photos) });
   };
 
   swapPhotos = (a: number, b: number) => {
@@ -300,6 +438,34 @@ export class CreatorStore {
     if (styleId !== this.present.styleId) this.commitSnapshot({ ...this.present, styleId });
   };
 
+  /** Couleur d’accent, mots en évidence, décoration ; `group` regroupe une saisie (code couleur). */
+  setOptions = (patch: Partial<StyleOptions>, group?: string) => {
+    const options = { ...this.present.options, ...patch };
+    const same = (Object.keys(options) as Array<keyof StyleOptions>).every((k) => options[k] === this.present.options[k]);
+    if (!same) this.commitSnapshot({ ...this.present, options }, group);
+  };
+
+  /** Un trait du Crayon = une étape d’annulation. Refusé au-delà de DRAWING_LIMITS.strokesPerStory. */
+  addStroke = (storyIndex: number, stroke: Stroke): boolean => {
+    const list = this.present.drawings[storyIndex] ?? [];
+    if (list.length >= DRAWING_LIMITS.strokesPerStory) return false;
+    this.commitSnapshot({ ...this.present, drawings: { ...this.present.drawings, [storyIndex]: [...list, stroke] } });
+    return true;
+  };
+
+  removeLastStroke = (storyIndex: number) => {
+    const list = this.present.drawings[storyIndex] ?? [];
+    if (list.length) this.commitSnapshot({ ...this.present, drawings: { ...this.present.drawings, [storyIndex]: list.slice(0, -1) } });
+  };
+
+  clearStrokes = (storyIndex: number) => {
+    if ((this.present.drawings[storyIndex] ?? []).length) {
+      const drawings = { ...this.present.drawings };
+      delete drawings[storyIndex];
+      this.commitSnapshot({ ...this.present, drawings });
+    }
+  };
+
   /** `field` : champ en cours de saisie (frappes regroupées) ; absent = étape à part (suppression…). */
   setStoryParagraphs = (storyIndex: number, paragraphs: Paragraph[], field?: number) => {
     const plan = this.present.plan;
@@ -309,10 +475,13 @@ export class CreatorStore {
   };
 
   // ── Génération ─────────────────────────────────────────────────────────────────────────
-  canGenerate = () => this.state.idea.trim().length >= IDEA_MIN;
+  /** Texte requis en mode texte ; l’idée est facultative en mode idée (l’IA part du profil). */
+  canWrite = () => this.state.mode === "idee" || this.state.idea.trim().length > 0;
+  /** Écran Créer : 2 photos au moins, aucun import en cours. */
+  canGenerate = () => this.canWrite() && !this.state.imports && photoCount(this.present.photos) >= MIN_PHOTO_COUNT;
 
   async generate(kind: GenerationState["kind"]) {
-    if (!this.canGenerate()) return;
+    if (kind === "nouvelle" ? !this.canGenerate() : !this.canWrite()) return;
     this.controller?.abort();
     const controller = new AbortController();
     this.controller = controller;
@@ -326,22 +495,40 @@ export class CreatorStore {
       idea: this.state.idea.trim(),
       mode: this.state.mode,
       structureId: this.state.structure,
-      context: this.state.context,
+      context: this.requestContext(),
       avoid,
     };
-    this.set({ phase: "generating", generation: { kind, startedAt: Date.now(), step: "ecriture", error: null } }, false);
-    const result = await requestGeneration(request, controller.signal);
-    if (id !== this.generationId || controller.signal.aborted) return;
+    const stale = () => id !== this.generationId || controller.signal.aborted;
+    this.set(
+      { phase: "generating", createError: null, rewrite: null, generation: { kind, startedAt: Date.now(), step: "ecriture", error: null, notice: null } },
+      false,
+    );
+    const result = await keepScreenOn(() =>
+      sendResuming(
+        () => requestGeneration(request, controller.signal),
+        controller.signal,
+        () => !stale() && this.set({ generation: { ...this.state.generation!, startedAt: Date.now(), notice: RESUMED } }, false),
+      ),
+    );
+    if (stale()) return;
     if (!result.ok) {
+      if (result.code === "texte_trop_court") {
+        // Refus de l’écran Créer : on y revient, le message s’affiche sous le texte.
+        this.controller = null;
+        this.set({ phase: "create", generation: null, createError: result }, false);
+        return;
+      }
       this.set({ generation: { ...this.state.generation!, step: "erreur", error: result } }, false);
       return;
     }
     this.set({ generation: { ...this.state.generation!, step: "mise-en-page" } }, false);
     await this.prepareFonts(result.data.plan);
-    if (id !== this.generationId || controller.signal.aborted) return;
+    await new Promise((r) => setTimeout(r, FULL_BAR_MS));
+    if (stale()) return;
     this.controller = null;
     this.commitSnapshot(
-      { ...this.present, plan: result.data.plan, controls: result.data.controls },
+      // Nouveau texte : les dessins de l’ancien n’ont plus de sens (Annuler les fait revenir).
+      { ...this.present, plan: result.data.plan, controls: result.data.controls, drawings: {} },
       undefined,
       {
         phase: "editor",
@@ -352,6 +539,55 @@ export class CreatorStore {
       },
     );
   }
+
+  /**
+   * « Refaire cette story » : seule la story `storyIndex` change ; style, photos, dessins et les 4 autres
+   * stories (avec tes retouches faites entre-temps) sont gardés. Une étape d’annulation.
+   */
+  async rewriteStory(storyIndex: number, instruction: string) {
+    const plan = this.present.plan;
+    if (!plan || this.state.rewrite?.error === null) return;
+    this.controller?.abort();
+    const controller = new AbortController();
+    this.controller = controller;
+    const id = ++this.generationId;
+    const stale = () => id !== this.generationId || controller.signal.aborted;
+    const trimmed = instruction.trim().slice(0, 300);
+    this.set({ rewrite: { storyIndex, instruction: trimmed, startedAt: Date.now(), error: null, notice: null } }, false);
+    const send = () =>
+      requestRewrite(
+        { plan, storyIndex, instruction: trimmed, idea: this.state.idea.trim(), mode: this.state.mode, context: this.requestContext() },
+        controller.signal,
+      );
+    const result = await keepScreenOn(() =>
+      sendResuming(send, controller.signal, () => !stale() && this.set({ rewrite: { ...this.state.rewrite!, notice: RESUMED } }, false)),
+    );
+    if (stale()) return;
+    this.controller = null;
+    if (!result.ok) {
+      this.set({ rewrite: { ...this.state.rewrite!, error: result } }, false);
+      return;
+    }
+    const current = this.present.plan ?? plan;
+    const stories = current.stories.map((s, i) => (i === storyIndex ? result.data.plan.stories[storyIndex] : s));
+    const next = { ...current, stories };
+    await this.prepareFonts(next);
+    if (stale()) return;
+    this.commitSnapshot({ ...this.present, plan: next, controls: result.data.controls }, undefined, {
+      rewrite: null,
+      storyIndex,
+      planVersion: this.state.planVersion + 1,
+    });
+  }
+
+  /** Annule la réécriture en cours ou ferme son message d’erreur. */
+  cancelRewrite = () => {
+    if (!this.state.rewrite) return;
+    this.generationId++;
+    this.controller?.abort();
+    this.controller = null;
+    this.set({ rewrite: null }, false);
+  };
 
   /** Charge les polices du plan (étape « Mise en page ») ; une erreur sera affichée par l’éditeur. */
   private async prepareFonts(plan: StoryPlan) {
@@ -405,7 +641,7 @@ export class CreatorStore {
       exampleLoading: false,
       storyIndex: 0,
       photoErrors: errors,
-      idea: this.state.idea.trim().length >= IDEA_MIN ? this.state.idea : EXAMPLE_PLAN.angle,
+      createError: null,
       planVersion: this.state.planVersion + 1,
     });
   }
@@ -414,7 +650,10 @@ export class CreatorStore {
   async newSequence() {
     this.generationId++;
     this.controller?.abort();
-    this.state.photos.forEach(releasePhoto);
+    this.state.photos.forEach((photo, id) => {
+      releasePhoto(photo);
+      releaseCutout(id);
+    });
     if (this.saveTimer) clearTimeout(this.saveTimer); // un enregistrement en attente réécrirait le brouillon
     this.saveTimer = null;
     clearDraft();
@@ -430,6 +669,8 @@ export class CreatorStore {
         photos: new Map(),
         photoErrors: [],
         generation: null,
+        rewrite: null,
+        createError: null,
         planVersion: this.state.planVersion + 1,
       },
       false,

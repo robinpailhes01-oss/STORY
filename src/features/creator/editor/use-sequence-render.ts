@@ -25,11 +25,12 @@ export interface SequenceRender {
 }
 
 /**
- * Polices → composition → mise en page, recalculées à chaque changement de texte, de style ou de photo.
+ * Polices → composition → mise en page, recalculées à chaque changement de texte, de style, d’option, de dessin
+ * ou de photo.
  * Références stables (composition, layout, images) : StoryPreview est mémoïsé.
  */
 export function useSequenceRender(snapshot: Snapshot, pool: ReadonlyMap<string, ImportedPhoto>): SequenceRender {
-  const { plan, styleId, photos, crops } = snapshot;
+  const { plan, styleId, photos, crops, options, drawings } = snapshot;
   const requirements = useMemo(() => (plan ? fontRequirementsForSequence(plan, styleId) : []), [plan, styleId]);
   const requirementsKey = useMemo(() => JSON.stringify(requirements), [requirements]);
   const [fontStatus, setFontStatus] = useState<{ key: string; error: string | null } | null>(null);
@@ -83,8 +84,8 @@ export function useSequenceRender(snapshot: Snapshot, pool: ReadonlyMap<string, 
   const composition = useMemo(() => {
     void fontsVersion; // dépendance volontaire : remesurer après chaque chargement de police
     if (!plan || !shownStyleId) return null;
-    return composeSequence({ plan, styleId: shownStyleId, photos: photoRefs, documentId: DOCUMENT_ID });
-  }, [plan, shownStyleId, photoRefs, fontsVersion]);
+    return composeSequence({ plan, styleId: shownStyleId, photos: photoRefs, options, drawings, documentId: DOCUMENT_ID });
+  }, [plan, shownStyleId, photoRefs, options, drawings, fontsVersion]);
 
   const layout = useMemo(() => (composition ? layoutDocument(composition.document) : null), [composition]);
 

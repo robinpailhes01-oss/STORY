@@ -56,8 +56,10 @@ export interface StoryMarkupResult {
 /**
  * Les champs d’une story → paragraphes du plan. Les champs vides sont écartés (le contrat exige du texte),
  * les accents au-delà de MAX_ACCENTS_PER_STORY (sur toute la story) sont écartés et signalés.
+ * `proofIds[i]` : preuves citées par le paragraphe du champ i, conservées telles quelles (si le chiffre a
+ * disparu du texte, la référence reste : elle est inoffensive).
  */
-export function storyFromMarkup(fields: readonly string[]): StoryMarkupResult {
+export function storyFromMarkup(fields: readonly string[], proofIds: ReadonlyArray<readonly string[] | undefined> = []): StoryMarkupResult {
   const paragraphs: Paragraph[] = [];
   const dropped: string[] = [];
   const empty: number[] = [];
@@ -77,7 +79,8 @@ export function storyFromMarkup(fields: readonly string[]): StoryMarkupResult {
         count++;
       } else dropped.push(accent);
     }
-    paragraphs.push({ text: parsed.text.slice(0, MAX_PARAGRAPH_LENGTH), accents: kept });
+    const proofs = proofIds[i];
+    paragraphs.push({ text: parsed.text.slice(0, MAX_PARAGRAPH_LENGTH), accents: kept, ...(proofs?.length ? { proofIds: [...proofs] } : {}) });
   });
   return { paragraphs, dropped, empty, unbalanced };
 }

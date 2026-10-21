@@ -1,4 +1,5 @@
 import type { TextBlock } from "@/domain/story-document";
+import type { StyleOptions } from "./model/draft";
 import type { ComposeResult } from "@/lib/compose";
 import type { DocumentLayout } from "@/lib/layout/document-layout";
 
@@ -15,10 +16,23 @@ export interface AppReport {
   warnings: string[];
   /** Étapes d’annulation et de rétablissement disponibles. */
   history: { past: number; future: number };
+  /** Options du panneau Style réellement appliquées par la composition. */
+  options: StyleOptions | null;
+  /** Zoom de l’aperçu (1 = 100 %). */
+  zoom: number;
+  /** Détourages utilisés (assetId) et calcul en cours. */
+  cutouts: { needed: boolean; ids: string[]; computing: boolean };
+  /** Contrôles de l’IA (codes). */
+  controlCodes: string[];
   slides: Array<{
     id: string;
     assetId: string | null;
     crop: { focalX: number; focalY: number; zoom: number } | null;
+    /** Nombre de traits du Crayon dessinés sur cette story. */
+    strokes: number;
+    decoration: string | null;
+    /** Mot géant (texte) posé derrière la personne. */
+    giant: string | null;
     blocks: Array<{
       id: string;
       text: string;
@@ -39,20 +53,24 @@ declare global {
 }
 
 export function publishAppReport(
-  base: Pick<AppReport, "ready" | "storyIndex" | "styleId" | "photos" | "problems" | "warnings" | "history">,
+  base: Omit<AppReport, "slides" | "options">,
   composition: ComposeResult | null,
   layout: DocumentLayout | null,
 ) {
   window.__storyApp = {
     ...base,
+    options: composition ? { accentColor: composition.options.accentColor, showAccents: composition.options.showAccents, decoration: composition.options.decoration } : null,
     slides:
       composition && layout
         ? composition.document.slides.map((slide) => ({
             id: slide.id,
             assetId: slide.background.kind === "image" ? slide.background.assetId : null,
             crop: slide.background.kind === "image" ? slide.background.crop : null,
+            strokes: slide.blocks.reduce((n, b) => n + (b.kind === "drawing" ? b.strokes.length : 0), 0),
+            decoration: slide.blocks.flatMap((b) => (b.kind === "decoration" ? [b.decoration] : []))[0] ?? null,
+            giant: (slide.blocks.find((b) => b.kind === "text" && b.behindSubject) as TextBlock | undefined)?.content ?? null,
             blocks: slide.blocks
-              .filter((b): b is TextBlock => b.kind === "text")
+              .filter((b): b is TextBlock => b.kind === "text" && !b.behindSubject)
               .map((b) => {
                 const t = layout.texts.get(b.id);
                 return {
