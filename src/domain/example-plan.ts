@@ -61,16 +61,22 @@ export const EXAMPLE_PLAN: StoryPlan = {
 };
 
 /**
- * Contexte pré-rempli à partir de la séquence de référence de Robin (son propre positionnement,
- * visible et modifiable dans « Mon contexte »). Aucune preuve chiffrée : la liste reste vide.
+ * Contexte pré-rempli avec le profil de Robin (@luma_agence), visible et modifiable dans « Mon contexte ».
+ * La preuve vient de sa séquence de référence (docs/REFERENCE_PARCOURS_COMPLET.md) et reste à confirmer.
  */
 export const DEFAULT_CONTEXT: BrandContext = {
-  name: "",
-  activity: "Partenaire IA des PME à Montpellier",
-  offer: "Audit offert pour repérer les tâches à automatiser en premier",
-  target: "Dirigeants de PME et indépendants qui perdent des heures sur des tâches répétitives",
+  name: "Robin",
+  handle: "luma_agence",
+  bio: "IA & relation client PME | Montpellier",
+  activity: "Partenaire IA des PME à Montpellier (agence Luma) : agents IA et automatisations de la relation client",
+  offer: "Audit offert pour repérer les tâches à automatiser en premier, puis mise en place d'agents IA branchés aux outils",
+  target: "Dirigeants de PME et indépendants qui perdent des heures sur des tâches répétitives (questions clients, devis, relances, mails)",
   cta: "Un audit est offert pour en discuter",
   tone: "Tutoiement, direct, familier sans être vulgaire, phrases courtes, pas d'emoji",
-  proofs: [],
+  // Tirée de la séquence de référence générée à partir du profil de Robin : à confirmer par Robin.
+  proofs: [
+    "Chez Harmonie Yacht, un agent IA branché aux outils répond à ma place aux questions qui reviennent : 3 h gagnées chaque jour.",
+  ],
   forbidden: ["Découvrez", "N'hésitez pas", "Dans un monde où", "révolutionnaire"],
+  voiceExamples: [],
 };
