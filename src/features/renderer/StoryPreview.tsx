@@ -1,10 +1,11 @@
 "use client";
 
 import type Konva from "konva";
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 import { Layer, Stage } from "react-konva";
 import { CANVAS_HEIGHT, CANVAS_WIDTH, type Slide } from "@/domain/story-document";
 import type { DocumentLayout } from "@/lib/layout/document-layout";
+import { EMPTY_IMAGES, type ImageTable } from "./images";
 import { StorySlide } from "./StorySlide";
 
 interface StoryPreviewProps {
@@ -13,17 +14,34 @@ interface StoryPreviewProps {
   /** Largeur affichée en px CSS ; le repère reste 1080 × 1920. */
   displayWidth: number;
   showGuides: boolean;
+  /** Images décodées par assetId (photos de fond). */
+  images?: ImageTable;
+  /** Fond seul, sans texte (mesure du contraste). */
+  backgroundOnly?: boolean;
+  /** Reçoit la Stage après chaque dessin (lecture des pixels, captures). */
+  onStage?: (stage: Konva.Stage | null) => void;
 }
 
 /** Aperçu réduit : même StorySlide que l’export, mis à l’échelle par la Stage. */
-export function StoryPreview({ slide, layout, displayWidth, showGuides }: StoryPreviewProps) {
+function StoryPreviewStage({
+  slide,
+  layout,
+  displayWidth,
+  showGuides,
+  images = EMPTY_IMAGES,
+  backgroundOnly = false,
+  onStage,
+}: StoryPreviewProps) {
   const stageRef = useRef<Konva.Stage>(null);
   const scale = displayWidth / CANVAS_WIDTH;
 
-  // Redessin explicite quand la mise en page change (polices chargées, document modifié).
+  // Redessin explicite quand la mise en page change (polices chargées, document modifié, photos).
   useEffect(() => {
-    stageRef.current?.batchDraw();
-  }, [layout, showGuides]);
+    const stage = stageRef.current;
+    if (!stage) return;
+    stage.batchDraw();
+    onStage?.(stage);
+  }, [layout, showGuides, images, slide, onStage]);
 
   return (
     <Stage
@@ -35,8 +53,10 @@ export function StoryPreview({ slide, layout, displayWidth, showGuides }: StoryP
       listening={false}
     >
       <Layer listening={false}>
-        <StorySlide slide={slide} layout={layout} showGuides={showGuides} />
+        <StorySlide slide={slide} layout={layout} images={images} showGuides={showGuides} backgroundOnly={backgroundOnly} />
       </Layer>
     </Stage>
   );
 }
+
+export const StoryPreview = memo(StoryPreviewStage);

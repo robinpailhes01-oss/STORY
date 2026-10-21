@@ -1,0 +1,1011 @@
+{
+  "fonts": [
+    {
+      "family": "Poppins",
+      "weight": 700,
+      "style": "normal",
+      "files": [
+        "/fonts/poppins-latin-700-normal.woff2"
+      ]
+    },
+    {
+      "family": "Inter",
+      "weight": 800,
+      "style": "normal",
+      "files": [
+        "/fonts/inter-latin-800-normal.woff2"
+      ]
+    },
+    {
+      "family": "Inter",
+      "weight": 700,
+      "style": "normal",
+      "files": [
+        "/fonts/inter-latin-700-normal.woff2"
+      ]
+    },
+    {
+      "family": "DM Serif Display",
+      "weight": 400,
+      "style": "normal",
+      "files": [
+        "/fonts/dm-serif-display-latin-400-normal.woff2"
+      ]
+    },
+    {
+      "family": "Inter",
+      "weight": 800,
+      "style": "italic",
+      "files": [
+        "/fonts/inter-latin-800-italic.woff2"
+      ]
+    },
+    {
+      "family": "Poppins",
+      "weight": 600,
+      "style": "normal",
+      "files": [
+        "/fonts/poppins-latin-600-normal.woff2"
+      ]
+    },
+    {
+      "family": "Tinos",
+      "weight": 700,
+      "style": "normal",
+      "files": [
+        "/fonts/tinos-latin-700-normal.woff2"
+      ]
+    },
+    {
+      "family": "Tinos",
+      "weight": 400,
+      "style": "normal",
+      "files": [
+        "/fonts/tinos-latin-400-normal.woff2"
+      ]
+    }
+  ],
+  "styles": [
+    {
+      "styleId": "dore",
+      "sceneSizes": [
+        {
+          "stories": [
+            0
+          ],
+          "fontSize": 59,
+          "top": 413,
+          "height": 207
+        },
+        {
+          "stories": [
+            1,
+            2
+          ],
+          "fontSize": 41,
+          "top": 335,
+          "height": 1010
+        },
+        {
+          "stories": [
+            3,
+            4
+          ],
+          "fontSize": 41,
+          "top": 390,
+          "height": 900
+        }
+      ],
+      "problems": [],
+      "warnings": [],
+      "contrastWarnings": [],
+      "contrastMin": 5.678840311951847,
+      "previewVsExport": [
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.017890946501117,
+          "strongPct": 0.25
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.339880401235185,
+          "strongPct": 0.42573302469135804
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.8022633744874443,
+          "strongPct": 0.5628858024691358
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.3700295781900549,
+          "strongPct": 0.4367283950617284
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.5096842849801442,
+          "strongPct": 0.3273533950617284
+        }
+      ],
+      "pngs": [
+        {
+          "name": "sequence-dore-01-story_01.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-dore-02-story_02.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-dore-03-story_03.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-dore-04-story_04.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-dore-05-story_05.png",
+          "width": 1080,
+          "height": 1920
+        }
+      ]
+    },
+    {
+      "styleId": "trait",
+      "sceneSizes": [
+        {
+          "stories": [
+            0
+          ],
+          "fontSize": 58,
+          "top": 416,
+          "height": 202
+        },
+        {
+          "stories": [
+            1,
+            2
+          ],
+          "fontSize": 42,
+          "top": 351,
+          "height": 978
+        },
+        {
+          "stories": [
+            3,
+            4
+          ],
+          "fontSize": 42,
+          "top": 379,
+          "height": 922
+        }
+      ],
+      "problems": [],
+      "warnings": [],
+      "contrastWarnings": [],
+      "contrastMin": 5.6800443317401434,
+      "previewVsExport": [
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.1402379115217902,
+          "strongPct": 0.35378086419753085
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.2893216306585544,
+          "strongPct": 0.3414351851851852
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.8826009516479918,
+          "strongPct": 0.7048611111111112
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.3202925668725591,
+          "strongPct": 0.4226466049382716
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.4785236625518101,
+          "strongPct": 0.36844135802469136
+        }
+      ],
+      "pngs": [
+        {
+          "name": "sequence-trait-01-story_01.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-trait-02-story_02.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-trait-03-story_03.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-trait-04-story_04.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-trait-05-story_05.png",
+          "width": 1080,
+          "height": 1920
+        }
+      ]
+    },
+    {
+      "styleId": "orange",
+      "sceneSizes": [
+        {
+          "stories": [
+            0
+          ],
+          "fontSize": 58,
+          "top": 411,
+          "height": 212
+        },
+        {
+          "stories": [
+            1,
+            2
+          ],
+          "fontSize": 42,
+          "top": 303,
+          "height": 1074
+        },
+        {
+          "stories": [
+            3,
+            4
+          ],
+          "fontSize": 42,
+          "top": 362,
+          "height": 956
+        }
+      ],
+      "problems": [],
+      "warnings": [],
+      "contrastWarnings": [],
+      "contrastMin": 5.348830380561573,
+      "previewVsExport": [
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.1333686985587914,
+          "strongPct": 0.3439429012345679
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.2553620113168171,
+          "strongPct": 0.36323302469135804
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.6123456790141066,
+          "strongPct": 0.46739969135802467
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.446666023663463,
+          "strongPct": 0.5817901234567902
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.7529205246919692,
+          "strongPct": 0.5628858024691358
+        }
+      ],
+      "pngs": [
+        {
+          "name": "sequence-orange-01-story_01.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-orange-02-story_02.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-orange-03-story_03.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-orange-04-story_04.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-orange-05-story_05.png",
+          "width": 1080,
+          "height": 1920
+        }
+      ]
+    },
+    {
+      "styleId": "rose",
+      "sceneSizes": [
+        {
+          "stories": [
+            0
+          ],
+          "fontSize": 58,
+          "top": 411,
+          "height": 212
+        },
+        {
+          "stories": [
+            1,
+            2
+          ],
+          "fontSize": 42,
+          "top": 303,
+          "height": 1074
+        },
+        {
+          "stories": [
+            3,
+            4
+          ],
+          "fontSize": 42,
+          "top": 362,
+          "height": 956
+        }
+      ],
+      "problems": [],
+      "warnings": [],
+      "contrastWarnings": [],
+      "contrastMin": 5.348830380561573,
+      "previewVsExport": [
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.1453337191349957,
+          "strongPct": 0.3645833333333333
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.2720762602881452,
+          "strongPct": 0.36323302469135804
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.6623585390964188,
+          "strongPct": 0.5221836419753086
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.4947807355976102,
+          "strongPct": 0.5812114197530864
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.7800778034985447,
+          "strongPct": 0.5810185185185185
+        }
+      ],
+      "pngs": [
+        {
+          "name": "sequence-rose-01-story_01.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-rose-02-story_02.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-rose-03-story_03.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-rose-04-story_04.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-rose-05-story_05.png",
+          "width": 1080,
+          "height": 1920
+        }
+      ]
+    },
+    {
+      "styleId": "serif",
+      "sceneSizes": [
+        {
+          "stories": [
+            0
+          ],
+          "fontSize": 68,
+          "top": 407,
+          "height": 220
+        },
+        {
+          "stories": [
+            1,
+            2
+          ],
+          "fontSize": 47,
+          "top": 319,
+          "height": 1042
+        },
+        {
+          "stories": [
+            3,
+            4
+          ],
+          "fontSize": 47,
+          "top": 374,
+          "height": 931
+        }
+      ],
+      "problems": [],
+      "warnings": [],
+      "contrastWarnings": [],
+      "contrastMin": 5.323031768977954,
+      "previewVsExport": [
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.1434960133736607,
+          "strongPct": 0.32040895061728397
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.494047067902695,
+          "strongPct": 0.45987654320987653
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.9752379115243246,
+          "strongPct": 0.5661651234567902
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 0.9971791409459576,
+          "strongPct": 0.1552854938271605
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.0888766718102167,
+          "strongPct": 0.1568287037037037
+        }
+      ],
+      "pngs": [
+        {
+          "name": "sequence-serif-01-story_01.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-serif-02-story_02.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-serif-03-story_03.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-serif-04-story_04.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-serif-05-story_05.png",
+          "width": 1080,
+          "height": 1920
+        }
+      ]
+    },
+    {
+      "styleId": "entoure",
+      "sceneSizes": [
+        {
+          "stories": [
+            0
+          ],
+          "fontSize": 57,
+          "top": 409,
+          "height": 215
+        },
+        {
+          "stories": [
+            1,
+            2
+          ],
+          "fontSize": 42,
+          "top": 300,
+          "height": 1112
+        },
+        {
+          "stories": [
+            3,
+            4
+          ],
+          "fontSize": 42,
+          "top": 345,
+          "height": 990
+        }
+      ],
+      "problems": [],
+      "warnings": [],
+      "contrastWarnings": [],
+      "contrastMin": 5.37879449582395,
+      "previewVsExport": [
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.2557394547325618,
+          "strongPct": 0.4207175925925926
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.460431455762807,
+          "strongPct": 0.4940200617283951
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.9738451646108124,
+          "strongPct": 0.6921296296296297
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.4179153806593257,
+          "strongPct": 0.47550154320987653
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.7391846707825762,
+          "strongPct": 0.5684799382716049
+        }
+      ],
+      "pngs": [
+        {
+          "name": "sequence-entoure-01-story_01.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-entoure-02-story_02.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-entoure-03-story_03.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-entoure-04-story_04.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-entoure-05-story_05.png",
+          "width": 1080,
+          "height": 1920
+        }
+      ]
+    },
+    {
+      "styleId": "fluo",
+      "sceneSizes": [
+        {
+          "stories": [
+            0
+          ],
+          "fontSize": 57,
+          "top": 413,
+          "height": 209
+        },
+        {
+          "stories": [
+            1,
+            2
+          ],
+          "fontSize": 42,
+          "top": 303,
+          "height": 1074
+        },
+        {
+          "stories": [
+            3,
+            4
+          ],
+          "fontSize": 42,
+          "top": 362,
+          "height": 956
+        }
+      ],
+      "problems": [],
+      "warnings": [],
+      "contrastWarnings": [],
+      "contrastMin": 5.37879449582395,
+      "previewVsExport": [
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.002384902262429,
+          "strongPct": 0.21277006172839505
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.2551369598764828,
+          "strongPct": 0.3551311728395062
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.6359053497959906,
+          "strongPct": 0.4496527777777778
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.4698521090543926,
+          "strongPct": 0.5829475308641975
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.7537827932104721,
+          "strongPct": 0.5557484567901234
+        }
+      ],
+      "pngs": [
+        {
+          "name": "sequence-fluo-01-story_01.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-fluo-02-story_02.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-fluo-03-story_03.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-fluo-04-story_04.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-fluo-05-story_05.png",
+          "width": 1080,
+          "height": 1920
+        }
+      ]
+    },
+    {
+      "styleId": "turquoise",
+      "sceneSizes": [
+        {
+          "stories": [
+            0
+          ],
+          "fontSize": 59,
+          "top": 413,
+          "height": 207
+        },
+        {
+          "stories": [
+            1,
+            2
+          ],
+          "fontSize": 41,
+          "top": 335,
+          "height": 1010
+        },
+        {
+          "stories": [
+            3,
+            4
+          ],
+          "fontSize": 41,
+          "top": 390,
+          "height": 900
+        }
+      ],
+      "problems": [],
+      "warnings": [],
+      "contrastWarnings": [],
+      "contrastMin": 5.678840311951847,
+      "previewVsExport": [
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.0137969392994717,
+          "strongPct": 0.25
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.3112712191361902,
+          "strongPct": 0.4074074074074074
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.7360307355985378,
+          "strongPct": 0.5399305555555556
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.3470756172844478,
+          "strongPct": 0.41107253086419754
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.4518132716053795,
+          "strongPct": 0.3148148148148148
+        }
+      ],
+      "pngs": [
+        {
+          "name": "sequence-turquoise-01-story_01.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-turquoise-02-story_02.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-turquoise-03-story_03.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-turquoise-04-story_04.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-turquoise-05-story_05.png",
+          "width": 1080,
+          "height": 1920
+        }
+      ]
+    },
+    {
+      "styleId": "roman",
+      "sceneSizes": [
+        {
+          "stories": [
+            0
+          ],
+          "fontSize": 70,
+          "top": 363,
+          "height": 308
+        },
+        {
+          "stories": [
+            1,
+            2
+          ],
+          "fontSize": 50,
+          "top": 322,
+          "height": 1035
+        },
+        {
+          "stories": [
+            3,
+            4
+          ],
+          "fontSize": 50,
+          "top": 351,
+          "height": 977
+        }
+      ],
+      "problems": [],
+      "warnings": [],
+      "contrastWarnings": [],
+      "contrastMin": 5.12274501804795,
+      "previewVsExport": [
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.1179603909456135,
+          "strongPct": 0.32677469135802467
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.026784336418974,
+          "strongPct": 0.15914351851851852
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 2.041507844651863,
+          "strongPct": 0.9143518518518519
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.6616962448569288,
+          "strongPct": 0.6529706790123457
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.3775713734570476,
+          "strongPct": 0.1583719135802469
+        }
+      ],
+      "pngs": [
+        {
+          "name": "sequence-roman-01-story_01.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-roman-02-story_02.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-roman-03-story_03.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-roman-04-story_04.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-roman-05-story_05.png",
+          "width": 1080,
+          "height": 1920
+        }
+      ]
+    },
+    {
+      "styleId": "bandeau",
+      "sceneSizes": [
+        {
+          "stories": [
+            0
+          ],
+          "fontSize": 68,
+          "top": 382,
+          "height": 269
+        },
+        {
+          "stories": [
+            1,
+            2
+          ],
+          "fontSize": 50,
+          "top": 300,
+          "height": 1179
+        },
+        {
+          "stories": [
+            3,
+            4
+          ],
+          "fontSize": 50,
+          "top": 300,
+          "height": 1111
+        }
+      ],
+      "problems": [],
+      "warnings": [],
+      "contrastWarnings": [],
+      "contrastMin": 21,
+      "previewVsExport": [
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.1845923353905656,
+          "strongPct": 0.33526234567901236
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.971806841565129,
+          "strongPct": 0.9502314814814815
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.4861522633753226,
+          "strongPct": 0.16184413580246915
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.9506802983551066,
+          "strongPct": 0.9963348765432098
+        },
+        {
+          "w": 540,
+          "h": 960,
+          "mean": 1.4208802726338945,
+          "strongPct": 0.1597222222222222
+        }
+      ],
+      "pngs": [
+        {
+          "name": "sequence-bandeau-01-story_01.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-bandeau-02-story_02.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-bandeau-03-story_03.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-bandeau-04-story_04.png",
+          "width": 1080,
+          "height": 1920
+        },
+        {
+          "name": "sequence-bandeau-05-story_05.png",
+          "width": 1080,
+          "height": 1920
+        }
+      ]
+    }
+  ],
+  "failures": []
+}
