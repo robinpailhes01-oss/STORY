@@ -45,3 +45,5 @@ next-env.d.ts
 
 # Copies de travail temporaires des agents Claude Code
 /.claude/worktrees/
+# Planche avec les captures de la référence (filigrane tiers, photos personnelles) : générée localement, non versionnée
+captures/render/dore-vs-reference.png
