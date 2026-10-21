@@ -1,0 +1,21 @@
+## Sans STORY_AI_MOCK ni ANTHROPIC_API_KEY, next start -p 3299
+### POST /api/generations (valide)
+{"error":{"code":"cle_absente","message":"L'écriture par l'IA n'est pas configurée : ajoute ANTHROPIC_API_KEY=… dans .env.local (ou dans les variables d'environnement Vercel), puis redémarre le serveur. En attendant, le mode démo charge la séquence de référence."}}
+HTTP 503 en 0.119669s
+### POST /api/generations (idée absente)
+{"error":{"code":"corps_invalide","message":"Demande invalide : l'idée : champ manquant."}}
+HTTP 400
+### POST /api/generations (JSON invalide)
+{"error":{"code":"json_invalide","message":"La demande n'est pas un JSON valide."}}
+HTTP 400
+### POST /api/generations (corps > 30 Ko)
+{"error":{"code":"trop_volumineux","message":"La demande est trop volumineuse (30 Ko au plus)."}}
+HTTP 413
+### POST /api/ideas (valide)
+{"error":{"code":"cle_absente","message":"L'écriture par l'IA n'est pas configurée : ajoute ANTHROPIC_API_KEY=… dans .env.local (ou dans les variables d'environnement Vercel), puis redémarre le serveur. En attendant, le mode démo charge la séquence de référence."}}
+HTTP 503 en 0.011238s
+### POST /api/ideas (thème invalide)
+{"error":{"code":"corps_invalide","message":"Demande invalide : le thème : du texte attendu."}}
+HTTP 400
+### GET /api/generations
+HTTP 405
