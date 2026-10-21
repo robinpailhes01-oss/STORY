@@ -1,0 +1,699 @@
+{
+  "assets": {
+    "/mediapipe/vision_wasm_internal.wasm": {
+      "status": 200,
+      "encoding": "gzip",
+      "bytes": 3965787
+    },
+    "/mediapipe/vision_wasm_internal.js": {
+      "status": 200,
+      "encoding": "gzip",
+      "bytes": 81288
+    },
+    "/models/selfie_segmenter.tflite": {
+      "status": 200,
+      "encoding": "aucune",
+      "bytes": 249537
+    }
+  },
+  "lazyLoad": {
+    "before": 0,
+    "after": 1
+  },
+  "preload": {
+    "ok": true,
+    "ms": 1008
+  },
+  "people": [
+    {
+      "name": "bateau",
+      "photoWidth": 1080,
+      "photoHeight": 1920,
+      "ok": true,
+      "cutoutWidth": 1080,
+      "cutoutHeight": 1920,
+      "coverage": 0.13659498426649305,
+      "ms": 436.90000000037253,
+      "timings": {
+        "load": 0.09999999962747097,
+        "segment": 100.19999999925494,
+        "refine": 230.2000000011176,
+        "compose": 106.40000000037253
+      },
+      "delegate": "CPU",
+      "model": "selfie",
+      "maskWidth": 576,
+      "maskHeight": 1024,
+      "islandsRemoved": 0,
+      "zoomRegion": null,
+      "alpha": {
+        "transparent": 0.8576937134502924,
+        "opaque": 0.12199683235867446,
+        "partial": 0.02030945419103314
+      }
+    },
+    {
+      "name": "fauteuil",
+      "photoWidth": 1080,
+      "photoHeight": 1920,
+      "ok": true,
+      "cutoutWidth": 1080,
+      "cutoutHeight": 1920,
+      "coverage": 0.08472357855902778,
+      "ms": 446.7000000011176,
+      "timings": {
+        "load": 0.09999999962747097,
+        "segment": 142.40000000037253,
+        "refine": 209.90000000037253,
+        "compose": 94.30000000074506
+      },
+      "delegate": "CPU",
+      "model": "selfie",
+      "maskWidth": 576,
+      "maskHeight": 1024,
+      "islandsRemoved": 0,
+      "zoomRegion": {
+        "x": 0,
+        "y": 0.31640625,
+        "width": 1,
+        "height": 0.5859375
+      },
+      "alpha": {
+        "transparent": 0.9024792884990254,
+        "opaque": 0.06237816764132553,
+        "partial": 0.03514254385964912
+      }
+    },
+    {
+      "name": "fauteuil-pastille",
+      "photoWidth": 1080,
+      "photoHeight": 1920,
+      "ok": true,
+      "cutoutWidth": 1080,
+      "cutoutHeight": 1920,
+      "coverage": 0.08230760362413195,
+      "ms": 539.9000000003725,
+      "timings": {
+        "load": 0,
+        "segment": 175.5,
+        "refine": 256.90000000037253,
+        "compose": 107.5
+      },
+      "delegate": "CPU",
+      "model": "selfie",
+      "maskWidth": 576,
+      "maskHeight": 1024,
+      "islandsRemoved": 1,
+      "zoomRegion": {
+        "x": 0,
+        "y": 0.31884765625,
+        "width": 1,
+        "height": 0.5830078125
+      },
+      "alpha": {
+        "transparent": 0.9049281189083821,
+        "opaque": 0.05649366471734893,
+        "partial": 0.038578216374269
+      }
+    },
+    {
+      "name": "debout",
+      "photoWidth": 1080,
+      "photoHeight": 1920,
+      "ok": true,
+      "cutoutWidth": 1080,
+      "cutoutHeight": 1920,
+      "coverage": 0.1730007595486111,
+      "ms": 482.7999999988824,
+      "timings": {
+        "load": 0,
+        "segment": 86.69999999925494,
+        "refine": 282.7000000011176,
+        "compose": 113.39999999850988
+      },
+      "delegate": "CPU",
+      "model": "selfie",
+      "maskWidth": 576,
+      "maskHeight": 1024,
+      "islandsRemoved": 0,
+      "zoomRegion": null,
+      "alpha": {
+        "transparent": 0.8189814814814815,
+        "opaque": 0.1484466374269006,
+        "partial": 0.03257188109161793
+      }
+    },
+    {
+      "name": "debout-clair",
+      "photoWidth": 1080,
+      "photoHeight": 1920,
+      "ok": true,
+      "cutoutWidth": 1080,
+      "cutoutHeight": 1920,
+      "coverage": 0.1465488009982639,
+      "ms": 372,
+      "timings": {
+        "load": 0,
+        "segment": 98.5,
+        "refine": 187.69999999925494,
+        "compose": 85.80000000074506
+      },
+      "delegate": "CPU",
+      "model": "selfie",
+      "maskWidth": 576,
+      "maskHeight": 1024,
+      "islandsRemoved": 0,
+      "zoomRegion": null,
+      "alpha": {
+        "transparent": 0.8504751461988304,
+        "opaque": 0.1394980506822612,
+        "partial": 0.010026803118908382
+      }
+    },
+    {
+      "name": "portrait",
+      "photoWidth": 1440,
+      "photoHeight": 2560,
+      "ok": true,
+      "cutoutWidth": 1440,
+      "cutoutHeight": 2560,
+      "coverage": 0.57476806640625,
+      "ms": 495.5,
+      "timings": {
+        "load": 0,
+        "segment": 71.59999999962747,
+        "refine": 235.80000000074506,
+        "compose": 188.09999999962747
+      },
+      "delegate": "CPU",
+      "model": "selfie",
+      "maskWidth": 576,
+      "maskHeight": 1024,
+      "islandsRemoved": 0,
+      "zoomRegion": null,
+      "alpha": {
+        "transparent": 0.4217958089668616,
+        "opaque": 0.5676535087719298,
+        "partial": 0.010550682261208578
+      }
+    }
+  ],
+  "synthetic": [
+    {
+      "name": "paysage",
+      "photoWidth": 1080,
+      "photoHeight": 1920,
+      "ok": true,
+      "cutoutWidth": 1080,
+      "cutoutHeight": 1920,
+      "coverage": 0,
+      "ms": 411.7999999988824,
+      "timings": {
+        "load": 0.09999999962747097,
+        "segment": 68.79999999888241,
+        "refine": 245.80000000074506,
+        "compose": 97.09999999962747
+      },
+      "delegate": "CPU",
+      "model": "selfie",
+      "maskWidth": 576,
+      "maskHeight": 1024,
+      "islandsRemoved": 0,
+      "zoomRegion": null,
+      "alpha": {
+        "transparent": 1,
+        "opaque": 0,
+        "partial": 0
+      }
+    },
+    {
+      "name": "aplat",
+      "photoWidth": 900,
+      "photoHeight": 1200,
+      "ok": true,
+      "cutoutWidth": 900,
+      "cutoutHeight": 1200,
+      "coverage": 0,
+      "ms": 204.5,
+      "timings": {
+        "load": 0,
+        "segment": 65.20000000111759,
+        "refine": 99.59999999962747,
+        "compose": 39.69999999925494
+      },
+      "delegate": "CPU",
+      "model": "selfie",
+      "maskWidth": 768,
+      "maskHeight": 1024,
+      "islandsRemoved": 0,
+      "zoomRegion": null,
+      "alpha": {
+        "transparent": 1,
+        "opaque": 0,
+        "partial": 0
+      }
+    },
+    {
+      "name": "objets",
+      "photoWidth": 1440,
+      "photoHeight": 1080,
+      "ok": true,
+      "cutoutWidth": 1440,
+      "cutoutHeight": 1080,
+      "coverage": 0,
+      "ms": 218.09999999962747,
+      "timings": {
+        "load": 0,
+        "segment": 69.5,
+        "refine": 102.89999999850988,
+        "compose": 45.70000000111759
+      },
+      "delegate": "CPU",
+      "model": "selfie",
+      "maskWidth": 1024,
+      "maskHeight": 768,
+      "islandsRemoved": 0,
+      "zoomRegion": null,
+      "alpha": {
+        "transparent": 1,
+        "opaque": 0,
+        "partial": 0
+      }
+    }
+  ],
+  "cache": {
+    "samePromise": true,
+    "sameCanvas": true,
+    "cachedMs": 0.09999999962747097,
+    "released": true
+  },
+  "errors": {
+    "modele_indisponible": {
+      "code": "modele_indisponible",
+      "message": "Le modèle de détourage est introuvable (/models/selfie_segmenter.tflite : HTTP 404)."
+    },
+    "moteur_indisponible": {
+      "code": "moteur_indisponible",
+      "message": "Le moteur de détourage n’a pas pu être chargé. Vérifie ta connexion puis réessaie."
+    }
+  },
+  "external": [],
+  "multiclass": [
+    {
+      "name": "bateau",
+      "preloadMs": 2276.199999999255,
+      "selfie": {
+        "name": "bateau · selfie",
+        "photoWidth": 1080,
+        "photoHeight": 1920,
+        "ok": true,
+        "cutoutWidth": 1080,
+        "cutoutHeight": 1920,
+        "coverage": 0.13659498426649305,
+        "ms": 505.2999999988824,
+        "timings": {
+          "load": 0,
+          "segment": 103.5,
+          "refine": 279.2999999988824,
+          "compose": 122.5
+        },
+        "delegate": "CPU",
+        "model": "selfie",
+        "maskWidth": 576,
+        "maskHeight": 1024,
+        "islandsRemoved": 0,
+        "zoomRegion": null,
+        "alpha": {
+          "transparent": 0.8576937134502924,
+          "opaque": 0.12199683235867446,
+          "partial": 0.02030945419103314
+        }
+      },
+      "multiclasse": {
+        "name": "bateau · multiclasse",
+        "photoWidth": 1080,
+        "photoHeight": 1920,
+        "ok": true,
+        "cutoutWidth": 1080,
+        "cutoutHeight": 1920,
+        "coverage": 0.1280585394965278,
+        "ms": 907.8999999985099,
+        "timings": {
+          "load": 0,
+          "segment": 614.7999999988824,
+          "refine": 197.5,
+          "compose": 95.59999999962747
+        },
+        "delegate": "CPU",
+        "model": "multiclasse",
+        "maskWidth": 576,
+        "maskHeight": 1024,
+        "islandsRemoved": 0,
+        "zoomRegion": null,
+        "alpha": {
+          "transparent": 0.8666057504873295,
+          "opaque": 0.11568591617933723,
+          "partial": 0.017708333333333333
+        }
+      }
+    },
+    {
+      "name": "fauteuil",
+      "preloadMs": 2276.199999999255,
+      "selfie": {
+        "name": "fauteuil · selfie",
+        "photoWidth": 1080,
+        "photoHeight": 1920,
+        "ok": true,
+        "cutoutWidth": 1080,
+        "cutoutHeight": 1920,
+        "coverage": 0.08472357855902778,
+        "ms": 446.19999999925494,
+        "timings": {
+          "load": 0,
+          "segment": 134.19999999925494,
+          "refine": 212,
+          "compose": 100
+        },
+        "delegate": "CPU",
+        "model": "selfie",
+        "maskWidth": 576,
+        "maskHeight": 1024,
+        "islandsRemoved": 0,
+        "zoomRegion": {
+          "x": 0,
+          "y": 0.31640625,
+          "width": 1,
+          "height": 0.5859375
+        },
+        "alpha": {
+          "transparent": 0.9024792884990254,
+          "opaque": 0.06237816764132553,
+          "partial": 0.03514254385964912
+        }
+      },
+      "multiclasse": {
+        "name": "fauteuil · multiclasse",
+        "photoWidth": 1080,
+        "photoHeight": 1920,
+        "ok": true,
+        "cutoutWidth": 1080,
+        "cutoutHeight": 1920,
+        "coverage": 0.0752071804470486,
+        "ms": 1473.0999999996275,
+        "timings": {
+          "load": 0,
+          "segment": 1157.0999999996275,
+          "refine": 224.7000000011176,
+          "compose": 91.29999999888241
+        },
+        "delegate": "CPU",
+        "model": "multiclasse",
+        "maskWidth": 576,
+        "maskHeight": 1024,
+        "islandsRemoved": 0,
+        "zoomRegion": {
+          "x": 0.24479166666666666,
+          "y": 0.32763671875,
+          "width": 0.7552083333333334,
+          "height": 0.4248046875
+        },
+        "alpha": {
+          "transparent": 0.9160270467836257,
+          "opaque": 0.058321150097465885,
+          "partial": 0.02565180311890838
+        }
+      }
+    },
+    {
+      "name": "fauteuil-pastille",
+      "preloadMs": 2276.199999999255,
+      "selfie": {
+        "name": "fauteuil-pastille · selfie",
+        "photoWidth": 1080,
+        "photoHeight": 1920,
+        "ok": true,
+        "cutoutWidth": 1080,
+        "cutoutHeight": 1920,
+        "coverage": 0.08230760362413195,
+        "ms": 556.5999999996275,
+        "timings": {
+          "load": 0,
+          "segment": 138.19999999925494,
+          "refine": 304.7000000011176,
+          "compose": 113.69999999925494
+        },
+        "delegate": "CPU",
+        "model": "selfie",
+        "maskWidth": 576,
+        "maskHeight": 1024,
+        "islandsRemoved": 1,
+        "zoomRegion": {
+          "x": 0,
+          "y": 0.31884765625,
+          "width": 1,
+          "height": 0.5830078125
+        },
+        "alpha": {
+          "transparent": 0.9049281189083821,
+          "opaque": 0.05649366471734893,
+          "partial": 0.038578216374269
+        }
+      },
+      "multiclasse": {
+        "name": "fauteuil-pastille · multiclasse",
+        "photoWidth": 1080,
+        "photoHeight": 1920,
+        "ok": true,
+        "cutoutWidth": 1080,
+        "cutoutHeight": 1920,
+        "coverage": 0.07145860460069445,
+        "ms": 1482.2999999988824,
+        "timings": {
+          "load": 0.09999999962747097,
+          "segment": 1161.699999999255,
+          "refine": 207.90000000037253,
+          "compose": 112.59999999962747
+        },
+        "delegate": "CPU",
+        "model": "multiclasse",
+        "maskWidth": 576,
+        "maskHeight": 1024,
+        "islandsRemoved": 0,
+        "zoomRegion": {
+          "x": 0.2552083333333333,
+          "y": 0.33251953125,
+          "width": 0.7447916666666666,
+          "height": 0.4189453125
+        },
+        "alpha": {
+          "transparent": 0.9196150097465887,
+          "opaque": 0.055726120857699804,
+          "partial": 0.0246588693957115
+        }
+      }
+    },
+    {
+      "name": "debout",
+      "preloadMs": 2276.199999999255,
+      "selfie": {
+        "name": "debout · selfie",
+        "photoWidth": 1080,
+        "photoHeight": 1920,
+        "ok": true,
+        "cutoutWidth": 1080,
+        "cutoutHeight": 1920,
+        "coverage": 0.1730007595486111,
+        "ms": 405.09999999962747,
+        "timings": {
+          "load": 0,
+          "segment": 76.30000000074506,
+          "refine": 238.19999999925494,
+          "compose": 90.59999999962747
+        },
+        "delegate": "CPU",
+        "model": "selfie",
+        "maskWidth": 576,
+        "maskHeight": 1024,
+        "islandsRemoved": 0,
+        "zoomRegion": null,
+        "alpha": {
+          "transparent": 0.8189814814814815,
+          "opaque": 0.1484466374269006,
+          "partial": 0.03257188109161793
+        }
+      },
+      "multiclasse": {
+        "name": "debout · multiclasse",
+        "photoWidth": 1080,
+        "photoHeight": 1920,
+        "ok": true,
+        "cutoutWidth": 1080,
+        "cutoutHeight": 1920,
+        "coverage": 0.1384362114800347,
+        "ms": 982.2999999988824,
+        "timings": {
+          "load": 0,
+          "segment": 634.4000000003725,
+          "refine": 243.19999999925494,
+          "compose": 104.69999999925494
+        },
+        "delegate": "CPU",
+        "model": "multiclasse",
+        "maskWidth": 576,
+        "maskHeight": 1024,
+        "islandsRemoved": 0,
+        "zoomRegion": null,
+        "alpha": {
+          "transparent": 0.8517422027290449,
+          "opaque": 0.11118421052631579,
+          "partial": 0.03707358674463938
+        }
+      }
+    },
+    {
+      "name": "debout-clair",
+      "preloadMs": 2276.199999999255,
+      "selfie": {
+        "name": "debout-clair · selfie",
+        "photoWidth": 1080,
+        "photoHeight": 1920,
+        "ok": true,
+        "cutoutWidth": 1080,
+        "cutoutHeight": 1920,
+        "coverage": 0.1465488009982639,
+        "ms": 361.2999999988824,
+        "timings": {
+          "load": 0,
+          "segment": 70.39999999850988,
+          "refine": 192.60000000149012,
+          "compose": 98.29999999888241
+        },
+        "delegate": "CPU",
+        "model": "selfie",
+        "maskWidth": 576,
+        "maskHeight": 1024,
+        "islandsRemoved": 0,
+        "zoomRegion": null,
+        "alpha": {
+          "transparent": 0.8504751461988304,
+          "opaque": 0.1394980506822612,
+          "partial": 0.010026803118908382
+        }
+      },
+      "multiclasse": {
+        "name": "debout-clair · multiclasse",
+        "photoWidth": 1080,
+        "photoHeight": 1920,
+        "ok": true,
+        "cutoutWidth": 1080,
+        "cutoutHeight": 1920,
+        "coverage": 0.15175882975260416,
+        "ms": 917,
+        "timings": {
+          "load": 0,
+          "segment": 626.5,
+          "refine": 194.39999999850988,
+          "compose": 96.10000000149012
+        },
+        "delegate": "CPU",
+        "model": "multiclasse",
+        "maskWidth": 576,
+        "maskHeight": 1024,
+        "islandsRemoved": 0,
+        "zoomRegion": null,
+        "alpha": {
+          "transparent": 0.8424829434697856,
+          "opaque": 0.13667763157894736,
+          "partial": 0.020839424951267057
+        }
+      }
+    },
+    {
+      "name": "portrait",
+      "preloadMs": 2276.199999999255,
+      "selfie": {
+        "name": "portrait · selfie",
+        "photoWidth": 1440,
+        "photoHeight": 2560,
+        "ok": true,
+        "cutoutWidth": 1440,
+        "cutoutHeight": 2560,
+        "coverage": 0.57476806640625,
+        "ms": 467.30000000074506,
+        "timings": {
+          "load": 0,
+          "segment": 60.59999999962747,
+          "refine": 220.10000000149012,
+          "compose": 186.59999999962747
+        },
+        "delegate": "CPU",
+        "model": "selfie",
+        "maskWidth": 576,
+        "maskHeight": 1024,
+        "islandsRemoved": 0,
+        "zoomRegion": null,
+        "alpha": {
+          "transparent": 0.4217958089668616,
+          "opaque": 0.5676535087719298,
+          "partial": 0.010550682261208578
+        }
+      },
+      "multiclasse": {
+        "name": "portrait · multiclasse",
+        "photoWidth": 1440,
+        "photoHeight": 2560,
+        "ok": true,
+        "cutoutWidth": 1440,
+        "cutoutHeight": 2560,
+        "coverage": 0.5736100938585069,
+        "ms": 973,
+        "timings": {
+          "load": 0,
+          "segment": 581.4000000003725,
+          "refine": 212.59999999962747,
+          "compose": 179
+        },
+        "delegate": "CPU",
+        "model": "multiclasse",
+        "maskWidth": 576,
+        "maskHeight": 1024,
+        "islandsRemoved": 0,
+        "zoomRegion": null,
+        "alpha": {
+          "transparent": 0.42325779727095514,
+          "opaque": 0.5658138401559454,
+          "partial": 0.010928362573099416
+        }
+      }
+    }
+  ],
+  "gpu": {
+    "name": "bateau (GPU)",
+    "photoWidth": 1080,
+    "photoHeight": 1920,
+    "ok": true,
+    "cutoutWidth": 1080,
+    "cutoutHeight": 1920,
+    "coverage": 0.13614061143663195,
+    "ms": 4109.5999999996275,
+    "timings": {
+      "load": 1354.199999999255,
+      "segment": 2380.800000000745,
+      "refine": 218.39999999850988,
+      "compose": 156.2000000011176
+    },
+    "delegate": "GPU",
+    "model": "selfie",
+    "maskWidth": 576,
+    "maskHeight": 1024,
+    "islandsRemoved": 0,
+    "zoomRegion": null,
+    "alpha": {
+      "transparent": 0.8582358674463938,
+      "opaque": 0.12171052631578948,
+      "partial": 0.020053606237816764
+    }
+  },
+  "failures": []
+}
