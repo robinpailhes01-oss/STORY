@@ -246,3 +246,67 @@ hors de `/api/generations`, `/api/ideas` et des fichiers du site. Captures dans 
 
 **Hors périmètre (voir `docs/REFERENCE_PARCOURS_COMPLET.md` §4).** Idée facultative, 2 photos, carte profil,
 Présenter, zoom, Crayon, 7 styles et décorations supplémentaires : non traités ici.
+
+## Détourage (src/lib/segmentation, branche build3/segmentation)
+
+**But.** Styles à mot géant derrière la personne : photo, mot géant, puis la découpe par-dessus. `getCutout(photoId, image)`
+rend un canvas RGBA **de la taille de la photo**, transparent hors de la personne : on le pose avec exactement la même
+position et la même échelle que la photo (`<Image image={cutout} />` de react-konva). API complète en tête de
+`src/lib/segmentation/index.ts`.
+
+**Moteur.** MediaPipe Tasks Vision 1.1.1 (Apache-2.0), `ImageSegmenter`, importé à la demande (`import()` : aucun octet
+de MediaPipe tant qu’aucun détourage n’est demandé, vérifié). Fichiers servis par nous : `public/mediapipe/vision_wasm_internal.{js,wasm}`
+(copie du paquet ; la seule ligne ajoutée est `/* eslint-disable */` en tête du chargeur, sinon `npm run lint` analyse le code
+Emscripten) et `public/models/selfie_segmenter.tflite`. **Seule la variante SIMD** est livrée (13,5 Mo de moins dans le
+dépôt) : sans SIMD (iOS < 16.4), erreur `navigateur_incompatible` explicite. Transfert : wasm ≈ 4 Mo compressé en gzip (13,5 Mo brut),
+chargeur 0,08 Mo, modèle 0,25 Mo ; `public/` est servi en `max-age=0` (revalidation, 304 au deuxième passage).
+
+**Télémétrie coupée.** MediaPipe 1.1.1 envoie d’office des statistiques d’usage à `odml.pa.googleapis.com/v1/log` (toutes
+les 60 s et à la fermeture), sans option pour l’éviter. `segmenter.ts` refuse ces seules requêtes (enveloppe de `fetch`,
+rejet immédiat : MediaPipe cesse d’essayer). Le script vérifie qu’aucune requête ne sort du serveur local, fermeture comprise.
+
+**Modèle retenu : `selfie_segmenter` (250 Ko).** Comparé au multiclasse 256 × 256 (16 Mo) sur 6 photos réelles de Robin
+(recadrées localement de ses captures, jamais versionnées) : couvertures très proches (bateau 13,7 % contre 12,8 %, portrait
+57,5 % contre 57,4 %), bords pas meilleurs, et le multiclasse perd davantage les membres (fauteuil 7,5 % contre 8,5 %) ; il
+coûte 16 Mo de plus à télécharger sur iPhone et 560 à 1 300 ms par inférence contre 60 à 180 ms. Le multiclasse reste
+sélectionnable dans le labo (le script le sert depuis le disque avec `MULTICLASS_MODEL=…`), il n’est pas livré.
+
+**Processeur par défaut.** Dans Chromium, le GPU donne le même masque (écart de couverture < 2 points, contrôlé) mais coûte
+2,3 s de compilation au premier calcul et ≈ 200 ms ensuite, contre ≈ 80 ms sur le processeur (XNNPACK). Le processeur évite
+aussi un contexte WebGL de plus (Safari iOS les limite, Konva en utilise) et donne le même résultat sur tous les appareils.
+`delegate: "auto"` (GPU puis repli processeur, y compris si le GPU échoue au calcul) et `"GPU"` restent possibles.
+
+**Chaîne de calcul.**
+1. Inférence sur la photo réduite à 512 px (le modèle travaille en 256 × 256).
+2. **Second passage recadré** si la personne est petite : carré autour de la silhouette (+ 25 % de marge), ré-inféré à 512 px
+   et fondu dans le premier masque (bande de 3 %). Sur la photo « fauteuil », la tête passe d’un flou de pixels à un contour net.
+   Rien si la zone couvrirait déjà plus de 80 % de l’image (portrait, personne en pied).
+3. Masque affiné à 1024 px : assemblage, flou de 2 px, retrait des îlots (< 12 % de la plus grande silhouette : reflets,
+   textes ; deux personnes de taille voisine sont gardées).
+4. **Filtre guidé** (He et al., version rapide) sur la luminance de la photo, rayon 6, ε = 0,001, **seulement là où le modèle
+   hésite** : alpha = u·filtre + (1 − u)·modèle, u = 1 − |2P − 1|. Appliqué partout, il rendait le nez et la bouche
+   semi-transparents ; ainsi limité, il recale la bande de transition sur les contours (cheveux, épaules).
+5. Alpha à pleine définition par interpolation des coefficients, courbe en S de 0,3 à 0,85 : le liseré du fond (qui se voit
+   sur un mot géant vif) est rongé, le bord reste adouci (1 à 4 % des pixels semi-transparents).
+Le calcul rend la main au navigateur entre les étapes. Mesures (Chromium sans GPU, CPU du conteneur), photos 1080 × 1920 et
+1440 × 2560 : 360 à 600 ms par photo (inférence 60 à 180 ms, masque 190 à 310 ms, alpha 90 à 180 ms) ; moteur et modèle à
+froid ≈ 1,2 s (hors téléchargement). Une seule exécution par photo (`getCutout`, cache mémoire par identifiant).
+
+**Erreurs.** `SegmentationError` (code + message français) : `navigateur_incompatible`, `moteur_indisponible`,
+`modele_indisponible` (HTTP et signature `TFL3` contrôlés), `image_invalide` (image non chargée, canvas « tainted »),
+`calcul_impossible`, `annule`. Aucune personne n’est **pas** une erreur : `coverage` < `MIN_SUBJECT_COVERAGE` (3 %), à
+signaler par l’appelant (le mot reste alors devant).
+
+**Vérification** : `npm run build && node scripts/verify-segmentation.mjs` (Playwright + Chromium, `next start` sur un port
+libre, groupe de processus arrêté). Captures de Robin lues dans `REF_DIR` et recadrées à la volée ; planches et détails des
+bords à pleine définition écrits dans `PRIVATE_OUT` (dossier temporaire, défaut `$TMPDIR/story-segmentation`). Dans le dépôt :
+`captures/segmentation/planche-synthetique.png` (images sans personne) et `rapport.json` (chiffres seulement). Page de test :
+`/labo-detourage` (original, masque, découpe sur damier, bords agrandis, mot géant derrière la personne avec react-konva).
+
+**Limites.** Modèle « selfie » : très bon sur un buste ou une personne debout de face, plus faible quand la personne est
+petite et assise (jambes et accoudoirs du fauteuil mal séparés, coussin parfois inclus), ou de profil dans une photo très
+sombre (visage partiellement transparent sur « debout »). Cheveux : contour net mais mèches fines lissées, pas de vrai
+détourage de cheveux. Plusieurs personnes : toutes gardées si de taille voisine, une petite au loin peut être retirée comme
+un îlot. Objets tenus (verre, livre) : selon le modèle, souvent partiels. Pas encore testé sur iPhone (temps et mémoire :
+un canvas de 2560 × 1440 ≈ 15 Mo par photo détourée ; `releaseCutout` à l’échange de photo). Calcul sur le fil principal,
+découpé en étapes : ≈ 0,5 s par photo, une fois (un Web Worker avec un `ImageBitmap` transféré est possible, non fait).
