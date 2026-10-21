@@ -37,11 +37,19 @@ Ordre : S1 → (S2 ∥ S4) → S3. S5 (Supabase) et S6 (photos/détourage) aprè
 
 - `docs/REFERENCE_EDITEUR_MOBILE.md` : interface mobile de l'éditeur, mécanisme « story suite » (bloc précédent grisé), première séquence de référence. À donner à S2, S3 et S4.
 
+## Décisions de Robin (22 oct.)
+
+- S1 lancée.
+- **S2 : reproduire le rendu des 5 styles libres de Staura, sous nos propres noms** : Doré (Poppins, mots dorés), Trait (Inter, souligné bleu), Orange (Inter, surlignage orange), Rose (Inter, surlignage rose), Serif (DM Serif Display, mots rouges). Détails dans `docs/REFERENCE_EDITEUR_MOBILE.md` §6.
+- **V2** : import de marque. Le client donne son @Instagram (voix, photos) et son site (polices et couleurs lues dans le CSS ; police payante → équivalent Google Fonts).
+- **Corpus de méthode** : captures de 20-30 séquences de créateurs de référence (comptes cités sur la landing de Staura). On étudie les schémas, on ne copie pas les textes.
+
 ## Ce qui attend Robin
 
-- [ ] Lancer la session S1 (prompt ci-dessous)
+- [x] Lancer la session S1 (prompt ci-dessous)
+- [ ] Coller ici `[S1]` + son rapport quand elle a fini
 - [ ] Remplir `docs/luma/contexte.md` (modèle ci-dessous) — **avant S4**
-- [ ] Rassembler 20-30 séquences de stories de référence (captures) dans `docs/luma/corpus/` — **avant S4**
+- [ ] Rassembler 20-30 séquences de stories de référence (captures de créateurs) dans `docs/luma/corpus/` — **avant S4**
 - [ ] Mettre 15-20 photos Luma dans `public/samples/luma/` — **avant S3**
 
 ## Prompt de démarrage S1
