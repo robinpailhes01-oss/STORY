@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "objective": "educate",
+  "narrativeTemplateId": "one_task_first",
+  "slides": [
+    {
+      "id": "story_01",
+      "role": "hook",
+      "title": "Par où commencer avec l’IA ?",
+      "body": "Choisis d’abord une tâche qui te prend du temps.",
+      "emphasis": [
+        "une tâche"
+      ],
+      "proofIds": [],
+      "assetIds": [],
+      "layoutHint": "editorial"
+    },
+    {
+      "id": "story_02",
+      "role": "context",
+      "title": "Regarde ta dernière journée.",
+      "body": "Quels messages, devis ou relances as-tu répétés ?",
+      "emphasis": [
+        "messages",
+        "devis",
+        "relances"
+      ],
+      "proofIds": [],
+      "assetIds": [],
+      "layoutHint": "editorial"
+    },
+    {
+      "id": "story_03",
+      "role": "solution",
+      "title": "Décris ce que tu veux obtenir.",
+      "body": "Une réponse préparée ? Un devis à vérifier ? Une relance prête à envoyer ?",
+      "emphasis": [
+        "à vérifier"
+      ],
+      "proofIds": [],
+      "assetIds": [],
+      "layoutHint": "editorial"
+    },
+    {
+      "id": "story_04",
+      "role": "solution",
+      "title": "Teste sur un cas simple.",
+      "body": "Vérifie le résultat, corrige ce qui manque et garde la main.",
+      "emphasis": [
+        "garde la main"
+      ],
+      "proofIds": [],
+      "assetIds": [],
+      "layoutHint": "editorial"
+    },
+    {
+      "id": "story_05",
+      "role": "cta",
+      "title": "Quelle tâche choisirais-tu ?",
+      "body": "Envoie-moi « TÂCHE » en message privé. On en parle.",
+      "emphasis": [
+        "TÂCHE"
+      ],
+      "proofIds": [],
+      "assetIds": [],
+      "layoutHint": "editorial"
+    }
+  ]
+}
+

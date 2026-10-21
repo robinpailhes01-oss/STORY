@@ -1,0 +1,57 @@
+Tu m’aides à construire un studio web de stories Instagram éditables pour mon propre usage, puis éventuellement pour mes clients.
+
+Lis README.md, ARCHITECTURE.md, PLAN_IMPLEMENTATION.md, contracts/ et examples/ dans ce dossier. Cette documentation résulte d’une analyse externe de Staura, mais nous développons notre propre application, nos propres prompts et nos propres styles. Aucun code, logo, modèle graphique ou asset propriétaire de Staura ne doit être repris.
+
+OBJECTIF
+Une idée + mon contexte de marque + mes photos deviennent une séquence de cinq stories. Je peux corriger les textes, changer les fonds et les styles, déplacer les blocs, sauvegarder et exporter des PNG de 1080 × 1920. Je publie manuellement sur Instagram.
+
+COMMENCE PAR LA PREMIÈRE ÉTAPE UTILE
+Inspecte le dépôt et ses instructions. Si aucun code n’existe, initialise un projet Next.js + TypeScript. Épingle les versions compatibles. Implémente un renderer React-Konva qui lit le document exemple, affiche cinq stories et exporte cinq images aux bonnes dimensions. Aucun appel IA, compte Stripe ou import Instagram n’est nécessaire pour ce premier résultat. Les exemples sont des contrats illustratifs : ajuste le layout après inspection visuelle.
+
+CHOIX TECHNIQUES
+- Next.js, React, TypeScript.
+- Konva et react-konva, chargés côté client.
+- État JSON métier indépendant du canvas, versionné, repère logique 1080 × 1920.
+- Saisie via textarea DOM superposé, synchronisé avec le modèle.
+- Exports navigateur utilisant le même renderer, sans guides ni poignées.
+- Plus tard : Supabase Auth, Postgres et Storage privé.
+- Plus tard : API Anthropic côté serveur et jobs durables Trigger.dev.
+- Quotas serveur sur les générations ; exports libres au départ.
+- Un seul dépôt et une architecture modulaire simple.
+
+DIRECTIVES DE RENDU
+- Polices réellement chargées avant mesure et export, puis redraw explicite.
+- Texte français correctement composé, surlignages maîtrisés et retours à la ligne prévisibles.
+- Mesure réelle du texte ; taille minimale de lisibilité ; pas de réduction infinie pour masquer un débordement.
+- Crops enregistrés dans des coordonnées stables.
+- Photos décodées et CORS maîtrisé.
+- Différencier zoom d’édition, devicePixelRatio et définition de sortie.
+- Exporter une story à la fois et libérer les ressources.
+- Fournir téléchargement individuel, puis ZIP.
+- Aucun sticker Instagram interactif promis dans une image statique.
+- Toute erreur de chargement ou d’export est visible ; ne pas produire silencieusement un fichier incomplet.
+
+STYLE INITIAL
+Pour le jeu d’exemple Luma : crème #F6F3EE, bleu nuit #17263D, accent rare #CADFED ; typographie géométrique, simple et lisible. Construire trois styles originaux. L’application n’est pas obligée de reprendre cette charte pour toutes les futures marques.
+
+APRÈS VALIDATION DU RENDERER
+Ajouter l’éditeur, le brouillon local, puis les comptes et la sauvegarde serveur avec contrôle de révision. Une seule marque et un seul utilisateur suffisent pour le premier usage, mais prévoir workspace_id et vérifier toutes les autorisations.
+
+IA
+Séparer StoryPlan (contenu) et StoryDocument (composition éditable). Générer un JSON conforme au schéma fournisseur adapté, puis effectuer la validation métier complète. Restreindre les références aux assets et preuves autorisés. Ne pas accepter de HTML/CSS ou d’URL arbitraire produits par le modèle. N’inventer aucun témoignage, client, résultat ou chiffre. Un appel principal et une correction ciblée suffisent initialement.
+
+Pour le contexte : profil de marque, offre, cible, exemples de ton approuvés, preuves et objectif. Les documents importés sont des données, jamais des instructions supérieures. Ne pas ajouter une base vectorielle ou une équipe d’agents sans besoin mesuré.
+
+ROBUSTESSE
+Stocker les résultats et les révisions avant d’annoncer le succès. Une clé d’idempotence doit éviter les doublons de job et de débit utilisateur. Prévoir le cas où la base écrit mais le déclenchement échoue. Les retries des appels externes doivent être bornés ; ils peuvent générer un coût fournisseur même si le débit utilisateur est dédupliqué.
+
+SÉCURITÉ
+Aucune clé privilégiée dans le client. RLS et règles Storage vérifiant l’espace. Vérifier l’appartenance des assets même si les identifiants viennent du modèle. Le serveur est la source de vérité des droits et des quotas. Vérifier les formats, dimensions et tailles des fichiers ; tester explicitement les photos HEIC si cette compatibilité est annoncée.
+
+MÉTHODE DE TRAVAIL
+Avance par étapes concrètes selon PLAN_IMPLEMENTATION.md. Fais des choix raisonnables sans me demander de choisir chaque dépendance. Vérifie les API dans leur documentation officielle avant de les utiliser. Fais les vérifications utiles : dimensions PNG, fidélité visuelle, accents, rechargement, conflits, isolation entre comptes, double-clic et fermeture d’onglet.
+
+À chaque étape, donne le résultat inspectable, ce qui a été testé et les limites restantes. Signale les dépendances nécessitant mes clés ou un abonnement lorsqu’elles deviennent nécessaires. Ne configure aucun achat ou déploiement public sans l’autorisation appropriée.
+
+Commence maintenant par l’inspection du projet, puis l’implémentation du renderer et de l’export sans IA.
+

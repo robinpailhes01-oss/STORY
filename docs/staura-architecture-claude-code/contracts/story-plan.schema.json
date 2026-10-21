@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:luma:story-plan:v1",
+  "title": "StoryPlan v1 — contrat éditorial illustratif",
+  "description": "Plan proposé par l’IA. Les champs textuels sont du texte brut, jamais du HTML interprété. Les preuves et photos sont référencées par ID interne.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1
+    },
+    "objective": {
+      "type": "string",
+      "enum": [
+        "educate",
+        "sell",
+        "objection",
+        "case_study"
+      ]
+    },
+    "narrativeTemplateId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+    },
+    "slides": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "hook",
+              "context",
+              "problem",
+              "insight",
+              "solution",
+              "proof",
+              "offer",
+              "cta"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 600
+          },
+          "emphasis": {
+            "type": "array",
+            "maxItems": 8,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60
+            }
+          },
+          "proofIds": {
+            "type": "array",
+            "maxItems": 8,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            }
+          },
+          "assetIds": {
+            "type": "array",
+            "maxItems": 6,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+            }
+          },
+          "layoutHint": {
+            "type": "string",
+            "enum": [
+              "editorial",
+              "photo_overlay",
+              "quote",
+              "split"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "title",
+          "body",
+          "emphasis",
+          "proofIds",
+          "assetIds",
+          "layoutHint"
+        ]
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "objective",
+    "narrativeTemplateId",
+    "slides"
+  ]
+}
+

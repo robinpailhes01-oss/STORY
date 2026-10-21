@@ -1,0 +1,513 @@
+{
+  "schemaVersion": 1,
+  "documentId": "luma_one_task_first",
+  "title": "Commencer l’IA par une tâche",
+  "revision": 1,
+  "width": 1080,
+  "height": 1920,
+  "stylePackId": "luma_light",
+  "stylePackVersion": "1.0.0",
+  "slides": [
+    {
+      "id": "story_01",
+      "templateId": "luma_editorial",
+      "templateVersion": 1,
+      "background": {
+        "kind": "solid",
+        "color": "#F6F3EE"
+      },
+      "blocks": [
+        {
+          "id": "story_01_eyebrow",
+          "kind": "text",
+          "x": 88,
+          "y": 170,
+          "width": 904,
+          "height": 52,
+          "zIndex": 2,
+          "content": "LUMA / NOTE 01",
+          "style": {
+            "fontId": "inter-regular",
+            "fontSize": 28,
+            "fontWeight": 400,
+            "color": "#17263D",
+            "align": "left",
+            "lineHeight": 1.15,
+            "letterSpacing": 2
+          }
+        },
+        {
+          "id": "story_01_accent",
+          "kind": "shape",
+          "shape": "rect",
+          "x": 88,
+          "y": 290,
+          "width": 150,
+          "height": 12,
+          "zIndex": 1,
+          "fill": "#CADFED",
+          "opacity": 1,
+          "cornerRadius": 6
+        },
+        {
+          "id": "story_01_title",
+          "kind": "text",
+          "x": 88,
+          "y": 430,
+          "width": 904,
+          "height": 410,
+          "zIndex": 2,
+          "content": "Par où commencer avec l’IA ?",
+          "style": {
+            "fontId": "jost-regular",
+            "fontSize": 88,
+            "fontWeight": 400,
+            "color": "#17263D",
+            "align": "left",
+            "lineHeight": 1.15,
+            "letterSpacing": -1
+          }
+        },
+        {
+          "id": "story_01_body",
+          "kind": "text",
+          "x": 88,
+          "y": 930,
+          "width": 904,
+          "height": 440,
+          "zIndex": 2,
+          "content": "Choisis d’abord une tâche qui te prend du temps.",
+          "style": {
+            "fontId": "inter-regular",
+            "fontSize": 52,
+            "fontWeight": 400,
+            "color": "#17263D",
+            "align": "left",
+            "lineHeight": 1.15,
+            "letterSpacing": 0
+          }
+        },
+        {
+          "id": "story_01_footer",
+          "kind": "text",
+          "x": 88,
+          "y": 1660,
+          "width": 904,
+          "height": 52,
+          "zIndex": 2,
+          "content": "Luma · Montpellier",
+          "style": {
+            "fontId": "inter-regular",
+            "fontSize": 28,
+            "fontWeight": 400,
+            "color": "#17263D",
+            "align": "left",
+            "lineHeight": 1.15,
+            "letterSpacing": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "story_02",
+      "templateId": "luma_editorial",
+      "templateVersion": 1,
+      "background": {
+        "kind": "solid",
+        "color": "#F6F3EE"
+      },
+      "blocks": [
+        {
+          "id": "story_02_eyebrow",
+          "kind": "text",
+          "x": 88,
+          "y": 170,
+          "width": 904,
+          "height": 52,
+          "zIndex": 2,
+          "content": "LUMA / NOTE 02",
+          "style": {
+            "fontId": "inter-regular",
+            "fontSize": 28,
+            "fontWeight": 400,
+            "color": "#17263D",
+            "align": "left",
+            "lineHeight": 1.15,
+            "letterSpacing": 2
+          }
+        },
+        {
+          "id": "story_02_accent",
+          "kind": "shape",
+          "shape": "rect",
+          "x": 88,
+          "y": 290,
+          "width": 150,
+          "height": 12,
+          "zIndex": 1,
+          "fill": "#CADFED",
+          "opacity": 1,
+          "cornerRadius": 6
+        },
+        {
+          "id": "story_02_title",
+          "kind": "text",
+          "x": 88,
+          "y": 430,
+          "width": 904,
+          "height": 410,
+          "zIndex": 2,
+          "content": "Regarde ta dernière journée.",
+          "style": {
+            "fontId": "jost-regular",
+            "fontSize": 88,
+            "fontWeight": 400,
+            "color": "#17263D",
+            "align": "left",
+            "lineHeight": 1.15,
+            "letterSpacing": -1
+          }
+        },
+        {
+          "id": "story_02_body",
+          "kind": "text",
+          "x": 88,
+          "y": 930,
+          "width": 904,
+          "height": 440,
+          "zIndex": 2,
+          "content": "Quels messages, devis ou relances as-tu répétés ?",
+          "style": {
+            "fontId": "inter-regular",
+            "fontSize": 52,
+            "fontWeight": 400,
+            "color": "#17263D",
+            "align": "left",
+            "lineHeight": 1.15,
+            "letterSpacing": 0
+          }
+        },
+        {
+          "id": "story_02_footer",
+          "kind": "text",
+          "x": 88,
+          "y": 1660,
+          "width": 904,
+          "height": 52,
+          "zIndex": 2,
+          "content": "Luma · Montpellier",
+          "style": {
+            "fontId": "inter-regular",
+            "fontSize": 28,
+            "fontWeight": 400,
+            "color": "#17263D",
+            "align": "left",
+            "lineHeight": 1.15,
+            "letterSpacing": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "story_03",
+      "templateId": "luma_editorial",
+      "templateVersion": 1,
+      "background": {
+        "kind": "solid",
+        "color": "#F6F3EE"
+      },
+      "blocks": [
+        {
+          "id": "story_03_eyebrow",
+          "kind": "text",
+          "x": 88,
+          "y": 170,
+          "width": 904,
+          "height": 52,
+          "zIndex": 2,
+          "content": "LUMA / NOTE 03",
+          "style": {
+            "fontId": "inter-regular",
+            "fontSize": 28,
+            "fontWeight": 400,
+            "color": "#17263D",
+            "align": "left",
+            "lineHeight": 1.15,
+            "letterSpacing": 2
+          }
+        },
+        {
+          "id": "story_03_accent",
+          "kind": "shape",
+          "shape": "rect",
+          "x": 88,
+          "y": 290,
+          "width": 150,
+          "height": 12,
+          "zIndex": 1,
+          "fill": "#CADFED",
+          "opacity": 1,
+          "cornerRadius": 6
+        },
+        {
+          "id": "story_03_title",
+          "kind": "text",
+          "x": 88,
+          "y": 430,
+          "width": 904,
+          "height": 410,
+          "zIndex": 2,
+          "content": "Décris ce que tu veux obtenir.",
+          "style": {
+            "fontId": "jost-regular",
+            "fontSize": 88,
+            "fontWeight": 400,
+            "color": "#17263D",
+            "align": "left",
+            "lineHeight": 1.15,
+            "letterSpacing": -1
+          }
+        },
+        {
+          "id": "story_03_body",
+          "kind": "text",
+          "x": 88,
+          "y": 930,
+          "width": 904,
+          "height": 440,
+          "zIndex": 2,
+          "content": "Une réponse préparée ? Un devis à vérifier ? Une relance prête à envoyer ?",
+          "style": {
+            "fontId": "inter-regular",
+            "fontSize": 52,
+            "fontWeight": 400,
+            "color": "#17263D",
+            "align": "left",
+            "lineHeight": 1.15,
+            "letterSpacing": 0
+          }
+        },
+        {
+          "id": "story_03_footer",
+          "kind": "text",
+          "x": 88,
+          "y": 1660,
+          "width": 904,
+          "height": 52,
+          "zIndex": 2,
+          "content": "Luma · Montpellier",
+          "style": {
+            "fontId": "inter-regular",
+            "fontSize": 28,
+            "fontWeight": 400,
+            "color": "#17263D",
+            "align": "left",
+            "lineHeight": 1.15,
+            "letterSpacing": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "story_04",
+      "templateId": "luma_editorial",
+      "templateVersion": 1,
+      "background": {
+        "kind": "solid",
+        "color": "#F6F3EE"
+      },
+      "blocks": [
+        {
+          "id": "story_04_eyebrow",
+          "kind": "text",
+          "x": 88,
+          "y": 170,
+          "width": 904,
+          "height": 52,
+          "zIndex": 2,
+          "content": "LUMA / NOTE 04",
+          "style": {
+            "fontId": "inter-regular",
+            "fontSize": 28,
+            "fontWeight": 400,
+            "color": "#17263D",
+            "align": "left",
+            "lineHeight": 1.15,
+            "letterSpacing": 2
+          }
+        },
+        {
+          "id": "story_04_accent",
+          "kind": "shape",
+          "shape": "rect",
+          "x": 88,
+          "y": 290,
+          "width": 150,
+          "height": 12,
+          "zIndex": 1,
+          "fill": "#CADFED",
+          "opacity": 1,
+          "cornerRadius": 6
+        },
+        {
+          "id": "story_04_title",
+          "kind": "text",
+          "x": 88,
+          "y": 430,
+          "width": 904,
+          "height": 410,
+          "zIndex": 2,
+          "content": "Teste sur un cas simple.",
+          "style": {
+            "fontId": "jost-regular",
+            "fontSize": 88,
+            "fontWeight": 400,
+            "color": "#17263D",
+            "align": "left",
+            "lineHeight": 1.15,
+            "letterSpacing": -1
+          }
+        },
+        {
+          "id": "story_04_body",
+          "kind": "text",
+          "x": 88,
+          "y": 930,
+          "width": 904,
+          "height": 440,
+          "zIndex": 2,
+          "content": "Vérifie le résultat, corrige ce qui manque et garde la main.",
+          "style": {
+            "fontId": "inter-regular",
+            "fontSize": 52,
+            "fontWeight": 400,
+            "color": "#17263D",
+            "align": "left",
+            "lineHeight": 1.15,
+            "letterSpacing": 0
+          }
+        },
+        {
+          "id": "story_04_footer",
+          "kind": "text",
+          "x": 88,
+          "y": 1660,
+          "width": 904,
+          "height": 52,
+          "zIndex": 2,
+          "content": "Luma · Montpellier",
+          "style": {
+            "fontId": "inter-regular",
+            "fontSize": 28,
+            "fontWeight": 400,
+            "color": "#17263D",
+            "align": "left",
+            "lineHeight": 1.15,
+            "letterSpacing": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": "story_05",
+      "templateId": "luma_editorial",
+      "templateVersion": 1,
+      "background": {
+        "kind": "solid",
+        "color": "#F6F3EE"
+      },
+      "blocks": [
+        {
+          "id": "story_05_eyebrow",
+          "kind": "text",
+          "x": 88,
+          "y": 170,
+          "width": 904,
+          "height": 52,
+          "zIndex": 2,
+          "content": "LUMA / NOTE 05",
+          "style": {
+            "fontId": "inter-regular",
+            "fontSize": 28,
+            "fontWeight": 400,
+            "color": "#17263D",
+            "align": "left",
+            "lineHeight": 1.15,
+            "letterSpacing": 2
+          }
+        },
+        {
+          "id": "story_05_accent",
+          "kind": "shape",
+          "shape": "rect",
+          "x": 88,
+          "y": 290,
+          "width": 150,
+          "height": 12,
+          "zIndex": 1,
+          "fill": "#CADFED",
+          "opacity": 1,
+          "cornerRadius": 6
+        },
+        {
+          "id": "story_05_title",
+          "kind": "text",
+          "x": 88,
+          "y": 430,
+          "width": 904,
+          "height": 410,
+          "zIndex": 2,
+          "content": "Quelle tâche choisirais-tu ?",
+          "style": {
+            "fontId": "jost-regular",
+            "fontSize": 88,
+            "fontWeight": 400,
+            "color": "#17263D",
+            "align": "left",
+            "lineHeight": 1.15,
+            "letterSpacing": -1
+          }
+        },
+        {
+          "id": "story_05_body",
+          "kind": "text",
+          "x": 88,
+          "y": 930,
+          "width": 904,
+          "height": 440,
+          "zIndex": 2,
+          "content": "Envoie-moi « TÂCHE » en message privé. On en parle.",
+          "style": {
+            "fontId": "inter-regular",
+            "fontSize": 52,
+            "fontWeight": 400,
+            "color": "#17263D",
+            "align": "left",
+            "lineHeight": 1.15,
+            "letterSpacing": 0
+          }
+        },
+        {
+          "id": "story_05_footer",
+          "kind": "text",
+          "x": 88,
+          "y": 1660,
+          "width": 904,
+          "height": 52,
+          "zIndex": 2,
+          "content": "Luma · Montpellier",
+          "style": {
+            "fontId": "inter-regular",
+            "fontSize": 28,
+            "fontWeight": 400,
+            "color": "#17263D",
+            "align": "left",
+            "lineHeight": 1.15,
+            "letterSpacing": 0
+          }
+        }
+      ]
+    }
+  ]
+}
+

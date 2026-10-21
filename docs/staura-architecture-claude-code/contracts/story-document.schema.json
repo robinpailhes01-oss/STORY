@@ -1,0 +1,443 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:luma:story-document:v1",
+  "title": "StoryDocument v1 — état métier illustratif",
+  "description": "Document indépendant de Konva. Coordonnées de blocs en pixels logiques dans le repère canonique 1080 × 1920. Aucune URL fournisseur ni HTML exécutable.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1
+    },
+    "documentId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "width": {
+      "type": "integer",
+      "const": 1080
+    },
+    "height": {
+      "type": "integer",
+      "const": 1920
+    },
+    "stylePackId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+    },
+    "stylePackVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "slides": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          },
+          "templateId": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+          },
+          "templateVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "background": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/solidBackground"
+              },
+              {
+                "$ref": "#/$defs/imageBackground"
+              }
+            ]
+          },
+          "blocks": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 40,
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/textBlock"
+                },
+                {
+                  "$ref": "#/$defs/imageBlock"
+                },
+                {
+                  "$ref": "#/$defs/shapeBlock"
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "templateId",
+          "templateVersion",
+          "background",
+          "blocks"
+        ]
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "documentId",
+    "title",
+    "revision",
+    "width",
+    "height",
+    "stylePackId",
+    "stylePackVersion",
+    "slides"
+  ],
+  "$defs": {
+    "solidBackground": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "solid",
+          "type": "string"
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        }
+      },
+      "required": [
+        "kind",
+        "color"
+      ]
+    },
+    "imageBackground": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "image",
+          "type": "string"
+        },
+        "assetId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "crop": {
+          "$ref": "#/$defs/crop"
+        },
+        "overlay": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "color": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            },
+            "opacity": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "color",
+            "opacity"
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "assetId",
+        "crop"
+      ]
+    },
+    "crop": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "focalX": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Point focal horizontal normalisé dans la photo source."
+        },
+        "focalY": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Point focal vertical normalisé dans la photo source."
+        },
+        "zoom": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 8,
+          "description": "Multiplicateur du recadrage cover ; 1 couvre exactement le cadre."
+        }
+      },
+      "required": [
+        "focalX",
+        "focalY",
+        "zoom"
+      ]
+    },
+    "textStyle": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fontId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "fontSize": {
+          "type": "number",
+          "minimum": 12,
+          "maximum": 240
+        },
+        "fontWeight": {
+          "type": "integer",
+          "enum": [
+            400,
+            500,
+            600,
+            700
+          ]
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "align": {
+          "type": "string",
+          "enum": [
+            "left",
+            "center",
+            "right"
+          ]
+        },
+        "lineHeight": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 2
+        },
+        "letterSpacing": {
+          "type": "number",
+          "minimum": -5,
+          "maximum": 30
+        }
+      },
+      "required": [
+        "fontId",
+        "fontSize",
+        "fontWeight",
+        "color",
+        "align",
+        "lineHeight",
+        "letterSpacing"
+      ]
+    },
+    "textBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "x": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1080
+        },
+        "y": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1920
+        },
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1080
+        },
+        "height": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1920
+        },
+        "zIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "kind": {
+          "const": "text",
+          "type": "string"
+        },
+        "content": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 900
+        },
+        "style": {
+          "$ref": "#/$defs/textStyle"
+        }
+      },
+      "required": [
+        "id",
+        "x",
+        "y",
+        "width",
+        "height",
+        "zIndex",
+        "kind",
+        "content",
+        "style"
+      ]
+    },
+    "imageBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "x": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1080
+        },
+        "y": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1920
+        },
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1080
+        },
+        "height": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1920
+        },
+        "zIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "kind": {
+          "const": "image",
+          "type": "string"
+        },
+        "assetId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "crop": {
+          "$ref": "#/$defs/crop"
+        }
+      },
+      "required": [
+        "id",
+        "x",
+        "y",
+        "width",
+        "height",
+        "zIndex",
+        "kind",
+        "assetId",
+        "crop"
+      ]
+    },
+    "shapeBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+        },
+        "x": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1080
+        },
+        "y": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1920
+        },
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1080
+        },
+        "height": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1920
+        },
+        "zIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "kind": {
+          "const": "shape",
+          "type": "string"
+        },
+        "shape": {
+          "type": "string",
+          "const": "rect"
+        },
+        "fill": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "opacity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "cornerRadius": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 540
+        }
+      },
+      "required": [
+        "id",
+        "x",
+        "y",
+        "width",
+        "height",
+        "zIndex",
+        "kind",
+        "shape",
+        "fill",
+        "opacity",
+        "cornerRadius"
+      ]
+    }
+  }
+}
+

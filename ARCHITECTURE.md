@@ -2,6 +2,8 @@
 
 > Analyse faite le 21 octobre 2026 à partir de ce qui est public : en-têtes HTTP, HTML, bundles JS de la landing, de `/creer` et de `/connexion`, `robots.txt`, `manifest.webmanifest`, et surtout la **politique de confidentialité** et les **CGV**, qui listent chaque prestataire et chaque traitement.
 >
+> Voir aussi : [`docs/VISUELS_ET_COPYWRITING.md`](docs/VISUELS_ET_COPYWRITING.md) (comment reproduire les visuels et le copywriting) et [`docs/staura-architecture-claude-code/`](docs/staura-architecture-claude-code/) (dossier complémentaire avec plan d'implémentation, contrats JSON et prompt Claude Code).
+>
 > Légende : **[observé]** = vu directement dans le code ou les pages · **[déduit]** = reconstruction probable, pas vérifiable sans accès à l'app connectée.
 
 ---
@@ -37,6 +39,7 @@
 | Analytics | **Maison** : `POST /api/evenements` en lots de 50, avec `keepalive`, sans cookie, stocké dans Supabase, rétention 13 mois | [observé] bundle + politique |
 | Monitoring | Sentry probable (une référence dans le bundle) | [déduit] |
 | PWA | `manifest.webmanifest`, `start_url: /app`, `display: standalone`, portrait | [observé] |
+| Éditeur / rendu | **Konva + react-konva** (`StoryCanvas`), polices chargées via `document.fonts` avant le dessin | [observé] chunk de l'éditeur |
 | Polices | Auto-hébergées (Inter, Anton, Abril Fatface, Bebas Neue, Playfair, Poppins, Tinos…) | [observé] |
 | Animations landing | Motion (ex-Framer Motion) | [observé] |
 
@@ -92,7 +95,7 @@ Routes internes (404 en public, listées dans `robots.txt`) : `/banc` (banc d'es
                         │  Next.js / React                                                          │
                         │  ├─ IndexedDB (par compte) : sequences, photos, reglages  ◄── local-first  │
                         │  ├─ localStorage : "staura.moules" (3 derniers tirages, anti-répétition)   │
-                        │  ├─ Moteur de rendu Canvas 2D → PNG/WebP 1080×1920                         │
+                        │  ├─ Éditeur Konva / react-konva → PNG/WebP 1080×1920                       │
                         │  └─ Micro (dictée) → audio → Groq                                          │
                         └──────────────┬───────────────────────────────┬──────────────────────────────┘
                                        │ fetch / NDJSON stream         │ supabase-js (auth, storage, sync)
@@ -176,7 +179,7 @@ type Sequence = {
   neonHalo:false, condense:.62, starter:false, banc:false }
 ```
 - Il y a des **variantes** par style (`Deux effets`, `Sans grain`, `Photo plus claire`, `Un cran plus grand`…) qui surchargent des `reglages`, et des palettes (Bordeaux, Camel, Vert anglais, Ivoire…).
-- Le rendu final se fait en **Canvas 2D** (`getContext("2d")`, `toBlob`, `createImageBitmap`) en 1080×1920. Le même moteur sert à l'aperçu et à l'export. Le texte est découpé en segments (`segmenter`) pour appliquer les accents et les marquages mot par mot.
+- Le rendu se fait avec **Konva + react-konva** (composant `StoryCanvas`, au-dessus du Canvas 2D : `toBlob`, `createImageBitmap`, `measureText`, `document.fonts`) dans un repère 1080×1920. Le même moteur sert à l'aperçu et à l'export. Le texte est découpé en segments (`segmenter`) pour appliquer les accents et les marquages mot par mot.
 - 24 styles environ dans le code (17 en Pro, 5 en Starter).
 
 ### 5.6 Structures de séquence (10)
@@ -300,7 +303,7 @@ create table events (                        -- analytics maison, rétention 13 
 | # | Lot | Contenu | Estimation |
 |---|---|---|---|
 | 1 | Socle | Next.js 15+ (App Router, TS, Tailwind), Supabase (auth, schéma ci-dessus, RLS), déploiement Vercel, PWA | 2-3 j |
-| 2 | Moteur de rendu | Canvas 2D 1080×1920, système de styles déclaratifs (JSON), 3 à 5 styles au départ, polices auto-hébergées, export PNG et `navigator.share` | 5-8 j (**le plus long**) |
+| 2 | Moteur de rendu | react-konva 1080×1920, système de styles déclaratifs (JSON), 3 à 5 styles au départ, polices auto-hébergées, export PNG et `navigator.share` | 5-8 j (**le plus long**) |
 | 3 | Génération IA | Prompts par structure (commencer par 3), sortie JSON validée par Zod, stream NDJSON, étape de relecture, anti-répétition | 4-6 j |
 | 4 | Lecture Instagram | Actor Apify, puis extraction du profil de voix par Claude, avec un cache | 1-2 j |
 | 5 | Éditeur | Édition du texte, déplacement et taille, changement de style et de photo, IndexedDB et synchro | 5-7 j |
