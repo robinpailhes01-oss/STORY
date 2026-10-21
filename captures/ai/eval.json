@@ -1,0 +1,1402 @@
+{
+  "summary": {
+    "date": "2026-10-21T19:44:39.448Z",
+    "modele": "claude-opus-5-5",
+    "effort": "medium",
+    "briefs": 10,
+    "jsonValides": 10,
+    "controlesOk": 10,
+    "repares": 0,
+    "erreurs": 0,
+    "msMoyen": 15680,
+    "coutTotalUsd": 0.3865,
+    "coutMoyenUsd": 0.0387
+  },
+  "results": [
+    {
+      "id": 1,
+      "structureDemandee": "conseil",
+      "mode": "idee",
+      "verifier": "5 stories, accroche courte, une seule tâche à choisir",
+      "jsonValide": true,
+      "controlesOk": true,
+      "bloquants": [],
+      "conseils": [
+        {
+          "story": 2,
+          "code": "accents_en_trop",
+          "message": "Trop de mots mis en valeur : 3 au plus par story, les derniers ont été retirés.",
+          "severity": "conseil"
+        }
+      ],
+      "repare": false,
+      "ms": 21771,
+      "tokens": {
+        "inputTokens": 413,
+        "outputTokens": 1765,
+        "cache": {
+          "readTokens": 0,
+          "writeTokens": 8954
+        }
+      },
+      "coutUsd": 0.081722,
+      "modele": "claude-opus-5-5",
+      "repli": null,
+      "plan": {
+        "schemaVersion": 1,
+        "structureId": "conseil",
+        "angle": "Pour démarrer avec l'IA dans une petite entreprise, on part d'une tâche répétitive simple et fréquente, pas du choix d'un outil.",
+        "stories": [
+          {
+            "role": "accroche",
+            "paragraphs": [
+              {
+                "text": "Tu veux commencer avec l'IA ? Surtout, ne commence pas par choisir un outil.",
+                "accents": [
+                  "commencer avec l'IA",
+                  "choisir un outil."
+                ]
+              }
+            ]
+          },
+          {
+            "role": "le coût",
+            "paragraphs": [
+              {
+                "text": "Tester un outil, puis un autre, puis un troisième. Tu connais ?",
+                "accents": [
+                  "Tester un outil,"
+                ]
+              },
+              {
+                "text": "Au bout de quelques semaines, tu as des abonnements partout et rien qui tourne vraiment.",
+                "accents": [
+                  "rien qui tourne vraiment."
+                ]
+              },
+              {
+                "text": "Et tes journées ressemblent toujours à celles d'avant.",
+                "accents": []
+              }
+            ]
+          },
+          {
+            "role": "le conseil",
+            "paragraphs": [
+              {
+                "text": "Commence par ton problème, pas par l'outil.",
+                "accents": [
+                  "ton problème,"
+                ]
+              },
+              {
+                "text": "Lister tes tâches de la semaine. Entourer celles que tu fais toujours pareil. Garder celle qui t'agace le plus.",
+                "accents": [
+                  "Lister",
+                  "Entourer"
+                ]
+              },
+              {
+                "text": "Et l'astuce qui change tout, c'est le critère de choix :",
+                "accents": []
+              }
+            ]
+          },
+          {
+            "role": "l'erreur à éviter",
+            "paragraphs": [
+              {
+                "text": "Prends une tâche simple et fréquente, pas la plus grosse de ton planning.",
+                "accents": [
+                  "simple et fréquente,"
+                ]
+              },
+              {
+                "text": "(La tentation, c'est de tout vouloir automatiser d'un coup)",
+                "accents": []
+              },
+              {
+                "text": "Si elle disparaît de ta semaine sans que tu y penses, c'est gagné.",
+                "accents": [
+                  "disparaît de ta semaine"
+                ]
+              }
+            ]
+          },
+          {
+            "role": "appel à l'action",
+            "paragraphs": [
+              {
+                "text": "Ton défi aujourd'hui : avant de fermer ton ordi, liste ce que tu as fait plusieurs fois cette semaine.",
+                "accents": [
+                  "Ton défi aujourd'hui"
+                ]
+              },
+              {
+                "text": "Entoure celle qui t'agace le plus. C'est ton point de départ.",
+                "accents": [
+                  "ton point de départ."
+                ]
+              },
+              {
+                "text": "Partenaire IA des PME à Montpellier, un audit est offert pour en discuter.",
+                "accents": [
+                  "audit est offert"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "texte": [
+        "1. Tu veux commencer avec l'IA ? Surtout, ne commence pas par choisir un outil.",
+        "2. Tester un outil, puis un autre, puis un troisième. Tu connais ? / Au bout de quelques semaines, tu as des abonnements partout et rien qui tourne vraiment. / Et tes journées ressemblent toujours à celles d'avant.",
+        "3. Commence par ton problème, pas par l'outil. / Lister tes tâches de la semaine. Entourer celles que tu fais toujours pareil. Garder celle qui t'agace le plus. / Et l'astuce qui change tout, c'est le critère de choix :",
+        "4. Prends une tâche simple et fréquente, pas la plus grosse de ton planning. / (La tentation, c'est de tout vouloir automatiser d'un coup) / Si elle disparaît de ta semaine sans que tu y penses, c'est gagné.",
+        "5. Ton défi aujourd'hui : avant de fermer ton ordi, liste ce que tu as fait plusieurs fois cette semaine. / Entoure celle qui t'agace le plus. C'est ton point de départ. / Partenaire IA des PME à Montpellier, un audit est offert pour en discuter."
+      ]
+    },
+    {
+      "id": 2,
+      "structureDemandee": "objection",
+      "mode": "idee",
+      "verifier": "L'objection est citée mot pour mot, puis on lui donne raison avant de la nuancer",
+      "jsonValide": true,
+      "controlesOk": true,
+      "bloquants": [],
+      "conseils": [],
+      "repare": false,
+      "ms": 16898,
+      "tokens": {
+        "inputTokens": 409,
+        "outputTokens": 1727,
+        "cache": {
+          "readTokens": 8954,
+          "writeTokens": 0
+        }
+      },
+      "coutUsd": 0.037967,
+      "modele": "claude-opus-5-5",
+      "repli": null,
+      "plan": {
+        "schemaVersion": 1,
+        "structureId": "objection",
+        "angle": "L'IA n'est pas réservée aux grands groupes : dans une petite entreprise, c'est justement là qu'elle compte le plus, parce que chaque heure perdue sur une tâche répétitive est celle du dirigeant.",
+        "stories": [
+          {
+            "role": "accroche",
+            "paragraphs": [
+              {
+                "text": "« L'IA, ce n'est pas pour une petite boîte comme la mienne. »",
+                "accents": [
+                  "pas pour une petite boîte"
+                ]
+              },
+              {
+                "text": "Tu l'as déjà pensé, non ?",
+                "accents": []
+              }
+            ]
+          },
+          {
+            "role": "donner raison",
+            "paragraphs": [
+              {
+                "text": "C'est logique. On te parle de grands groupes, de gros budgets, d'équipes techniques.",
+                "accents": [
+                  "grands groupes,",
+                  "gros budgets,"
+                ]
+              },
+              {
+                "text": "Toi, tu n'as ni service informatique, ni temps à perdre à tester des outils.",
+                "accents": [
+                  "ni temps à perdre"
+                ]
+              },
+              {
+                "text": "Alors tu te dis que ce n'est pas pour toi.",
+                "accents": []
+              }
+            ]
+          },
+          {
+            "role": "distinction",
+            "paragraphs": [
+              {
+                "text": "Sauf que l'IA utile pour une PME, ce n'est pas un gros projet.",
+                "accents": [
+                  "pas un gros projet."
+                ]
+              },
+              {
+                "text": "C'est un coup de main sur une tâche que tu refais toutes les semaines.",
+                "accents": [
+                  "une tâche que tu refais"
+                ]
+              },
+              {
+                "text": "Et plus ta boîte est petite, plus ça compte. Pourquoi ?",
+                "accents": [
+                  "plus ça compte."
+                ]
+              }
+            ]
+          },
+          {
+            "role": "exemple",
+            "paragraphs": [
+              {
+                "text": "Parce que dans une petite boîte, chaque heure perdue, c'est souvent la tienne.",
+                "accents": [
+                  "c'est souvent la tienne."
+                ]
+              },
+              {
+                "text": "Imagine : tu recopies chaque devis signé dans ton tableau de suivi, à la main.",
+                "accents": [
+                  "à la main."
+                ]
+              },
+              {
+                "text": "Un outil peut le faire seul, dès que le devis arrive dans ta boîte mail.",
+                "accents": [
+                  "le faire seul,"
+                ]
+              }
+            ]
+          },
+          {
+            "role": "appel à l'action",
+            "paragraphs": [
+              {
+                "text": "Ce soir, note la tâche que tu fais chaque semaine en soupirant.",
+                "accents": [
+                  "note la tâche"
+                ]
+              },
+              {
+                "text": "C'est souvent par elle qu'on commence.",
+                "accents": []
+              },
+              {
+                "text": "Partenaire IA des PME à Montpellier, un audit est offert pour en discuter.",
+                "accents": [
+                  "un audit est offert"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "texte": [
+        "1. « L'IA, ce n'est pas pour une petite boîte comme la mienne. » / Tu l'as déjà pensé, non ?",
+        "2. C'est logique. On te parle de grands groupes, de gros budgets, d'équipes techniques. / Toi, tu n'as ni service informatique, ni temps à perdre à tester des outils. / Alors tu te dis que ce n'est pas pour toi.",
+        "3. Sauf que l'IA utile pour une PME, ce n'est pas un gros projet. / C'est un coup de main sur une tâche que tu refais toutes les semaines. / Et plus ta boîte est petite, plus ça compte. Pourquoi ?",
+        "4. Parce que dans une petite boîte, chaque heure perdue, c'est souvent la tienne. / Imagine : tu recopies chaque devis signé dans ton tableau de suivi, à la main. / Un outil peut le faire seul, dès que le devis arrive dans ta boîte mail.",
+        "5. Ce soir, note la tâche que tu fais chaque semaine en soupirant. / C'est souvent par elle qu'on commence. / Partenaire IA des PME à Montpellier, un audit est offert pour en discuter."
+      ]
+    },
+    {
+      "id": 3,
+      "structureDemandee": "objection",
+      "mode": "idee",
+      "verifier": "Aucun chiffre de temps gagné inventé",
+      "jsonValide": true,
+      "controlesOk": true,
+      "bloquants": [],
+      "conseils": [],
+      "repare": false,
+      "ms": 15148,
+      "tokens": {
+        "inputTokens": 406,
+        "outputTokens": 1577,
+        "cache": {
+          "readTokens": 8954,
+          "writeTokens": 0
+        }
+      },
+      "coutUsd": 0.034955,
+      "modele": "claude-opus-5-5",
+      "repli": null,
+      "plan": {
+        "schemaVersion": 1,
+        "structureId": "objection",
+        "angle": "Ne pas avoir le temps n'empêche pas d'utiliser l'IA : tu n'as pas à t'y mettre toi-même, il suffit de repérer une tâche à faire disparaître de ta semaine.",
+        "stories": [
+          {
+            "role": "accroche",
+            "paragraphs": [
+              {
+                "text": "« Je n'ai pas le temps de m'y mettre. »",
+                "accents": [
+                  "pas le temps"
+                ]
+              },
+              {
+                "text": "Tu l'as déjà pensé, non ?",
+                "accents": []
+              }
+            ]
+          },
+          {
+            "role": "donner raison",
+            "paragraphs": [
+              {
+                "text": "Et c'est logique.",
+                "accents": [
+                  "c'est logique."
+                ]
+              },
+              {
+                "text": "Tes journées sont déjà pleines. Un outil de plus, ça ressemble surtout à une tâche de plus.",
+                "accents": [
+                  "une tâche de plus."
+                ]
+              },
+              {
+                "text": "Personne n'a envie d'apprendre un nouveau truc le soir, après le boulot.",
+                "accents": []
+              }
+            ]
+          },
+          {
+            "role": "distinction",
+            "paragraphs": [
+              {
+                "text": "Sauf que s'y mettre et s'en servir, ce n'est pas la même chose.",
+                "accents": [
+                  "pas la même chose."
+                ]
+              },
+              {
+                "text": "Tu n'as pas besoin de devenir expert en IA. Tu as besoin qu'une tâche disparaisse de ta semaine.",
+                "accents": [
+                  "une tâche disparaisse"
+                ]
+              },
+              {
+                "text": "Alors, à quoi ça ressemble concrètement ?",
+                "accents": []
+              }
+            ]
+          },
+          {
+            "role": "exemple",
+            "paragraphs": [
+              {
+                "text": "Imagine : chaque devis que tu envoies mérite une relance quelques jours plus tard.",
+                "accents": [
+                  "une relance"
+                ]
+              },
+              {
+                "text": "Aujourd'hui, c'est toi qui dois y penser. Demain, elle part toute seule, sans que tu touches à rien.",
+                "accents": [
+                  "part toute seule,"
+                ]
+              },
+              {
+                "text": "(Le seul temps à prévoir, c'est celui de m'expliquer comment tu fais)",
+                "accents": []
+              }
+            ]
+          },
+          {
+            "role": "appel à l'action",
+            "paragraphs": [
+              {
+                "text": "Cette semaine, note la tâche que tu repousses parce qu'elle t'agace.",
+                "accents": [
+                  "note la tâche"
+                ]
+              },
+              {
+                "text": "Rien d'autre à faire. Juste la noter.",
+                "accents": []
+              },
+              {
+                "text": "Partenaire IA des PME à Montpellier, un audit est offert pour en discuter.",
+                "accents": [
+                  "audit est offert"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "texte": [
+        "1. « Je n'ai pas le temps de m'y mettre. » / Tu l'as déjà pensé, non ?",
+        "2. Et c'est logique. / Tes journées sont déjà pleines. Un outil de plus, ça ressemble surtout à une tâche de plus. / Personne n'a envie d'apprendre un nouveau truc le soir, après le boulot.",
+        "3. Sauf que s'y mettre et s'en servir, ce n'est pas la même chose. / Tu n'as pas besoin de devenir expert en IA. Tu as besoin qu'une tâche disparaisse de ta semaine. / Alors, à quoi ça ressemble concrètement ?",
+        "4. Imagine : chaque devis que tu envoies mérite une relance quelques jours plus tard. / Aujourd'hui, c'est toi qui dois y penser. Demain, elle part toute seule, sans que tu touches à rien. / (Le seul temps à prévoir, c'est celui de m'expliquer comment tu fais)",
+        "5. Cette semaine, note la tâche que tu repousses parce qu'elle t'agace. / Rien d'autre à faire. Juste la noter. / Partenaire IA des PME à Montpellier, un audit est offert pour en discuter."
+      ]
+    },
+    {
+      "id": 4,
+      "structureDemandee": "conseil",
+      "mode": "idee",
+      "verifier": "Liste de 3 exemples concrets, cliffhanger en fin de story 3",
+      "jsonValide": true,
+      "controlesOk": true,
+      "bloquants": [],
+      "conseils": [],
+      "repare": false,
+      "ms": 18454,
+      "tokens": {
+        "inputTokens": 409,
+        "outputTokens": 1677,
+        "cache": {
+          "readTokens": 8954,
+          "writeTokens": 0
+        }
+      },
+      "coutUsd": 0.036967,
+      "modele": "claude-opus-5-5",
+      "repli": null,
+      "plan": {
+        "schemaVersion": 1,
+        "structureId": "conseil",
+        "angle": "Un devis non relancé est souvent un client perdu par oubli, pas par refus : il faut une relance qui part sans dépendre de ta mémoire.",
+        "stories": [
+          {
+            "role": "accroche",
+            "paragraphs": [
+              {
+                "text": "Tu envoies tes devis, puis tu attends la réponse.",
+                "accents": [
+                  "tu attends"
+                ]
+              },
+              {
+                "text": "C'est l'erreur qui te fait perdre des clients.",
+                "accents": [
+                  "perdre des clients."
+                ]
+              }
+            ]
+          },
+          {
+            "role": "le coût",
+            "paragraphs": [
+              {
+                "text": "Un client qui ne répond pas n'a pas forcément dit non.",
+                "accents": [
+                  "pas forcément dit non."
+                ]
+              },
+              {
+                "text": "Il a oublié. Il a eu une urgence. Ton mail a glissé sous une pile d'autres.",
+                "accents": [
+                  "Il a oublié."
+                ]
+              },
+              {
+                "text": "Et pendant que tu attends, un autre l'a relancé. C'est lui qui signe.",
+                "accents": [
+                  "C'est lui qui signe."
+                ]
+              }
+            ]
+          },
+          {
+            "role": "le conseil",
+            "paragraphs": [
+              {
+                "text": "Noter la date d'envoi de chaque devis. Fixer un jour de relance dès l'envoi. Relancer par un message court, pas un pavé.",
+                "accents": [
+                  "Fixer un jour de relance",
+                  "Relancer"
+                ]
+              },
+              {
+                "text": "Mais le vrai changement, c'est de ne plus avoir à t'en souvenir :",
+                "accents": []
+              }
+            ]
+          },
+          {
+            "role": "bascule",
+            "paragraphs": [
+              {
+                "text": "La relance ne doit pas dépendre de ta mémoire. Elle doit partir toute seule.",
+                "accents": [
+                  "partir toute seule."
+                ]
+              },
+              {
+                "text": "(Ta mémoire a déjà assez de boulot comme ça)",
+                "accents": []
+              },
+              {
+                "text": "Le signe que ça marche : plus aucun devis ne reste sans nouvelles.",
+                "accents": [
+                  "plus aucun devis"
+                ]
+              }
+            ]
+          },
+          {
+            "role": "appel à l'action",
+            "paragraphs": [
+              {
+                "text": "Aujourd'hui, ouvre tes devis envoyés et repère ceux restés sans réponse.",
+                "accents": [
+                  "repère ceux restés sans réponse."
+                ]
+              },
+              {
+                "text": "Relance-en un seul, maintenant. Juste pour voir.",
+                "accents": [
+                  "Relance-en un seul,"
+                ]
+              },
+              {
+                "text": "Pour automatiser tes relances, un audit est offert pour en discuter.",
+                "accents": [
+                  "un audit est offert"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "texte": [
+        "1. Tu envoies tes devis, puis tu attends la réponse. / C'est l'erreur qui te fait perdre des clients.",
+        "2. Un client qui ne répond pas n'a pas forcément dit non. / Il a oublié. Il a eu une urgence. Ton mail a glissé sous une pile d'autres. / Et pendant que tu attends, un autre l'a relancé. C'est lui qui signe.",
+        "3. Noter la date d'envoi de chaque devis. Fixer un jour de relance dès l'envoi. Relancer par un message court, pas un pavé. / Mais le vrai changement, c'est de ne plus avoir à t'en souvenir :",
+        "4. La relance ne doit pas dépendre de ta mémoire. Elle doit partir toute seule. / (Ta mémoire a déjà assez de boulot comme ça) / Le signe que ça marche : plus aucun devis ne reste sans nouvelles.",
+        "5. Aujourd'hui, ouvre tes devis envoyés et repère ceux restés sans réponse. / Relance-en un seul, maintenant. Juste pour voir. / Pour automatiser tes relances, un audit est offert pour en discuter."
+      ]
+    },
+    {
+      "id": 5,
+      "structureDemandee": "conseil",
+      "mode": "idee",
+      "verifier": "Ton tutoiement, pas de vocabulaire de pub",
+      "jsonValide": true,
+      "controlesOk": true,
+      "bloquants": [],
+      "conseils": [],
+      "repare": false,
+      "ms": 13989,
+      "tokens": {
+        "inputTokens": 407,
+        "outputTokens": 1475,
+        "cache": {
+          "readTokens": 8954,
+          "writeTokens": 0
+        }
+      },
+      "coutUsd": 0.032919,
+      "modele": "claude-opus-5-5",
+      "repli": null,
+      "plan": {
+        "schemaVersion": 1,
+        "structureId": "conseil",
+        "angle": "Les questions clients qui reviennent chaque semaine méritent une réponse écrite une seule fois, avec les mots des clients, pour pouvoir ensuite l'automatiser.",
+        "stories": [
+          {
+            "role": "accroche",
+            "paragraphs": [
+              {
+                "text": "Tu réponds encore à la main aux mêmes questions clients chaque semaine ?",
+                "accents": [
+                  "mêmes questions clients"
+                ]
+              },
+              {
+                "text": "Tu fais deux fois le même travail.",
+                "accents": [
+                  "deux fois le même travail."
+                ]
+              }
+            ]
+          },
+          {
+            "role": "le coût",
+            "paragraphs": [
+              {
+                "text": "Horaires, délais, tarifs, paiement. Ce sont toujours les mêmes questions qui reviennent.",
+                "accents": [
+                  "toujours les mêmes questions"
+                ]
+              },
+              {
+                "text": "À chaque fois, tu t'arrêtes, tu cherches la bonne formulation, tu retapes tout.",
+                "accents": [
+                  "tu retapes tout."
+                ]
+              },
+              {
+                "text": "Et pendant ce temps, ton vrai travail attend.",
+                "accents": [
+                  "ton vrai travail attend."
+                ]
+              }
+            ]
+          },
+          {
+            "role": "le conseil",
+            "paragraphs": [
+              {
+                "text": "Lister les questions qui reviennent cette semaine. Rédiger une réponse claire pour chacune. Ranger le tout dans un seul document.",
+                "accents": [
+                  "Lister",
+                  "Rédiger",
+                  "Ranger"
+                ]
+              },
+              {
+                "text": "Et l'astuce qui fait vraiment la différence :",
+                "accents": []
+              }
+            ]
+          },
+          {
+            "role": "l'erreur à éviter",
+            "paragraphs": [
+              {
+                "text": "Écris tes réponses avec les mots de tes clients, pas avec ton jargon.",
+                "accents": [
+                  "les mots de tes clients,"
+                ]
+              },
+              {
+                "text": "(Reprends leurs messages tels quels, c'est ta meilleure source)",
+                "accents": []
+              },
+              {
+                "text": "Si une réponse part sans retouche, elle est prête à être automatisée.",
+                "accents": [
+                  "prête à être automatisée."
+                ]
+              }
+            ]
+          },
+          {
+            "role": "appel à l'action",
+            "paragraphs": [
+              {
+                "text": "Aujourd'hui, ouvre tes derniers messages clients et note la question qui revient le plus.",
+                "accents": [
+                  "la question qui revient"
+                ]
+              },
+              {
+                "text": "C'est ta première réponse à écrire.",
+                "accents": []
+              },
+              {
+                "text": "Partenaire IA des PME à Montpellier, un audit est offert pour en discuter.",
+                "accents": [
+                  "un audit est offert"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "texte": [
+        "1. Tu réponds encore à la main aux mêmes questions clients chaque semaine ? / Tu fais deux fois le même travail.",
+        "2. Horaires, délais, tarifs, paiement. Ce sont toujours les mêmes questions qui reviennent. / À chaque fois, tu t'arrêtes, tu cherches la bonne formulation, tu retapes tout. / Et pendant ce temps, ton vrai travail attend.",
+        "3. Lister les questions qui reviennent cette semaine. Rédiger une réponse claire pour chacune. Ranger le tout dans un seul document. / Et l'astuce qui fait vraiment la différence :",
+        "4. Écris tes réponses avec les mots de tes clients, pas avec ton jargon. / (Reprends leurs messages tels quels, c'est ta meilleure source) / Si une réponse part sans retouche, elle est prête à être automatisée.",
+        "5. Aujourd'hui, ouvre tes derniers messages clients et note la question qui revient le plus. / C'est ta première réponse à écrire. / Partenaire IA des PME à Montpellier, un audit est offert pour en discuter."
+      ]
+    },
+    {
+      "id": 6,
+      "structureDemandee": "conseil",
+      "mode": "idee",
+      "verifier": "Mots accentués présents tels quels dans le texte",
+      "jsonValide": true,
+      "controlesOk": true,
+      "bloquants": [],
+      "conseils": [],
+      "repare": false,
+      "ms": 15757,
+      "tokens": {
+        "inputTokens": 403,
+        "outputTokens": 1619,
+        "cache": {
+          "readTokens": 8954,
+          "writeTokens": 0
+        }
+      },
+      "coutUsd": 0.035783,
+      "modele": "claude-opus-5-5",
+      "repli": null,
+      "plan": {
+        "schemaVersion": 1,
+        "structureId": "conseil",
+        "angle": "Le tri des mails mange la matinée parce qu'on le fait à la main en premier ; on peut le confier à des règles automatiques et commencer par le vrai travail.",
+        "stories": [
+          {
+            "role": "accroche",
+            "paragraphs": [
+              {
+                "text": "Tu ouvres tes mails en arrivant au bureau. C'est exactement là que ta matinée s'envole.",
+                "accents": [
+                  "ta matinée s'envole."
+                ]
+              }
+            ]
+          },
+          {
+            "role": "le coût",
+            "paragraphs": [
+              {
+                "text": "Un mail, puis un autre. Tu réponds au plus pressé, tu ranges le reste.",
+                "accents": [
+                  "tu ranges le reste."
+                ]
+              },
+              {
+                "text": "Quand tu relèves la tête, il est presque midi.",
+                "accents": [
+                  "presque midi."
+                ]
+              },
+              {
+                "text": "Et ton vrai travail n'a même pas commencé.",
+                "accents": [
+                  "ton vrai travail"
+                ]
+              }
+            ]
+          },
+          {
+            "role": "le conseil",
+            "paragraphs": [
+              {
+                "text": "Le tri, ce n'est pas à toi de le faire à la main.",
+                "accents": [
+                  "pas à toi"
+                ]
+              },
+              {
+                "text": "Créer des règles par expéditeur. Classer factures et newsletters d'office. Préparer des réponses types.",
+                "accents": [
+                  "Créer des règles",
+                  "Préparer des réponses types."
+                ]
+              },
+              {
+                "text": "Mais l'astuce qui change vraiment ta matinée est ailleurs :",
+                "accents": []
+              }
+            ]
+          },
+          {
+            "role": "bascule",
+            "paragraphs": [
+              {
+                "text": "Ne regarde plus ta boîte en premier. Laisse le tri tourner sans toi.",
+                "accents": [
+                  "le tri tourner sans toi."
+                ]
+              },
+              {
+                "text": "Le bon signe : le matin, il ne reste que les mails qui demandent vraiment ta tête.",
+                "accents": [
+                  "vraiment ta tête."
+                ]
+              },
+              {
+                "text": "(Le reste peut attendre, promis)",
+                "accents": []
+              }
+            ]
+          },
+          {
+            "role": "appel à l'action",
+            "paragraphs": [
+              {
+                "text": "Demain matin, note chaque mail que tu tries encore à la main.",
+                "accents": [
+                  "note chaque mail"
+                ]
+              },
+              {
+                "text": "Ceux qui reviennent tout le temps, ce sont eux à automatiser en premier.",
+                "accents": [
+                  "automatiser en premier."
+                ]
+              },
+              {
+                "text": "Partenaire IA des PME à Montpellier, un audit est offert pour en discuter.",
+                "accents": [
+                  "un audit est offert"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "texte": [
+        "1. Tu ouvres tes mails en arrivant au bureau. C'est exactement là que ta matinée s'envole.",
+        "2. Un mail, puis un autre. Tu réponds au plus pressé, tu ranges le reste. / Quand tu relèves la tête, il est presque midi. / Et ton vrai travail n'a même pas commencé.",
+        "3. Le tri, ce n'est pas à toi de le faire à la main. / Créer des règles par expéditeur. Classer factures et newsletters d'office. Préparer des réponses types. / Mais l'astuce qui change vraiment ta matinée est ailleurs :",
+        "4. Ne regarde plus ta boîte en premier. Laisse le tri tourner sans toi. / Le bon signe : le matin, il ne reste que les mails qui demandent vraiment ta tête. / (Le reste peut attendre, promis)",
+        "5. Demain matin, note chaque mail que tu tries encore à la main. / Ceux qui reviennent tout le temps, ce sont eux à automatiser en premier. / Partenaire IA des PME à Montpellier, un audit est offert pour en discuter."
+      ]
+    },
+    {
+      "id": 7,
+      "structureDemandee": "objection",
+      "mode": "idee",
+      "verifier": "Le texte reste humain, sans promesse non prouvée",
+      "jsonValide": true,
+      "controlesOk": true,
+      "bloquants": [],
+      "conseils": [
+        {
+          "story": 2,
+          "code": "accent_long",
+          "message": "« ce qu'il ne voit jamais. » : un mot mis en valeur fait 5 mots au plus.",
+          "severity": "conseil"
+        }
+      ],
+      "repare": false,
+      "ms": 15862,
+      "tokens": {
+        "inputTokens": 405,
+        "outputTokens": 1579,
+        "cache": {
+          "readTokens": 8954,
+          "writeTokens": 0
+        }
+      },
+      "coutUsd": 0.034991,
+      "modele": "claude-opus-5-5",
+      "repli": null,
+      "plan": {
+        "schemaVersion": 1,
+        "structureId": "objection",
+        "angle": "L'IA n'a pas à parler à la place du dirigeant : elle prend en charge ce que le client ne voit jamais, et la relation reste humaine.",
+        "stories": [
+          {
+            "role": "accroche",
+            "paragraphs": [
+              {
+                "text": "« Mes clients vont sentir que c'est un robot. »",
+                "accents": [
+                  "un robot."
+                ]
+              },
+              {
+                "text": "Tu l'as peut-être déjà pensé.",
+                "accents": []
+              }
+            ]
+          },
+          {
+            "role": "donner raison",
+            "paragraphs": [
+              {
+                "text": "Et franchement, tu as raison de te méfier.",
+                "accents": [
+                  "tu as raison"
+                ]
+              },
+              {
+                "text": "On a tous reçu une réponse automatique à côté de la plaque. Froide, générique, agaçante.",
+                "accents": [
+                  "Froide, générique, agaçante."
+                ]
+              },
+              {
+                "text": "Ta relation client, c'est ce que tu as construit. Pas question de l'abîmer.",
+                "accents": [
+                  "Ta relation client,"
+                ]
+              }
+            ]
+          },
+          {
+            "role": "distinction",
+            "paragraphs": [
+              {
+                "text": "Mais automatiser, ça ne veut pas dire remplacer ta voix.",
+                "accents": [
+                  "remplacer ta voix."
+                ]
+              },
+              {
+                "text": "Il y a ce que ton client voit. Et tout ce qu'il ne voit jamais.",
+                "accents": [
+                  "ce qu'il ne voit jamais."
+                ]
+              },
+              {
+                "text": "Et si l'IA s'occupait seulement de la deuxième partie ?",
+                "accents": []
+              }
+            ]
+          },
+          {
+            "role": "exemple",
+            "paragraphs": [
+              {
+                "text": "Imagine : un client t'envoie une demande de devis.",
+                "accents": []
+              },
+              {
+                "text": "L'IA trie, retrouve son historique et prépare un brouillon. Toi, tu relis, tu ajustes, tu envoies.",
+                "accents": [
+                  "prépare un brouillon.",
+                  "tu relis"
+                ]
+              },
+              {
+                "text": "(Lui, il voit juste une réponse plus rapide. Et toujours signée par toi.)",
+                "accents": [
+                  "signée par toi."
+                ]
+              }
+            ]
+          },
+          {
+            "role": "appel à l'action",
+            "paragraphs": [
+              {
+                "text": "Cette semaine, note les tâches que tes clients ne voient jamais.",
+                "accents": [
+                  "note les tâches"
+                ]
+              },
+              {
+                "text": "Ce sont elles qu'on peut automatiser sans risque.",
+                "accents": [
+                  "automatiser sans risque."
+                ]
+              },
+              {
+                "text": "Partenaire IA des PME à Montpellier, un audit est offert pour en discuter.",
+                "accents": [
+                  "un audit est offert"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "texte": [
+        "1. « Mes clients vont sentir que c'est un robot. » / Tu l'as peut-être déjà pensé.",
+        "2. Et franchement, tu as raison de te méfier. / On a tous reçu une réponse automatique à côté de la plaque. Froide, générique, agaçante. / Ta relation client, c'est ce que tu as construit. Pas question de l'abîmer.",
+        "3. Mais automatiser, ça ne veut pas dire remplacer ta voix. / Il y a ce que ton client voit. Et tout ce qu'il ne voit jamais. / Et si l'IA s'occupait seulement de la deuxième partie ?",
+        "4. Imagine : un client t'envoie une demande de devis. / L'IA trie, retrouve son historique et prépare un brouillon. Toi, tu relis, tu ajustes, tu envoies. / (Lui, il voit juste une réponse plus rapide. Et toujours signée par toi.)",
+        "5. Cette semaine, note les tâches que tes clients ne voient jamais. / Ce sont elles qu'on peut automatiser sans risque. / Partenaire IA des PME à Montpellier, un audit est offert pour en discuter."
+      ]
+    },
+    {
+      "id": 8,
+      "structureDemandee": "preuve",
+      "mode": "idee",
+      "verifier": "Aucun chiffre, aucun témoignage, aucun client inventé ; présenté comme explication ou démonstration",
+      "jsonValide": true,
+      "controlesOk": true,
+      "bloquants": [],
+      "conseils": [
+        {
+          "story": null,
+          "code": "preuve_sans_preuves",
+          "message": "Structure « Preuve » sans aucune preuve dans le contexte : vérifie qu'aucun résultat n'est présenté comme réel.",
+          "severity": "conseil"
+        }
+      ],
+      "repare": false,
+      "ms": 12963,
+      "tokens": {
+        "inputTokens": 466,
+        "outputTokens": 1355,
+        "cache": {
+          "readTokens": 8954,
+          "writeTokens": 0
+        }
+      },
+      "coutUsd": 0.030755,
+      "modele": "claude-opus-5-5",
+      "repli": null,
+      "plan": {
+        "schemaVersion": 1,
+        "structureId": "preuve",
+        "angle": "Un devis sans réponse est souvent un oubli, pas un refus : une relance automatique permet de récupérer ces clients sans y penser ni avoir peur de déranger.",
+        "stories": [
+          {
+            "role": "accroche",
+            "paragraphs": [
+              {
+                "text": "Un devis sans réponse, ce n'est pas un non.",
+                "accents": [
+                  "pas un non."
+                ]
+              },
+              {
+                "text": "C'est souvent juste un oubli.",
+                "accents": [
+                  "un oubli."
+                ]
+              }
+            ]
+          },
+          {
+            "role": "situation de départ",
+            "paragraphs": [
+              {
+                "text": "Imagine : tu envoies un devis. Puis plus rien. Silence radio.",
+                "accents": [
+                  "Silence radio."
+                ]
+              },
+              {
+                "text": "Tu n'oses pas relancer. Tu as peur de déranger, ou tu n'as juste pas le temps.",
+                "accents": [
+                  "peur de déranger,"
+                ]
+              },
+              {
+                "text": "Et le client signe ailleurs. Simplement parce qu'un autre lui a reparlé.",
+                "accents": [
+                  "signe ailleurs."
+                ]
+              }
+            ]
+          },
+          {
+            "role": "étapes et cliffhanger",
+            "paragraphs": [
+              {
+                "text": "Voilà comment ça peut se passer autrement, par exemple.",
+                "accents": []
+              },
+              {
+                "text": "Envoyer le devis comme d'habitude. Programmer une relance automatique quelques jours après. Prévoir un second message si rien ne bouge.",
+                "accents": [
+                  "relance automatique"
+                ]
+              },
+              {
+                "text": "Et le moment où tout bascule, c'est celui-ci :",
+                "accents": []
+              }
+            ]
+          },
+          {
+            "role": "bascule",
+            "paragraphs": [
+              {
+                "text": "Le client répond. Pas parce qu'on l'a forcé. Parce qu'on lui a rappelé.",
+                "accents": [
+                  "Le client répond.",
+                  "on lui a rappelé."
+                ]
+              },
+              {
+                "text": "(Souvent, il attendait juste un signe)",
+                "accents": []
+              },
+              {
+                "text": "Et toi, tu n'as rien eu à faire. Ni à y penser, ni à te forcer.",
+                "accents": [
+                  "rien eu à faire."
+                ]
+              }
+            ]
+          },
+          {
+            "role": "appel à l'action",
+            "paragraphs": [
+              {
+                "text": "Ce soir, regarde combien de devis sont restés sans réponse ce mois-ci.",
+                "accents": [
+                  "sans réponse"
+                ]
+              },
+              {
+                "text": "Chacun, c'est peut-être un client qui attend juste un rappel.",
+                "accents": [
+                  "un client qui attend"
+                ]
+              },
+              {
+                "text": "Partenaire IA des PME à Montpellier, un audit est offert pour en discuter.",
+                "accents": [
+                  "audit est offert"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "texte": [
+        "1. Un devis sans réponse, ce n'est pas un non. / C'est souvent juste un oubli.",
+        "2. Imagine : tu envoies un devis. Puis plus rien. Silence radio. / Tu n'oses pas relancer. Tu as peur de déranger, ou tu n'as juste pas le temps. / Et le client signe ailleurs. Simplement parce qu'un autre lui a reparlé.",
+        "3. Voilà comment ça peut se passer autrement, par exemple. / Envoyer le devis comme d'habitude. Programmer une relance automatique quelques jours après. Prévoir un second message si rien ne bouge. / Et le moment où tout bascule, c'est celui-ci :",
+        "4. Le client répond. Pas parce qu'on l'a forcé. Parce qu'on lui a rappelé. / (Souvent, il attendait juste un signe) / Et toi, tu n'as rien eu à faire. Ni à y penser, ni à te forcer.",
+        "5. Ce soir, regarde combien de devis sont restés sans réponse ce mois-ci. / Chacun, c'est peut-être un client qui attend juste un rappel. / Partenaire IA des PME à Montpellier, un audit est offert pour en discuter."
+      ]
+    },
+    {
+      "id": 9,
+      "structureDemandee": "auto",
+      "mode": "texte",
+      "verifier": "Les mots sont conservés, seulement découpés en stories ; aucune reformulation",
+      "jsonValide": true,
+      "controlesOk": true,
+      "bloquants": [],
+      "conseils": [
+        {
+          "story": 4,
+          "code": "paragraphes",
+          "message": "Un seul paragraphe : 2 à 3 se lisent mieux.",
+          "severity": "conseil"
+        },
+        {
+          "story": 4,
+          "code": "cta_absent",
+          "message": "La dernière story n'évoque pas l'appel à l'action du contexte (« Un audit est offert pour en discuter »).",
+          "severity": "conseil"
+        }
+      ],
+      "repare": false,
+      "ms": 10897,
+      "tokens": {
+        "inputTokens": 672,
+        "outputTokens": 1178,
+        "cache": {
+          "readTokens": 8954,
+          "writeTokens": 0
+        }
+      },
+      "coutUsd": 0.028039,
+      "modele": "claude-opus-5-5",
+      "repli": null,
+      "plan": {
+        "schemaVersion": 1,
+        "structureId": "conseil",
+        "angle": "Chaque tâche répétée peut être automatisée, et la première à traiter est celle qui revient le plus souvent, pas la plus longue.",
+        "stories": [
+          {
+            "role": "accroche",
+            "paragraphs": [
+              {
+                "text": "Chaque tâche que tu répètes",
+                "accents": [
+                  "tâche que tu répètes"
+                ]
+              },
+              {
+                "text": "peut devenir un automatisme géré sans toi.",
+                "accents": [
+                  "automatisme géré sans toi."
+                ]
+              }
+            ]
+          },
+          {
+            "role": "enjeu",
+            "paragraphs": [
+              {
+                "text": "(Le vrai travail,",
+                "accents": [
+                  "vrai travail,"
+                ]
+              },
+              {
+                "text": "c'est de repérer laquelle en premier)",
+                "accents": [
+                  "repérer laquelle en premier)"
+                ]
+              }
+            ]
+          },
+          {
+            "role": "le conseil",
+            "paragraphs": [
+              {
+                "text": "Celle qui revient",
+                "accents": []
+              },
+              {
+                "text": "le plus souvent,",
+                "accents": [
+                  "le plus souvent,"
+                ]
+              }
+            ]
+          },
+          {
+            "role": "erreur à éviter",
+            "paragraphs": [
+              {
+                "text": "pas celle qui prend",
+                "accents": []
+              },
+              {
+                "text": "le plus de temps",
+                "accents": [
+                  "le plus de temps"
+                ]
+              }
+            ]
+          },
+          {
+            "role": "chute",
+            "paragraphs": [
+              {
+                "text": "d'un coup.",
+                "accents": [
+                  "d'un coup."
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "texte": [
+        "1. Chaque tâche que tu répètes / peut devenir un automatisme géré sans toi.",
+        "2. (Le vrai travail, / c'est de repérer laquelle en premier)",
+        "3. Celle qui revient / le plus souvent,",
+        "4. pas celle qui prend / le plus de temps",
+        "5. d'un coup."
+      ]
+    },
+    {
+      "id": 10,
+      "structureDemandee": "auto",
+      "mode": "idee",
+      "verifier": "Choisit un angle précis (dans angle) ; ne produit pas du générique",
+      "jsonValide": true,
+      "controlesOk": true,
+      "bloquants": [],
+      "conseils": [],
+      "repare": false,
+      "ms": 15061,
+      "tokens": {
+        "inputTokens": 423,
+        "outputTokens": 1448,
+        "cache": {
+          "readTokens": 8954,
+          "writeTokens": 0
+        }
+      },
+      "coutUsd": 0.032443,
+      "modele": "claude-opus-5-5",
+      "repli": null,
+      "plan": {
+        "schemaVersion": 1,
+        "structureId": "objection",
+        "angle": "Pas besoin d'apprendre l'IA pour en profiter : il suffit qu'elle prenne en charge une tâche précise à ta place.",
+        "stories": [
+          {
+            "role": "accroche",
+            "paragraphs": [
+              {
+                "text": "« L'IA, ça a l'air bien. Mais j'ai pas le temps de m'y mettre. »",
+                "accents": [
+                  "pas le temps"
+                ]
+              }
+            ]
+          },
+          {
+            "role": "donner raison",
+            "paragraphs": [
+              {
+                "text": "Tu as raison. Tu cours déjà toute la journée.",
+                "accents": [
+                  "Tu as raison."
+                ]
+              },
+              {
+                "text": "Et ce que tu vois passer, c'est un nouvel outil tous les quatre matins et des tutos à rallonge.",
+                "accents": [
+                  "des tutos à rallonge."
+                ]
+              },
+              {
+                "text": "Rajouter ça à ta liste ? Logique que tu passes ton tour.",
+                "accents": []
+              }
+            ]
+          },
+          {
+            "role": "distinction",
+            "paragraphs": [
+              {
+                "text": "Sauf que tu n'as pas besoin d'apprendre l'IA.",
+                "accents": [
+                  "pas besoin d'apprendre"
+                ]
+              },
+              {
+                "text": "Tu as besoin qu'elle s'occupe d'une tâche précise à ta place.",
+                "accents": [
+                  "une tâche précise"
+                ]
+              },
+              {
+                "text": "Et la différence se voit vite :",
+                "accents": []
+              }
+            ]
+          },
+          {
+            "role": "exemple",
+            "paragraphs": [
+              {
+                "text": "Imagine : chaque devis resté sans réponse est relancé tout seul.",
+                "accents": [
+                  "relancé tout seul."
+                ]
+              },
+              {
+                "text": "Tu n'as rien appris. Tu n'as rien installé toi-même.",
+                "accents": [
+                  "rien appris."
+                ]
+              },
+              {
+                "text": "(Tu as juste arrêté d'y penser)",
+                "accents": []
+              }
+            ]
+          },
+          {
+            "role": "appel à l'action",
+            "paragraphs": [
+              {
+                "text": "Cette semaine, note la tâche que tu repousses toujours parce qu'elle t'ennuie.",
+                "accents": [
+                  "note la tâche"
+                ]
+              },
+              {
+                "text": "C'est souvent la première à confier à l'IA.",
+                "accents": [
+                  "la première à confier"
+                ]
+              },
+              {
+                "text": "Partenaire IA des PME à Montpellier, un audit est offert pour en discuter.",
+                "accents": [
+                  "audit est offert"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "texte": [
+        "1. « L'IA, ça a l'air bien. Mais j'ai pas le temps de m'y mettre. »",
+        "2. Tu as raison. Tu cours déjà toute la journée. / Et ce que tu vois passer, c'est un nouvel outil tous les quatre matins et des tutos à rallonge. / Rajouter ça à ta liste ? Logique que tu passes ton tour.",
+        "3. Sauf que tu n'as pas besoin d'apprendre l'IA. / Tu as besoin qu'elle s'occupe d'une tâche précise à ta place. / Et la différence se voit vite :",
+        "4. Imagine : chaque devis resté sans réponse est relancé tout seul. / Tu n'as rien appris. Tu n'as rien installé toi-même. / (Tu as juste arrêté d'y penser)",
+        "5. Cette semaine, note la tâche que tu repousses toujours parce qu'elle t'ennuie. / C'est souvent la première à confier à l'IA. / Partenaire IA des PME à Montpellier, un audit est offert pour en discuter."
+      ]
+    }
+  ]
+}
