@@ -31,8 +31,10 @@ const REF_FILES = ["d70b3bc7-image.png", "49d949ca-image.png", "8695e7b5-image.p
 const REF_BOX = { x: 269, y: 554, width: 667, height: 1192 };
 
 const failures = [];
+const started = Date.now();
+const elapsed = () => `${((Date.now() - started) / 1000).toFixed(0).padStart(3)} s`;
 const check = (ok, message) => {
-  console.log(`${ok ? "✔" : "✘"} ${message}`);
+  console.log(`${ok ? "✔" : "✘"} ${elapsed()} · ${message}`);
   if (!ok) failures.push(message);
 };
 
@@ -46,15 +48,21 @@ function pngSize(buffer) {
 async function startServer() {
   if (process.env.BASE_URL) return { url: process.env.BASE_URL, stop: () => {} };
   const port = 3198;
-  const child = spawn("npx", ["next", "start", "-p", String(port)], { cwd: ROOT, stdio: "ignore" });
+  // Groupe de processus à part : npx lance next-server en enfant, il faut arrêter tout le groupe.
+  const child = spawn("npx", ["next", "start", "-p", String(port)], { cwd: ROOT, stdio: "ignore", detached: true });
+  const stop = () => {
+    try {
+      process.kill(-child.pid, "SIGTERM");
+    } catch {}
+  };
   const url = `http://localhost:${port}`;
   for (let i = 0; i < 60; i++) {
     try {
-      if ((await fetch(url)).ok) return { url, stop: () => child.kill() };
+      if ((await fetch(url)).ok) return { url, stop };
     } catch {}
     await new Promise((r) => setTimeout(r, 500));
   }
-  child.kill();
+  stop();
   throw new Error("le serveur Next.js n’a pas démarré (npm run build d’abord ?)");
 }
 

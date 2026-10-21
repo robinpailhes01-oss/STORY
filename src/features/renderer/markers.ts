@@ -15,9 +15,9 @@ export interface RectGeometry {
 export function underlineRect(box: AccentBox, fontSize: number): RectGeometry {
   return {
     x: box.x - fontSize * 0.04,
-    y: box.baseline - fontSize * 0.06,
+    y: box.baseline - fontSize * 0.07,
     width: box.width + fontSize * 0.08,
-    height: fontSize * 0.2,
+    height: fontSize * 0.25,
     cornerRadius: fontSize * 0.03,
   };
 }
