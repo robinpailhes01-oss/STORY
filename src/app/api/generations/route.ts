@@ -7,6 +7,7 @@ import { generatePlan } from "@/lib/ai/generate";
 import { enforceRateLimit, handleRoute, jsonResponse, parseBody, readJsonBody } from "@/lib/ai/http";
 import { mockGeneratePlan } from "@/lib/ai/mock";
 import { GENERATIONS_LIMIT } from "@/lib/ai/rate-limit";
+import { assertTextUsable } from "@/lib/ai/text-rules";
 
 /** Génération + réparation éventuelle : jusqu'à deux appels à Claude. */
 export const maxDuration = 120;
@@ -17,6 +18,8 @@ export async function POST(request: Request): Promise<Response> {
     if (body.structureId !== "auto" && !isStructureId(body.structureId)) {
       throw new AiError("corps_invalide", 400, `Demande invalide : structure inconnue « ${body.structureId} ».`);
     }
+    // Idée facultative en mode idée ; en mode texte, un texte assez long pour 5 stories sans couper de phrase.
+    assertTextUsable(body);
     if (isMockMode()) return jsonResponse(await mockGeneratePlan(body));
     readAiConfig(); // 503 explicite si la clé manque, avant de compter la demande.
     enforceRateLimit(request, "generations", GENERATIONS_LIMIT);

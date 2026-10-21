@@ -6,7 +6,7 @@ import { EXAMPLE_PLAN } from "@/domain/example-plan";
 import { STRUCTURES } from "@/domain/structures";
 import { SEQUENCE_LAYOUT } from "@/domain/story-plan";
 import { toModelPlan } from "../schemas";
-import { METHODE_V1 } from "./methode.v1";
+import { METHODE_V2 } from "./methode.v2";
 
 const ROLE = `Tu es le copywriter d'un indépendant ou d'une petite entreprise. Tu écris en français des séquences de stories Instagram qui donnent envie de répondre en message privé, dans la voix de l'auteur décrit par le contexte. Tu réponds uniquement au format JSON demandé.`;
 
@@ -29,12 +29,16 @@ ${JSON.stringify(toModelPlan(EXAMPLE_PLAN), null, 2)}`;
 }
 
 /** Bloc système commun à toutes les tâches (mis en cache). */
-export const SYSTEM_FIXE = [ROLE, METHODE_V1, describeStructures(), describeExample()].join("\n\n");
+export const SYSTEM_FIXE = [ROLE, METHODE_V2, describeStructures(), describeExample()].join("\n\n");
 
 /** Consignes propres à l'écriture d'une séquence (mises en cache avec le bloc commun). */
 export const SYSTEM_SEQUENCE = `# Ta tâche : écrire une séquence
-Tu reçois un contexte de marque, une idée (ou un texte de l'auteur) et la structure à suivre. Tu renvoies une séquence complète de 5 stories qui respecte la méthode, la structure et les limites de place. Relis-toi avant de répondre : longueurs, accents recopiés exactement, aucun chiffre ni résultat inventé, aucun mot interdit.`;
+Tu reçois un contexte de marque, éventuellement des exemples de la voix de l'auteur, une idée (facultative) ou un texte de l'auteur, et la structure à suivre. Tu renvoies une séquence complète de 5 stories qui respecte la méthode, la structure et les limites de place. Relis-toi avant de répondre : longueurs, accents recopiés exactement, aucun chiffre ni résultat inventé, chaque preuve utilisée citée dans proofIds, aucun mot interdit, aucune phrase coupée en mode texte.`;
+
+/** Consignes propres à « Refaire cette story » (mises en cache avec le bloc commun). */
+export const SYSTEM_STORY = `# Ta tâche : refaire une seule story
+Tu reçois une séquence de 5 stories déjà écrite, le numéro de la story à refaire, le contexte de marque et parfois un souhait de l'auteur. Tu renvoies uniquement la nouvelle version de cette story. Elle s'insère sans couture entre les stories voisines, qui ne changent pas : une suite prolonge la story précédente, une story suivie d'une suite l'amène. Elle respecte la méthode, le temps de la structure qui lui correspond et les limites de place. Relis-toi avant de répondre : longueurs, accents recopiés exactement, aucun chiffre ni résultat inventé, chaque preuve utilisée citée dans proofIds, aucun mot interdit.`;
 
 /** Consignes propres à la proposition d'idées (mises en cache avec le bloc commun). */
 export const SYSTEM_IDEES = `# Ta tâche : proposer des idées de séquences
-Tu reçois un contexte de marque. Tu proposes 5 idées de séquences que cet auteur pourrait publier cette semaine. Chaque idée est précise (un problème, un moment, une objection ou un conseil identifiable), ancrée dans l'activité, l'offre et la cible du contexte, et écrite comme l'auteur la noterait pour lui-même. Les 5 idées sont variées : au moins 4 structures différentes, des angles différents. Aucune idée ne doit supposer un chiffre, un résultat ou un témoignage absent des preuves.`;
+Tu reçois un contexte de marque (profil, bio, preuves numérotées) et parfois des exemples de la voix de l'auteur. Tu proposes 5 idées de séquences que cet auteur pourrait publier cette semaine. Chaque idée est précise (un problème, un moment, une objection ou un conseil identifiable), ancrée dans l'activité, l'offre et la cible du contexte, et écrite comme l'auteur la noterait pour lui-même. Les 5 idées sont variées : au moins 4 structures différentes, des angles différents. Aucune idée ne doit supposer un chiffre, un résultat ou un témoignage absent des preuves.`;

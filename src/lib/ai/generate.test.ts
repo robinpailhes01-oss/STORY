@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_CONTEXT, EXAMPLE_PLAN } from "@/domain/example-plan";
-import { GenerateRequestSchema, IdeasRequestSchema, type StoryPlan } from "@/domain/story-plan";
+import {
+  GenerateRequestSchema,
+  IdeasRequestSchema,
+  RewriteStoryRequestSchema,
+  type RewriteStoryRequest,
+  type StoryPlan,
+} from "@/domain/story-plan";
 import type { StructuredCall, StructuredCaller, StructuredResult } from "./client";
 import { AiError } from "./errors";
 import { generatePlan } from "./generate";
 import { generateIdeas } from "./ideas";
 import { MOCK_IDEAS } from "./mock";
+import { rewriteStory } from "./rewrite";
 import { toModelPlan } from "./schemas";
 
 const request = GenerateRequestSchema.parse({
@@ -46,7 +53,7 @@ describe("generatePlan", () => {
     expect(caller.calls).toHaveLength(1);
     expect(response.plan).toEqual(EXAMPLE_PLAN);
     expect(response.controls.ok).toBe(true);
-    expect(response.meta).toMatchObject({ repaired: false, mock: false, methodVersion: "v1", costUsd: 0.045 });
+    expect(response.meta).toMatchObject({ repaired: false, mock: false, methodVersion: "v2", costUsd: 0.045 });
     expect(response.meta.cache).toEqual({ readTokens: 5000, writeTokens: 0 });
     // Le système est mis en cache ; les données de la requête sont dans le message utilisateur.
     expect(caller.calls[0].system.every((block) => block.cache_control?.type === "ephemeral")).toBe(true);
@@ -122,7 +129,7 @@ describe("generatePlan", () => {
 });
 
 describe("generateIdeas", () => {
-  const ideasRequest = IdeasRequestSchema.parse({ context: DEFAULT_CONTEXT, avoid: [MOCK_IDEAS[0].idea] });
+  const ideasRequest = IdeasRequestSchema.parse({ context: { ...DEFAULT_CONTEXT, proofs: [] }, avoid: [MOCK_IDEAS[0].idea] });
 
   it("filtre les doublons, les idées déjà proposées et « preuve » sans preuves", async () => {
     const caller = scripted({
@@ -140,5 +147,119 @@ describe("generateIdeas", () => {
   it("502 si trop peu d'idées utilisables", async () => {
     const caller = scripted({ ideas: [MOCK_IDEAS[0]] });
     await expect(generateIdeas(ideasRequest, { caller })).rejects.toMatchObject({ code: "idees_insuffisantes" });
+  });
+
+  it("envoie l'identifiant, la bio, les preuves numérotées et les exemples de voix", async () => {
+    const caller = scripted({ ideas: [...MOCK_IDEAS] });
+    const context = { ...DEFAULT_CONTEXT, voiceExamples: ["Ma dernière séquence exportée."] };
+    await generateIdeas(IdeasRequestSchema.parse({ context }), { caller });
+    const user = caller.calls[0].user;
+    expect(user).toContain("@luma_agence");
+    expect(user).toContain(DEFAULT_CONTEXT.bio);
+    expect(user).toContain(`[p1] ${DEFAULT_CONTEXT.proofs[0]}`);
+    expect(user).toContain("<exemples_de_voix>");
+  });
+});
+
+describe("generatePlan, phase 3", () => {
+  it("idée vide en mode idée : un seul appel, l'IA part du profil", async () => {
+    const caller = scripted(toModelPlan(EXAMPLE_PLAN));
+    const response = await generatePlan(GenerateRequestSchema.parse({ context: DEFAULT_CONTEXT }), { caller });
+    expect(response.controls.ok).toBe(true);
+    expect(caller.calls[0].user).not.toContain("<idee>");
+    expect(caller.calls[0].user).toContain("choisis toi-même le sujet");
+  });
+
+  it("mode texte trop court : 400 texte_trop_court, sans appel à Claude", async () => {
+    const caller = scripted();
+    const short = GenerateRequestSchema.parse({ mode: "texte", idea: "Une phrase. Deux phrases. Trois phrases.", context: DEFAULT_CONTEXT });
+    await expect(generatePlan(short, { caller })).rejects.toMatchObject({ code: "texte_trop_court", status: 400 });
+    expect(caller.calls).toHaveLength(0);
+  });
+
+  it("répare un chiffre de preuve non cité, et garde proofIds", async () => {
+    const text = "Résultat chez Harmonie Yacht : 3 h gagnées chaque jour !";
+    const faulty = withFault((p) => {
+      p.stories[3].paragraphs[2] = { text, accents: [] };
+    });
+    const fixed = withFault((p) => {
+      p.stories[3].paragraphs[2] = { text, accents: [], proofIds: ["p1"] };
+    });
+    const caller = scripted(faulty, fixed);
+    const response = await generatePlan(request, { caller });
+    expect(DEFAULT_CONTEXT.proofs[0]).toContain("3 h");
+    expect(caller.calls[1].user).toContain("preuve p1");
+    expect(response.controls.ok).toBe(true);
+    expect(response.plan.stories[3].paragraphs[2].proofIds).toEqual(["p1"]);
+  });
+});
+
+describe("rewriteStory", () => {
+  const rewriteRequest = (patch: Partial<RewriteStoryRequest> = {}) =>
+    RewriteStoryRequestSchema.parse({ plan: EXAMPLE_PLAN, storyIndex: 1, context: DEFAULT_CONTEXT, ...patch });
+  const newStory = {
+    role: "reconnaissance",
+    paragraphs: [
+      { text: "Ta légende, tu la confies déjà à l'IA ?", accents: [], proofIds: [] },
+      { text: "Tu gagnes un peu de temps. Pas beaucoup.", accents: ["un peu de temps."], proofIds: [] },
+      { text: "Et une autre tâche te prend des heures chaque semaine.", accents: ["des heures chaque semaine."], proofIds: [] },
+    ],
+  };
+
+  it("ne remplace que la story demandée ; les autres sont strictement identiques à l'entrée", async () => {
+    const input = rewriteRequest({ instruction: "plus direct" });
+    const caller = scripted(newStory);
+    const response = await rewriteStory(input, { caller });
+    expect(caller.calls).toHaveLength(1);
+    expect(caller.calls[0].format.schema).toHaveProperty("properties.paragraphs");
+    expect(caller.calls[0].user).toContain("<consigne>");
+    expect(response.plan.stories[1].paragraphs[0].text).toBe(newStory.paragraphs[0].text);
+    expect(response.plan.stories[1].paragraphs[0]).not.toHaveProperty("proofIds");
+    for (const i of [0, 2, 3, 4]) expect(JSON.stringify(response.plan.stories[i])).toBe(JSON.stringify(input.plan.stories[i]));
+    expect(response.plan.angle).toBe(input.plan.angle);
+    expect(response.controls.ok).toBe(true);
+    expect(response.meta).toMatchObject({ repaired: false, mock: false, methodVersion: "v2" });
+  });
+
+  it("répare une fois la story refaite si elle a un problème bloquant", async () => {
+    const bad = { ...newStory, paragraphs: [{ text: "Tu gagnes 12 minutes. Pas plus.", accents: [], proofIds: [] }, ...newStory.paragraphs.slice(1)] };
+    const caller = scripted(bad, newStory);
+    const response = await rewriteStory(rewriteRequest(), { caller });
+    expect(caller.calls).toHaveLength(2);
+    expect(caller.calls[1].user).toContain("<story_a_corriger>");
+    expect(caller.calls[1].user).toContain("12");
+    expect(response.meta.repaired).toBe(true);
+    expect(response.controls.ok).toBe(true);
+  });
+
+  it("ne tente pas de réparation pour un problème d'une autre story (déjà présent à l'entrée)", async () => {
+    const plan = structuredClone(EXAMPLE_PLAN);
+    plan.stories[4].paragraphs[1].text = "C'est elle qu'il faut automatiser en 12 jours.";
+    const caller = scripted(newStory);
+    const response = await rewriteStory(rewriteRequest({ plan }), { caller });
+    expect(caller.calls).toHaveLength(1);
+    expect(response.controls.ok).toBe(false);
+    expect(response.controls.issues.find((i) => i.code === "chiffre_invente")?.story).toBe(4);
+    expect(response.plan.stories[4]).toEqual(plan.stories[4]);
+  });
+
+  it("mode texte : la story refaite doit garder ses mots", async () => {
+    const reworded = { ...newStory };
+    const caller = scripted(reworded, reworded);
+    const response = await rewriteStory(rewriteRequest({ mode: "texte", idea: "" }), { caller });
+    expect(caller.calls).toHaveLength(2);
+    expect(response.controls.issues.some((i) => i.code === "mots_modifies")).toBe(true);
+  });
+
+  it("502 si la story renvoyée n'a pas la forme attendue", async () => {
+    await expect(rewriteStory(rewriteRequest(), { caller: scripted({ paragraphs: "?" }) })).rejects.toMatchObject({
+      code: "plan_invalide",
+      status: 502,
+    });
+  });
+
+  it("400 si la séquence d'entrée a une structure inconnue", async () => {
+    const plan = { ...structuredClone(EXAMPLE_PLAN), structureId: "inconnue" };
+    await expect(rewriteStory(rewriteRequest({ plan }), { caller: scripted() })).rejects.toMatchObject({ status: 400 });
   });
 });
