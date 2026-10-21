@@ -25,6 +25,8 @@ export interface AiConfig {
   apiKey: string;
   model: string;
   effort: Effort;
+  /** Repli serveur en cas de refus (désactivable par ANTHROPIC_FALLBACKS=off si l'API le refusait). */
+  fallbacks: boolean;
 }
 
 /** true si les réponses doivent être simulées (STORY_AI_MOCK=1), sans aucun appel réseau. */
@@ -50,5 +52,9 @@ export function readAiConfig(env: NodeJS.ProcessEnv = process.env): AiConfig {
       `ANTHROPIC_EFFORT vaut « ${rawEffort} » : valeurs possibles ${EFFORTS.join(", ")}.`,
     );
   }
-  return { apiKey, model, effort: rawEffort as Effort };
+  const rawFallbacks = env.ANTHROPIC_FALLBACKS?.trim() || "default";
+  if (rawFallbacks !== "default" && rawFallbacks !== "off") {
+    throw new AiError("config_invalide", 500, `ANTHROPIC_FALLBACKS vaut « ${rawFallbacks} » : valeurs possibles default, off.`);
+  }
+  return { apiKey, model, effort: rawEffort as Effort, fallbacks: rawFallbacks === "default" };
 }

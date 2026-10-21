@@ -1,0 +1,21 @@
+## STORY_AI_MOCK=1, next start -p 3299
+### POST /api/generations (valide)
+{"plan":{"schemaVersion":1,"structureId":"idee-recue","angle":"Le vrai gain de l'IA pour une PME n'est pas d'écrire plus vite mais d'automatiser ce qu'elle refait sans y penser.","stories":[{"role":"accroche","paragraphs":[{"text":"La plupart des PME utilisent l'IA pour écrire plus vite. Ce n'est pas là qu'est l'argent.","accents":["l'IA","l'argent"]}]},{"role":"reconnaissance","paragraphs":[{"text":"Toi aussi tu demandes à l'IA de t'écrire ta légende Instagram ?","accents":[]},{"text":"Ça te fait gagner quelques minutes. Pas plus.","accents":["gagner quelques minutes."]},{"text":"Pendant ce temps, il y a une autre tâche qui te bouffe des heures chaque semaine.","accents":["des heures chaque semaine."]}]},{"role":"liste et cliffhanger","paragraphs":[{"text":"Ce qui te coûte le plus de temps, c'est ce que tu refais sans y penser !","accents":["sans y penser"]},{"text":"Répondre aux mêmes questions clients. Relancer un devis resté sans réponse. Trier des mails.","accents":["Répondre","Relancer"]},{"text":"Et ce n'est même pas la partie qui te fait gagner le plus de temps :","accents":[]}]},{"role":"bascule","paragraphs":[{"text":"Chaque tâche que tu répètes peut devenir un automatisme géré sans toi.","accents":["automatisme géré sans toi."]},{"text":"(Le vrai travail, c'est de repérer laquelle en premier)","accents":[]},{"text":"Celle qui revient le plus souvent, pas celle qui prend le plus de temps d'un coup.","accents":["revient le plus souvent,"]}]},{"role":"appel à l'action","paragraphs":[{"text":"Ce soir, note une seule tâche que tu refais cette semaine sans réfléchir.","accents":["une seule tâche"]},{"text":"C'est elle qu'il faut automatiser en premier.","accents":[]},{"text":"Partenaire IA des PME à Montpellier, un audit est offert pour en discuter.","accents":["audit est offert"]}]}]},"controls":{"ok":true,"issues":[]},"meta":{"model":"simulation","ms":315,"repaired":false,"mock":true,"methodVersion":"v1"}}
+HTTP 200 en 0.401651s
+### POST /api/generations (idée absente)
+{"error":{"code":"corps_invalide","message":"Demande invalide : l'idée : champ manquant."}}
+HTTP 400
+### POST /api/generations (JSON invalide)
+{"error":{"code":"json_invalide","message":"La demande n'est pas un JSON valide."}}
+HTTP 400
+### POST /api/generations (corps > 30 Ko)
+{"error":{"code":"trop_volumineux","message":"La demande est trop volumineuse (30 Ko au plus)."}}
+HTTP 413
+### POST /api/ideas (valide)
+{"ideas":[{"idea":"Les devis envoyés puis oubliés : pourquoi une relance automatique fait revenir des clients sans paraître insistante.","structureId":"conseil","hook":"Ton devis n'a pas été refusé. Il a été oublié."},{"idea":"« L'IA, ce n'est pas pour les petites entreprises » : lui donner raison, puis montrer par où commencer petit.","structureId":"objection","hook":"« L'IA, c'est pour les grosses boîtes. » Sur un point, tu as raison."},{"idea":"Le matin où j'ai répondu trois fois à la même question client avant même d'ouvrir mes mails.","structureId":"histoire","hook":"Trois fois la même question. Avant même mon premier café."},{"idea":"Automatiser d'abord ce qui revient souvent, pas ce qui prend le plus de temps : ma façon de choisir la première tâche.","structureId":"methode","hook":"Tout le monde automatise la tâche la plus longue. C'est l'erreur."},{"idea":"Ce que je refuse de vendre aux PME : des outils d'IA que personne n'ouvrira plus au bout d'un mois.","structureId":"manifeste","hook":"Je ne te vendrai jamais un outil que ton équipe n'ouvrira plus."}],"meta":{"model":"simulation","ms":301,"mock":true}}
+HTTP 200 en 0.315791s
+### POST /api/ideas (thème invalide)
+{"error":{"code":"corps_invalide","message":"Demande invalide : le thème : du texte attendu."}}
+HTTP 400
+### GET /api/generations
+HTTP 405

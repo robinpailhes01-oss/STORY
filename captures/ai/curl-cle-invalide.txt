@@ -1,0 +1,5 @@
+## ANTHROPIC_API_KEY=sk-ant-cle-volontairement-fausse (vraie requête vers l'API), next start -p 3299
+### POST /api/generations
+{"error":{"code":"cle_invalide","message":"La clé API Anthropic est refusée. Vérifie ANTHROPIC_API_KEY dans .env.local (ou dans les variables Vercel), puis redémarre le serveur."}}
+HTTP 500 en 0.253516s
+(journal serveur : authentication_error « invalid x-api-key » ; la clé n'apparaît ni dans la réponse ni dans le journal)

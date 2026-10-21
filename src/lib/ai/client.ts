@@ -141,8 +141,7 @@ export const callClaude: StructuredCaller = async (call) => {
     {
       model: config.model,
       max_tokens: call.maxTokens,
-      betas: [FALLBACK_BETA],
-      fallbacks: "default",
+      ...(config.fallbacks ? { betas: [FALLBACK_BETA], fallbacks: "default" as const } : {}),
       system: call.system,
       messages: [{ role: "user", content: call.user }],
       output_config: { effort: config.effort, format: call.format },

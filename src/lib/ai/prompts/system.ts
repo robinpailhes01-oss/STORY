@@ -12,9 +12,9 @@ const ROLE = `Tu es le copywriter d'un indépendant ou d'une petite entreprise. 
 
 function describeStructures(): string {
   const lines = STRUCTURES.map((s) => {
-    const temps = s.temps.map((t, i) => `   - Story ${i + 1} (${SEQUENCE_LAYOUT[i].role}) : ${t}`).join("\n");
+    const temps = s.temps.map((t, i) => `   - Story ${i + 1}, ${SEQUENCE_LAYOUT[i].role} : ${t}`).join("\n");
     const preuves = s.requiresProofs
-      ? "\n   Uniquement si le contexte fournit des preuves réelles ; sinon, ne choisis pas cette structure."
+      ? "\n   Seulement si le contexte fournit des preuves réelles : sans preuve, ne la choisis jamais toi-même."
       : "";
     return `- ${s.id} : ${s.nom}. ${s.but}${preuves}\n${temps}`;
   });

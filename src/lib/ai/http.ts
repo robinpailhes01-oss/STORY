@@ -39,7 +39,24 @@ const FIELD_NAMES: Record<string, string> = {
   forbidden: "les mots interdits",
 };
 
-function describeIssue(issue: z.core.$ZodIssue): string {
+const TYPE_NAMES: Record<string, string> = {
+  string: "du texte",
+  array: "une liste",
+  object: "un objet",
+  number: "un nombre",
+  boolean: "vrai ou faux",
+};
+
+function valueAt(body: unknown, path: readonly PropertyKey[]): unknown {
+  let value = body;
+  for (const key of path) {
+    if (value === null || typeof value !== "object") return undefined;
+    value = (value as Record<PropertyKey, unknown>)[key];
+  }
+  return value;
+}
+
+function describeIssue(issue: z.core.$ZodIssue, body: unknown): string {
   const path = issue.path.map(String);
   const last = path.filter((p) => !/^\d+$/.test(p)).at(-1);
   const field = last ? (FIELD_NAMES[last] ?? `le champ « ${path.join(".")} »`) : "la demande";
@@ -53,7 +70,9 @@ function describeIssue(issue: z.core.$ZodIssue): string {
         ? `${field} : trop d'éléments (${issue.maximum} au plus)`
         : `${field} : trop long (${issue.maximum} caractères au plus)`;
     case "invalid_type":
-      return `${field} : type invalide (attendu : ${issue.expected})`;
+      return valueAt(body, issue.path) === undefined
+        ? `${field} : champ manquant`
+        : `${field} : ${TYPE_NAMES[issue.expected] ?? issue.expected} attendu`;
     case "invalid_value":
       return `${field} : valeur non autorisée (${issue.values.map(String).join(", ")})`;
     default:
@@ -65,7 +84,7 @@ function describeIssue(issue: z.core.$ZodIssue): string {
 export function parseBody<S extends z.ZodType>(schema: S, body: unknown): z.infer<S> {
   const result = schema.safeParse(body);
   if (result.success) return result.data;
-  const details = result.error.issues.slice(0, 3).map(describeIssue).join(" ; ");
+  const details = result.error.issues.slice(0, 3).map((issue) => describeIssue(issue, body)).join(" ; ");
   throw new AiError("corps_invalide", 400, `Demande invalide : ${details}.`);
 }
 
