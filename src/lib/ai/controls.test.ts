@@ -107,12 +107,71 @@ describe("contenu", () => {
     expect(issue?.message).toContain("12");
   });
 
-  it("accepte un chiffre présent dans les preuves", () => {
-    const plan = clone();
-    plan.stories[1].paragraphs[1].text = "Un client a récupéré 4 devis le premier mois.";
-    plan.stories[1].paragraphs[1].accents = [];
-    const input = { ...INPUT, context: { ...DEFAULT_CONTEXT, proofs: ["Un client a récupéré 4 devis le premier mois."] } };
-    expect(codes(runControls(plan, input).report.issues)).not.toContain("chiffre_invente");
+  describe("preuves citées (proofIds)", () => {
+    const PROOFS = ["Un client a récupéré 4 devis le premier mois.", "Chez Harmonie Yacht : 3 h gagnées chaque jour."];
+    const input = { ...INPUT, context: { ...DEFAULT_CONTEXT, proofs: PROOFS } };
+    const withNumber = (text: string, proofIds?: string[]) => {
+      const plan = clone();
+      plan.stories[1].paragraphs[1] = { text, accents: [], ...(proofIds ? { proofIds } : {}) };
+      return runControls(plan, input);
+    };
+
+    it("accepte un chiffre qui figure dans la preuve citée", () => {
+      const { report, plan } = withNumber("Un client a récupéré 4 devis le premier mois.", ["p1"]);
+      expect(blocking(report.issues)).toEqual([]);
+      expect(plan.stories[1].paragraphs[1].proofIds).toEqual(["p1"]);
+      expect(withNumber("Résultat chez Harmonie Yacht : 3 h gagnées chaque jour !", ["p2"]).report.ok).toBe(true);
+    });
+
+    it("normalise l'écriture des identifiants (P1, [p1], doublons)", () => {
+      const { report, plan } = withNumber("Un client a récupéré 4 devis le premier mois.", ["P1", "[p1]"]);
+      expect(plan.stories[1].paragraphs[1].proofIds).toEqual(["p1"]);
+      expect(report.ok).toBe(true);
+    });
+
+    it("bloque un chiffre tiré d'une preuve sans proofIds", () => {
+      const issue = withNumber("Un client a récupéré 4 devis le premier mois.").report.issues.find((i) => i.code === "preuve_non_citee");
+      expect(issue).toMatchObject({ story: 1, severity: "bloquant" });
+      expect(issue?.message).toContain("p1");
+    });
+
+    it("bloque un chiffre absent de la preuve citée", () => {
+      const issue = withNumber("Un client a récupéré 4 devis le premier mois.", ["p2"]).report.issues.find((i) => i.code === "chiffre_hors_preuve");
+      expect(issue).toMatchObject({ story: 1, severity: "bloquant" });
+      expect(issue?.message).toContain("il vient de p1");
+      expect(codes(withNumber("Résultat : 7 h gagnées chaque jour.", ["p2"]).report.issues)).toContain("chiffre_hors_preuve");
+    });
+
+    it("bloque un identifiant de preuve inconnu ou illisible", () => {
+      const unknown = withNumber("Un client a récupéré 4 devis le premier mois.", ["p1", "p3"]).report;
+      expect(unknown.issues.find((i) => i.code === "preuve_inconnue")).toMatchObject({ story: 1, severity: "bloquant" });
+      expect(unknown.ok).toBe(false);
+      const sansPreuve = runControls(
+        (() => {
+          const plan = clone();
+          plan.stories[1].paragraphs[1].proofIds = ["p1"];
+          return plan;
+        })(),
+        { ...INPUT, context: { ...DEFAULT_CONTEXT, proofs: [] } },
+      ).report;
+      expect(sansPreuve.issues.find((i) => i.code === "preuve_inconnue")?.message).toContain("aucune");
+      const illisible = withNumber("Sans chiffre.", ["preuve un"]);
+      expect(codes(illisible.report.issues)).toContain("preuve_inconnue");
+      expect(illisible.plan.stories[1].paragraphs[1].proofIds).toBeUndefined();
+    });
+
+    it("un chiffre de l'idée ou du profil n'exige pas de preuve", () => {
+      const plan = clone();
+      plan.stories[1].paragraphs[1] = { text: "En 2 semaines, c'est en place.", accents: [] };
+      expect(runControls(plan, { ...input, idea: "Mettre en place un agent en 2 semaines" }).report.ok).toBe(true);
+    });
+
+    it("les exemples de voix ne sont jamais une source de chiffres", () => {
+      const plan = clone();
+      plan.stories[1].paragraphs[1] = { text: "Ça m'a pris 9 jours.", accents: [] };
+      const voice = { ...input, context: { ...input.context, voiceExamples: ["Ça m'a pris 9 jours."] } };
+      expect(codes(runControls(plan, voice).report.issues)).toContain("chiffre_invente");
+    });
   });
 
   it("bloque un mot interdit, sans tenir compte de la casse ni des accents", () => {
@@ -206,6 +265,38 @@ describe("mode texte", () => {
     plan.stories[4].paragraphs[0].text = "d'un coup. Vraiment.";
     const input: ControlInput = { ...INPUT, mode: "texte", idea: AUTHOR };
     expect(codes(runControls(plan, input).report.issues)).toContain("mots_modifies");
+  });
+
+  it("détecte une phrase coupée entre deux paragraphes ou deux stories (bloquant)", () => {
+    const input: ControlInput = { ...INPUT, mode: "texte", idea: AUTHOR };
+    const issues = runControls(splitAuthorText(), input).report.issues.filter((i) => i.code === "phrase_coupee");
+    expect(issues.length).toBeGreaterThan(0);
+    expect(issues[0]).toMatchObject({ story: 0, severity: "bloquant" });
+    expect(issues[0].message).toContain("Chaque tâche que tu répètes");
+    // Pas en mode idée.
+    expect(codes(runControls(splitAuthorText(), INPUT).report.issues)).not.toContain("phrase_coupee");
+  });
+
+  it("accepte une découpe aux fins de phrase (point, parenthèse fermante, fin du texte, retour à la ligne de l'auteur)", () => {
+    const plan = clone();
+    const parts = [
+      ["Chaque tâche que tu répètes peut devenir un automatisme géré sans toi."],
+      ["(Le vrai travail, c'est de repérer laquelle en premier)"],
+      ["Celle qui revient le plus souvent,"],
+      ["pas celle qui prend le plus de temps"],
+      ["d'un coup"],
+    ];
+    plan.stories = plan.stories.map((story, i) => ({ role: story.role, paragraphs: parts[i].map((text) => ({ text, accents: [] })) }));
+    // L'auteur a lui-même passé des lignes après « souvent, » et « temps », et finit sans point.
+    const author =
+      "Chaque tâche que tu répètes peut devenir un automatisme géré sans toi. (Le vrai travail, c'est de repérer laquelle en premier) Celle qui revient le plus souvent,\npas celle qui prend le plus de temps\nd'un coup";
+    const input: ControlInput = { ...INPUT, mode: "texte", idea: author };
+    const issues = runControls(plan, input).report.issues;
+    expect(codes(issues)).not.toContain("phrase_coupee");
+    expect(codes(issues)).not.toContain("mots_modifies");
+    // Sans ces retours à la ligne, les mêmes coupes sont des phrases coupées.
+    const flat = runControls(plan, { ...input, idea: author.replace(/\n/g, " ") }).report.issues;
+    expect(flat.filter((i) => i.code === "phrase_coupee").map((i) => i.story)).toEqual([2, 3]);
   });
 
   it("normalise les mots", () => {

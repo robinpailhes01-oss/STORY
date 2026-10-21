@@ -2,9 +2,17 @@
 // pour que l'interface montre son état de chargement. Les contrôles réels sont appliqués.
 import "server-only";
 import { EXAMPLE_PLAN } from "@/domain/example-plan";
-import type { GenerateRequest, GenerateResponse, IdeaSuggestion, IdeasResponse } from "@/domain/story-plan";
+import type {
+  GenerateRequest,
+  GenerateResponse,
+  IdeaSuggestion,
+  IdeasResponse,
+  PlanStory,
+  RewriteStoryRequest,
+} from "@/domain/story-plan";
 import { runControls } from "./controls";
-import { METHODE_VERSION } from "./prompts/methode.v1";
+import { METHODE_VERSION } from "./prompts/methode.v2";
+import { assembleRewrite, assertRewritable, finalizeRewrite } from "./rewrite";
 
 export const MOCK_MODEL = "simulation";
 export const MOCK_DELAY_MS = 300;
@@ -47,6 +55,71 @@ export async function mockGeneratePlan(request: GenerateRequest): Promise<Genera
   return {
     plan,
     controls: report,
+    meta: { model: MOCK_MODEL, ms: Date.now() - started, repaired: false, mock: true, methodVersion: METHODE_VERSION },
+  };
+}
+
+/**
+ * Variantes de « Refaire cette story » en mode simulé : pour chaque story de EXAMPLE_PLAN, la même idée
+ * dite autrement (mêmes rôles, mêmes limites, aucun chiffre). Une deuxième demande revient à l'original.
+ */
+export const MOCK_REWRITES: readonly PlanStory[] = [
+  {
+    role: "accroche",
+    paragraphs: [
+      { text: "Écrire plus vite avec l'IA, tout le monde le fait. L'argent est ailleurs.", accents: ["L'argent est ailleurs."] },
+    ],
+  },
+  {
+    role: "reconnaissance",
+    paragraphs: [
+      { text: "Ta légende Instagram, tu la fais déjà écrire par l'IA ?", accents: [] },
+      { text: "Quelques minutes de gagnées. C'est tout.", accents: ["Quelques minutes"] },
+      { text: "Pendant ce temps, une autre tâche te prend des heures chaque semaine.", accents: ["des heures chaque semaine."] },
+    ],
+  },
+  {
+    role: "liste et cliffhanger",
+    paragraphs: [
+      { text: "Le temps perdu se cache dans ce que tu refais sans y penser.", accents: ["sans y penser."] },
+      { text: "Répondre aux mêmes questions. Relancer les devis oubliés. Trier les mails du matin.", accents: ["Répondre", "Relancer"] },
+      { text: "Et le plus gros gain n'est même pas là :", accents: [] },
+    ],
+  },
+  {
+    role: "bascule",
+    paragraphs: [
+      { text: "Tout ce que tu répètes peut tourner tout seul, sans toi.", accents: ["tourner tout seul,"] },
+      { text: "(Le plus dur, c'est de choisir par laquelle commencer)", accents: [] },
+      { text: "Prends celle qui revient le plus souvent, pas la plus longue.", accents: ["revient le plus souvent,"] },
+    ],
+  },
+  {
+    role: "appel à l'action",
+    paragraphs: [
+      { text: "Cette semaine, note une seule tâche que tu refais sans réfléchir.", accents: ["une seule tâche"] },
+      { text: "C'est par elle qu'on commence.", accents: [] },
+      { text: "Partenaire IA des PME à Montpellier : un audit est offert pour en discuter.", accents: ["audit est offert"] },
+    ],
+  },
+];
+
+/** Story refaite en mode simulé : la variante, ou l'original de EXAMPLE_PLAN si la variante est déjà affichée. */
+export function mockRewrittenStory(request: RewriteStoryRequest): PlanStory {
+  const variant = MOCK_REWRITES[request.storyIndex];
+  const current = request.plan.stories[request.storyIndex];
+  const same = JSON.stringify(current) === JSON.stringify(variant);
+  return structuredClone(same ? EXAMPLE_PLAN.stories[request.storyIndex] : variant);
+}
+
+export async function mockRewriteStory(request: RewriteStoryRequest): Promise<GenerateResponse> {
+  assertRewritable(request);
+  const started = Date.now();
+  await sleep(MOCK_DELAY_MS);
+  const attempt = assembleRewrite(request, mockRewrittenStory(request));
+  return {
+    plan: finalizeRewrite(request, attempt),
+    controls: attempt.report,
     meta: { model: MOCK_MODEL, ms: Date.now() - started, repaired: false, mock: true, methodVersion: METHODE_VERSION },
   };
 }

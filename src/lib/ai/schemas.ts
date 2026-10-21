@@ -9,11 +9,17 @@
 import "server-only";
 import { z } from "zod";
 import { STRUCTURE_IDS } from "@/domain/structures";
-import { STORY_COUNT, type StoryPlan } from "@/domain/story-plan";
+import { STORY_COUNT, type Paragraph, type PlanStory, type StoryPlan } from "@/domain/story-plan";
 
 // Relecture de la réponse du modèle (même forme que les JSON Schema plus bas).
-const ModelParagraphSchema = z.object({ text: z.string(), accents: z.array(z.string()) });
-const ModelStorySchema = z.object({ role: z.string(), paragraphs: z.array(ModelParagraphSchema) });
+// proofIds est toujours demandé (liste vide si aucune preuve) mais toléré absent à la relecture.
+const ModelParagraphSchema = z.object({
+  text: z.string(),
+  accents: z.array(z.string()),
+  proofIds: z.array(z.string()).optional(),
+});
+export const ModelStorySchema = z.object({ role: z.string(), paragraphs: z.array(ModelParagraphSchema) });
+export type ModelStory = z.infer<typeof ModelStorySchema>;
 
 export const STORY_KEYS = ["story1", "story2", "story3", "story4", "story5"] as const;
 if (STORY_KEYS.length !== STORY_COUNT) throw new Error("STORY_KEYS doit suivre STORY_COUNT.");
@@ -50,11 +56,19 @@ const object = (properties: Record<string, unknown>, description?: string) => ({
   additionalProperties: false,
 });
 
+// proofIds figure dans `required` (le décodage contraint oblige le modèle à se poser la question à chaque
+// paragraphe) mais reste facultatif dans les faits : une liste vide signifie « aucune preuve citée ».
 const paragraphJson = object({
   text: text("Texte brut du paragraphe, sans balisage. 140 caractères au plus."),
   accents: {
     type: "array",
     description: "0 à 3 expressions de 1 à 5 mots, recopiées exactement depuis text.",
+    items: { type: "string" },
+  },
+  proofIds: {
+    type: "array",
+    description:
+      "Identifiants des preuves du contexte citées par ce paragraphe (« p1 », « p2 »…), obligatoires dès qu'il cite un chiffre, une durée, un montant, un client ou un résultat tirés d'une preuve. Liste vide sinon.",
     items: { type: "string" },
   },
 });
@@ -91,6 +105,12 @@ export const PLAN_OUTPUT_FORMAT: JsonOutputFormat = {
   }),
 };
 
+/** Format de sortie d'une seule story (« Refaire cette story »). */
+export const STORY_OUTPUT_FORMAT: JsonOutputFormat = {
+  type: "json_schema",
+  schema: storyJson("La nouvelle version de la story demandée, et elle seule."),
+};
+
 /** Format de sortie des idées (output_config.format). */
 export const IDEAS_OUTPUT_FORMAT: JsonOutputFormat = {
   type: "json_schema",
@@ -108,27 +128,44 @@ export const IDEAS_OUTPUT_FORMAT: JsonOutputFormat = {
   }),
 };
 
+/** Story au format du modèle → PlanStory (proofIds omis quand la liste est vide). */
+export function toPlanStory(story: ModelStory): PlanStory {
+  return {
+    role: story.role.trim(),
+    paragraphs: story.paragraphs
+      .map((p): Paragraph => {
+        const proofIds = (p.proofIds ?? []).map((id) => id.trim()).filter(Boolean);
+        return {
+          text: p.text.trim(),
+          accents: p.accents.map((a) => a.trim()).filter(Boolean),
+          ...(proofIds.length ? { proofIds } : {}),
+        };
+      })
+      .filter((p) => p.text.length > 0),
+  };
+}
+
 /** Plan au format du modèle → StoryPlan (sans validation : elle vient après les contrôles). */
 export function toStoryPlan(raw: ModelPlan): StoryPlan {
   return {
     schemaVersion: 1,
     structureId: raw.structureId,
     angle: raw.angle.trim(),
-    stories: STORY_KEYS.map((key) => {
-      const story = raw.stories[key];
-      return {
-        role: story.role.trim(),
-        paragraphs: story.paragraphs
-          .map((p) => ({ text: p.text.trim(), accents: p.accents.map((a) => a.trim()).filter(Boolean) }))
-          .filter((p) => p.text.length > 0),
-      };
-    }),
+    stories: STORY_KEYS.map((key) => toPlanStory(raw.stories[key])),
   };
 }
 
-/** StoryPlan → format du modèle (exemple de ton, plan à corriger). */
+/** PlanStory → format du modèle (proofIds toujours présent, comme dans le schéma de sortie). */
+export function toModelStory(story: PlanStory): ModelStory {
+  return {
+    role: story.role,
+    paragraphs: story.paragraphs.map((p) => ({ text: p.text, accents: [...p.accents], proofIds: [...(p.proofIds ?? [])] })),
+  };
+}
+
+/** StoryPlan → format du modèle (exemple de ton, plan à corriger, séquence actuelle). */
 export function toModelPlan(plan: StoryPlan): ModelPlan {
-  const entries = STORY_KEYS.map((key, i) => [key, plan.stories[i]] as const);
+  const entries = STORY_KEYS.map((key, i) => [key, toModelStory(plan.stories[i])] as const);
   return {
     structureId: plan.structureId as ModelPlan["structureId"],
     angle: plan.angle,

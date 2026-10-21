@@ -4,16 +4,19 @@
 import "server-only";
 import {
   accentRanges,
+  proofId,
   SEQUENCE_LAYOUT,
   type ControlIssue,
   type ControlReport,
   type GenerateRequest,
   type Paragraph,
+  type PlanStory,
   type StoryPlan,
 } from "@/domain/story-plan";
 import { isStructureId } from "@/domain/structures";
 import { splitAvoid } from "./messages";
-import { LIMITES } from "./prompts/methode.v1";
+import { LIMITES } from "./prompts/methode.v2";
+import { endsSentence } from "./text-rules";
 
 export type ControlInput = Pick<GenerateRequest, "idea" | "mode" | "context" | "structureId" | "avoid">;
 
@@ -81,55 +84,97 @@ interface FixResult {
   issues: ControlIssue[];
 }
 
+const PROOF_IDS_MAX = 3;
+
+/**
+ * Identifiants de preuves : « P1 », « [p1] », « p01 » → « p1 », sans doublon, 3 au plus. Un identifiant
+ * illisible est retiré et signalé comme bloquant (le chiffre qu'il devait justifier est alors contrôlé).
+ */
+function fixProofIds(raw: readonly string[] | undefined, story: number, issues: ControlIssue[]): string[] {
+  const ids: string[] = [];
+  for (const value of raw ?? []) {
+    const match = /^\s*\[?\s*p\s*0*(\d{1,2})\s*\]?\s*$/i.exec(value);
+    if (!match) {
+      issues.push({
+        story,
+        code: "preuve_inconnue",
+        severity: "bloquant",
+        message: `Référence de preuve illisible « ${value} » : les preuves se citent par leur identifiant (p1, p2…).`,
+      });
+      continue;
+    }
+    const id = `p${Number(match[1])}`;
+    if (!ids.includes(id)) ids.push(id);
+  }
+  if (ids.length > PROOF_IDS_MAX) {
+    issues.push({
+      story,
+      code: "preuves_en_trop",
+      severity: "conseil",
+      message: `Un paragraphe cite ${PROOF_IDS_MAX} preuves au plus : les dernières ont été retirées.`,
+    });
+  }
+  return ids.slice(0, PROOF_IDS_MAX);
+}
+
+/** Corrections sans changement de sens d'UNE story (index `s`) : accents, preuves citées, rôle. */
+export function fixStory(story: PlanStory, s: number): { story: PlanStory; issues: ControlIssue[] } {
+  const issues: ControlIssue[] = [];
+  const conseil = (code: string, message: string) => issues.push({ story: s, code, message, severity: "conseil" });
+  let budget: number = LIMITES.accentsParStory.max;
+  const paragraphs = story.paragraphs
+    .map((p) => ({
+      text: p.text.trim(),
+      accents: p.accents.map((a) => a.trim()).filter(Boolean),
+      proofIds: fixProofIds(p.proofIds, s, issues),
+    }))
+    .filter((p) => p.text.length > 0)
+    .map((p): Paragraph => {
+      const found: string[] = [];
+      for (const accent of p.accents) {
+        const exact = exactAccent(p.text, accent);
+        if (exact === null) {
+          conseil("accent_introuvable", `Mot mis en valeur retiré : « ${accent} » n'apparaît pas tel quel dans le texte.`);
+        } else found.push(exact);
+      }
+      // Doublons et chevauchements : accentRanges ne garde que des occurrences distinctes.
+      const { missing } = accentRanges(p.text, found, normalizeApostrophes);
+      const unique = found.filter((a) => {
+        const i = missing.indexOf(a);
+        if (i === -1) return true;
+        missing.splice(i, 1);
+        return false;
+      });
+      if (unique.length < found.length) {
+        conseil("accent_double", "Mot mis en valeur en double ou chevauchant un autre : retiré.");
+      }
+      // Ordre de lecture, puis plafonds par paragraphe et par story.
+      const ordered = unique
+        .map((a) => ({ a, at: accentRanges(p.text, [a], normalizeApostrophes).ranges[0]?.start ?? 0 }))
+        .sort((x, y) => x.at - y.at)
+        .map((x) => x.a);
+      const kept = ordered.slice(0, Math.max(0, Math.min(ACCENTS_PAR_PARAGRAPHE, budget)));
+      budget -= kept.length;
+      if (kept.length < ordered.length) {
+        conseil(
+          "accents_en_trop",
+          `Trop de mots mis en valeur : ${LIMITES.accentsParStory.max} au plus par story, les derniers ont été retirés.`,
+        );
+      }
+      // proofIds n'apparaît que s'il cite au moins une preuve (contrat : champ facultatif).
+      return { text: p.text, accents: kept, ...(p.proofIds.length ? { proofIds: p.proofIds } : {}) };
+    });
+  const role = clip(story.role.trim() || SEQUENCE_LAYOUT[s]?.role || "story", ROLE_MAX);
+  return { story: { role, paragraphs }, issues };
+}
+
 function fixPlan(input: StoryPlan): FixResult {
   const issues: ControlIssue[] = [];
-  const conseil = (story: number | null, code: string, message: string) =>
-    issues.push({ story, code, message, severity: "conseil" });
-
   const stories = input.stories.map((story, s) => {
-    let budget: number = LIMITES.accentsParStory.max;
-    const paragraphs = story.paragraphs
-      .map((p) => ({ text: p.text.trim(), accents: p.accents.map((a) => a.trim()).filter(Boolean) }))
-      .filter((p) => p.text.length > 0)
-      .map((p) => {
-        const found: string[] = [];
-        for (const accent of p.accents) {
-          const exact = exactAccent(p.text, accent);
-          if (exact === null) {
-            conseil(s, "accent_introuvable", `Mot mis en valeur retiré : « ${accent} » n'apparaît pas tel quel dans le texte.`);
-          } else found.push(exact);
-        }
-        // Doublons et chevauchements : accentRanges ne garde que des occurrences distinctes.
-        const { missing } = accentRanges(p.text, found, normalizeApostrophes);
-        const unique = found.filter((a) => {
-          const i = missing.indexOf(a);
-          if (i === -1) return true;
-          missing.splice(i, 1);
-          return false;
-        });
-        if (unique.length < found.length) {
-          conseil(s, "accent_double", "Mot mis en valeur en double ou chevauchant un autre : retiré.");
-        }
-        // Ordre de lecture, puis plafonds par paragraphe et par story.
-        const ordered = unique
-          .map((a) => ({ a, at: accentRanges(p.text, [a], normalizeApostrophes).ranges[0]?.start ?? 0 }))
-          .sort((x, y) => x.at - y.at)
-          .map((x) => x.a);
-        const kept = ordered.slice(0, Math.max(0, Math.min(ACCENTS_PAR_PARAGRAPHE, budget)));
-        budget -= kept.length;
-        if (kept.length < ordered.length) {
-          conseil(
-            s,
-            "accents_en_trop",
-            `Trop de mots mis en valeur : ${LIMITES.accentsParStory.max} au plus par story, les derniers ont été retirés.`,
-          );
-        }
-        return { text: p.text, accents: kept };
-      });
-    const role = clip(story.role.trim() || SEQUENCE_LAYOUT[s]?.role || "story", ROLE_MAX);
-    return { role, paragraphs };
+    const fixed = fixStory(story, s);
+    issues.push(...fixed.issues);
+    return fixed.story;
   });
-
   const angle = clip(input.angle.trim() || stories[0]?.paragraphs[0]?.text || "Séquence", ANGLE_MAX);
   return { plan: { ...input, angle, stories }, issues };
 }
@@ -245,11 +290,19 @@ function check(plan: StoryPlan, input: ControlInput): ControlIssue[] {
 
   // Contenu : mots interdits, chiffres inventés, emojis, markdown.
   const forbidden = [...input.context.forbidden, ...BANNED_BY_METHOD];
-  const sourceLoose = normalizeLoose(
-    [input.idea, input.context.name, input.context.activity, input.context.offer, input.context.target, input.context.cta, input.context.tone, ...input.context.proofs].join(" \n "),
-  );
-  const sourceNumbers = new Set(numbersOf([input.idea, input.context.name, input.context.activity, input.context.offer, input.context.target, input.context.cta, ...input.context.proofs].join(" \n ")));
-  const allowEmoji = emojisAllowed(input.context.tone);
+  const { context } = input;
+  // Sources libres de chiffres : l'idée et le profil. Les preuves, elles, doivent être citées (proofIds).
+  // Les exemples de voix n'en sont jamais une source : ce sont des exemples de ton.
+  const freeSource = [input.idea, context.name, context.handle, context.bio, context.activity, context.offer, context.target, context.cta].join(" \n ");
+  const sourceLoose = normalizeLoose([freeSource, context.tone, ...context.proofs].join(" \n "));
+  const freeNumbers = new Set(numbersOf(freeSource));
+  const proofNumbers = context.proofs.map((p) => new Set(numbersOf(p)));
+  const proofIndex = (id: string) => {
+    const index = context.proofs.findIndex((_, i) => proofId(i) === id);
+    return index === -1 ? null : index;
+  };
+  const knownIds = context.proofs.length ? `p1 à ${proofId(context.proofs.length - 1)}` : "aucune";
+  const allowEmoji = emojisAllowed(context.tone);
 
   plan.stories.forEach((story, s) => {
     const textLoose = normalizeLoose(story.paragraphs.map((p) => p.text).join(" \n "));
@@ -260,12 +313,36 @@ function check(plan: StoryPlan, input: ControlInput): ControlIssue[] {
       reported.add(key);
       add(s, "mot_interdit", ideeOnly, `Mot interdit : « ${term} ».`);
     }
-    const invented = [...new Set(story.paragraphs.flatMap((p) => numbersOf(p.text)))].filter((n) => !sourceNumbers.has(n));
-    if (invented.length) {
-      add(s, "chiffre_invente", ideeOnly, `Chiffre absent de l'idée, du contexte et des preuves : ${invented.join(", ")}. Aucun chiffre ne doit être inventé.`);
+
+    // Chiffres et preuves, paragraphe par paragraphe.
+    const invented = new Set<string>();
+    story.paragraphs.forEach((p, i) => {
+      const ids = p.proofIds ?? [];
+      const unknown = ids.filter((id) => proofIndex(id) === null);
+      if (unknown.length) {
+        add(s, "preuve_inconnue", "bloquant", `Paragraphe ${i + 1} : preuve ${unknown.join(", ")} inconnue (preuves du contexte : ${knownIds}).`);
+      }
+      const cited = ids.map(proofIndex).filter((index): index is number => index !== null);
+      for (const n of new Set(numbersOf(p.text))) {
+        if (freeNumbers.has(n) || cited.some((index) => proofNumbers[index].has(n))) continue;
+        const origin = proofNumbers.findIndex((numbers) => numbers.has(n));
+        if (cited.length) {
+          add(
+            s,
+            "chiffre_hors_preuve",
+            "bloquant",
+            `Paragraphe ${i + 1} : le chiffre ${n} ne figure pas dans la preuve citée (${cited.map(proofId).join(", ")})${origin === -1 ? "" : ` ; il vient de ${proofId(origin)}`}.`,
+          );
+        } else if (origin !== -1) {
+          add(s, "preuve_non_citee", "bloquant", `Paragraphe ${i + 1} : le chiffre ${n} vient de la preuve ${proofId(origin)}, qui doit être indiquée dans proofIds.`);
+        } else invented.add(n);
+      }
+    });
+    if (invented.size) {
+      add(s, "chiffre_invente", "bloquant", `Chiffre absent de l'idée, du contexte et des preuves : ${[...invented].join(", ")}. Aucun chiffre ne doit être inventé.`);
     }
     if (/\bpour ?cent\b/.test(textLoose) && !/\bpour ?cent\b/.test(sourceLoose)) {
-      add(s, "chiffre_invente", ideeOnly, "Pourcentage absent de l'idée, du contexte et des preuves.");
+      add(s, "chiffre_invente", "bloquant", "Pourcentage absent de l'idée, du contexte et des preuves.");
     }
     if (!allowEmoji && story.paragraphs.some((p) => EMOJI.test(p.text))) {
       add(s, "emoji", ideeOnly, "Emoji présent alors que le ton du contexte ne les demande pas.");
@@ -299,8 +376,41 @@ function check(plan: StoryPlan, input: ControlInput): ControlIssue[] {
         `Le texte de l'auteur n'est pas conservé mot pour mot à partir du mot ${diff + 1} : attendu « ${excerpt(expected)} », trouvé « ${excerpt(actual)} ».`,
       );
     }
+    issues.push(...cutSentences(plan, input.idea));
   }
 
+  return issues;
+}
+
+/**
+ * Mode texte : un paragraphe doit finir sur une fin de phrase. Exceptions justifiées : la fin du texte
+ * de l'auteur, et un retour à la ligne qu'il a lui-même placé à cet endroit (titre, ligne sans point).
+ */
+function cutSentences(plan: StoryPlan, authorText: string): ControlIssue[] {
+  const issues: ControlIssue[] = [];
+  const total = wordsOf(authorText).length;
+  const breaks = new Set<number>();
+  let count = 0;
+  for (const line of authorText.split(/\n+/)) {
+    count += wordsOf(line).length;
+    breaks.add(count);
+  }
+  let seen = 0;
+  plan.stories.forEach((story, s) => {
+    story.paragraphs.forEach((p, i) => {
+      const words = wordsOf(p.text);
+      seen += words.length;
+      if (endsSentence(p.text) || seen >= total || breaks.has(seen)) return;
+      const tokens = p.text.split(/\s+/);
+      const excerpt = tokens.length <= 6 ? p.text : `…${tokens.slice(-5).join(" ")}`;
+      issues.push({
+        story: s,
+        code: "phrase_coupee",
+        severity: "bloquant",
+        message: `Paragraphe ${i + 1} : il s'arrête au milieu d'une phrase (« ${excerpt} »). En mode texte, chaque paragraphe se termine à la fin d'une phrase (. ! ? … : ou parenthèse fermante).`,
+      });
+    });
+  });
   return issues;
 }
 
@@ -312,10 +422,19 @@ function firstDifference(a: readonly string[], b: readonly string[]): number {
 
 export const isBlocking = (issue: ControlIssue) => issue.severity !== "conseil";
 
+/** Rapport trié (bloquants d'abord, puis par story). `ok` = aucun problème bloquant. */
+export function toReport(issues: ControlIssue[]): ControlReport {
+  const sorted = [...issues].sort((x, y) => Number(isBlocking(y)) - Number(isBlocking(x)) || (x.story ?? -1) - (y.story ?? -1));
+  return { ok: !sorted.some(isBlocking), issues: sorted };
+}
+
+/** Contrôles seuls, sans correction (le plan est lu tel quel). */
+export function checkPlan(plan: StoryPlan, input: ControlInput): ControlIssue[] {
+  return check(plan, input);
+}
+
 /** Corrige ce qui peut l'être sans changer le sens, puis contrôle. `ok` = aucun problème bloquant. */
 export function runControls(plan: StoryPlan, input: ControlInput): { plan: StoryPlan; report: ControlReport } {
   const fixed = fixPlan(plan);
-  const issues = [...check(fixed.plan, input), ...fixed.issues];
-  issues.sort((x, y) => Number(isBlocking(y)) - Number(isBlocking(x)) || (x.story ?? -1) - (y.story ?? -1));
-  return { plan: fixed.plan, report: { ok: !issues.some(isBlocking), issues } };
+  return { plan: fixed.plan, report: toReport([...check(fixed.plan, input), ...fixed.issues]) };
 }

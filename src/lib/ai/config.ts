@@ -13,6 +13,8 @@ export const MAX_RETRIES = 2;
 /** Plafond de sortie d'un appel non streamé (réflexion comprise). */
 export const MAX_TOKENS_PLAN = 16_000;
 export const MAX_TOKENS_IDEAS = 8_000;
+/** « Refaire cette story » : une seule story en sortie. */
+export const MAX_TOKENS_STORY = 8_000;
 /** Budget total d'une requête HTTP (génération + réparation), sous le maxDuration des routes (120 s). */
 export const REQUEST_DEADLINE_MS = 110_000;
 /** Temps minimal restant pour tenter la réparation. */

@@ -15,8 +15,9 @@ import { isBlocking, runControls } from "./controls";
 import { AiError } from "./errors";
 import { buildGenerateUserText, buildRepairUserText, buildSystem } from "./messages";
 import { addUsage } from "./pricing";
-import { METHODE_VERSION } from "./prompts/methode.v1";
+import { METHODE_VERSION } from "./prompts/methode.v2";
 import { ModelPlanSchema, PLAN_OUTPUT_FORMAT, toStoryPlan } from "./schemas";
+import { assertTextUsable } from "./text-rules";
 
 export interface GenerateOptions {
   /** Appel au modèle (par défaut : Claude). Injectable pour les tests et l'évaluation. */
@@ -55,6 +56,8 @@ const score = (report: ControlReport) =>
   report.issues.filter(isBlocking).length * 100 + report.issues.filter((i) => !isBlocking(i)).length;
 
 export async function generatePlan(request: GenerateRequest, options: GenerateOptions = {}): Promise<GenerateResponse> {
+  // Texte trop court en mode texte : 400 avant tout appel (aussi vérifié par la route).
+  assertTextUsable(request);
   const caller = options.caller ?? callClaude;
   const started = Date.now();
   const deadline = started + (options.deadlineMs ?? REQUEST_DEADLINE_MS);

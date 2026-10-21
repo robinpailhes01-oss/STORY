@@ -9,6 +9,8 @@ export interface RateLimit {
 
 export const GENERATIONS_LIMIT: RateLimit = { limit: 20, windowMs: 10 * 60_000 };
 export const IDEAS_LIMIT: RateLimit = { limit: 30, windowMs: 10 * 60_000 };
+/** « Refaire cette story » : un appel plus court qu'une séquence, on en autorise un peu plus. */
+export const REWRITES_LIMIT: RateLimit = { limit: 30, windowMs: 10 * 60_000 };
 
 const buckets = new Map<string, number[]>();
 

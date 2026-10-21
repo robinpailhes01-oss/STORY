@@ -37,6 +37,15 @@ const FIELD_NAMES: Record<string, string> = {
   theme: "le thème",
   proofs: "les preuves",
   forbidden: "les mots interdits",
+  handle: "l'identifiant Instagram",
+  bio: "la bio",
+  voiceExamples: "les exemples de ta voix",
+  plan: "la séquence",
+  stories: "les stories",
+  paragraphs: "les paragraphes",
+  proofIds: "les preuves citées",
+  storyIndex: "le numéro de story",
+  instruction: "la consigne",
 };
 
 const TYPE_NAMES: Record<string, string> = {
@@ -62,10 +71,12 @@ function describeIssue(issue: z.core.$ZodIssue, body: unknown): string {
   const field = last ? (FIELD_NAMES[last] ?? `le champ « ${path.join(".")} »`) : "la demande";
   switch (issue.code) {
     case "too_small":
+      if (issue.origin === "number") return `${field} : valeur trop petite (au moins ${issue.minimum})`;
       return issue.origin === "array"
         ? `${field} : pas assez d'éléments (au moins ${issue.minimum})`
         : `${field} : trop court (au moins ${issue.minimum} caractères)`;
     case "too_big":
+      if (issue.origin === "number") return `${field} : valeur trop grande (${issue.maximum} au plus)`;
       return issue.origin === "array"
         ? `${field} : trop d'éléments (${issue.maximum} au plus)`
         : `${field} : trop long (${issue.maximum} caractères au plus)`;

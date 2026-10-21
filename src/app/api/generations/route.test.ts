@@ -49,12 +49,35 @@ describe("POST /api/generations, mode simulé", () => {
     expect(body.controls.issues.some((i) => i.code === "mot_interdit")).toBe(true);
   });
 
-  it("400 : idée absente, avec un message en français", async () => {
-    const res = await post({ context: DEFAULT_CONTEXT });
+  it("200 : idée vide ou absente en mode idée (l'IA part du profil)", async () => {
+    for (const body of [{ context: DEFAULT_CONTEXT }, { idea: "", context: DEFAULT_CONTEXT }, {}]) {
+      const res = await post(body);
+      expect(res.status).toBe(200);
+      expect(((await res.json()) as GenerateResponse).controls.ok).toBe(true);
+    }
+  });
+
+  it("400 : idée d'un type invalide, avec un message en français", async () => {
+    const res = await post({ idea: 42, context: DEFAULT_CONTEXT });
     expect(res.status).toBe(400);
     const body = (await res.json()) as ApiError;
     expect(body.error.code).toBe("corps_invalide");
     expect(body.error.message).toContain("l'idée");
+  });
+
+  it("400 texte_trop_court : mode texte vide ou trop court pour 5 stories, avec la marche à suivre", async () => {
+    for (const idea of ["", "Chaque tâche se répète. Elle peut tourner seule. Commence par la plus fréquente."]) {
+      const res = await post({ ...VALID, mode: "texte", idea });
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as ApiError;
+      expect(body.error.code).toBe("texte_trop_court");
+      expect(body.error.message).toContain("mode « idée »");
+    }
+  });
+
+  it("200 : mode texte assez long", async () => {
+    const idea = EXAMPLE_PLAN.stories.flatMap((s) => s.paragraphs.map((p) => p.text)).join(" ");
+    expect((await post({ ...VALID, mode: "texte", idea })).status).toBe(200);
   });
 
   it("400 : JSON invalide, mode inconnu, structure inconnue", async () => {
@@ -90,7 +113,14 @@ describe("POST /api/generations, sans clé ni simulation", () => {
   });
 
   it("400 reste prioritaire sur l'absence de clé", async () => {
-    expect((await post({})).status).toBe(400);
+    expect((await post({ mode: "poeme" })).status).toBe(400);
+    const short = await post({ mode: "texte", idea: "Trop court." });
+    expect(short.status).toBe(400);
+    expect(((await short.json()) as ApiError).error.code).toBe("texte_trop_court");
+  });
+
+  it("idée vide sans clé : 503 (la demande est valide)", async () => {
+    expect((await post({})).status).toBe(503);
   });
 });
 
