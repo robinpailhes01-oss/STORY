@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+/* Charte Luma — mêmes valeurs que src/styles/brands/luma.ts */
+@theme {
+  --color-creme: #f6f3ee;
+  --color-nuit: #17263d;
+  --color-accent: #cadfed;
+  --font-sans: "Inter UI", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Interface : mêmes fichiers que le renderer, sous un autre nom pour que « Inter » reste
+   réservé au registre du canvas (src/lib/fonts/registry.ts). */
+@font-face {
+  font-family: "Inter UI";
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/inter-latin-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter UI";
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/inter-latin-700-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter UI";
+  font-weight: 800;
+  font-display: swap;
+  src: url("/fonts/inter-latin-800-normal.woff2") format("woff2");
+}
+
+body {
+  background: var(--color-creme);
+  color: var(--color-nuit);
+  font-family: var(--font-sans);
+}
