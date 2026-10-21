@@ -100,3 +100,41 @@ Cette séquence a été générée par Staura à partir du profil de Robin ; ell
 ## 5. Photos de test
 
 Les trois scènes de ces captures sont de bons modèles pour le choix des photos Luma : **une photo de loin avec un fond calme** (accroche), **un plan moyen** et **un portrait**. Dans les trois, la personne occupe le bas de l'image, et la place du texte est dégagée en haut. Pour S3, mieux vaut des photos verticales où le tiers supérieur est calme.
+
+## 6. Le sélecteur de styles (capture « Style »)
+
+Le bouton **Style** ouvre un panneau en bas avec une grille de 2 colonnes. Chaque style est affiché **dans sa propre police et avec son propre marquage**, ce qui fait office d'aperçu. Les cadenas indiquent les styles réservés au Pro.
+
+| Style (affiché) | Police | Marquage / couleur | Accent | Accès |
+|---|---|---|---|---|
+| **Autorité** (sélectionné, celui de la séquence) | Poppins | Mots en couleur | `#E8B84B` | Libre |
+| **Underline** | Inter | Souligné bleu | bleu | Libre |
+| **Highlight** | Inter | Surligné (pastille) | `#F97316` orange | Libre |
+| **Dopamine** | Inter | Surligné (pastille) | `#FF3D7F` rose | Libre |
+| **Mantra** | **DM Serif Display** | Mots en couleur | `#C8323A` rouge | Libre |
+| **Circle** | Inter italique gras | Mot entouré à la main | `#D946EF` violet | Pro |
+| **Stabilo** | Inter italique gras | Surligné bleu incliné | bleu | Pro |
+| **Fondu** | Poppins | Mots en couleur | `#2DD4BF` turquoise | Pro |
+| **Littérature** | **Tinos** (serif) | Mots en couleur | `#C3ACE7` lavande | Pro |
+| **Encadré** | **Tinos** (serif) | Texte sur bandeau noir | blanc | Pro |
+
+Constat : « l'autre police » que tu évoquais est un **serif**. Il y en a deux : **DM Serif Display** (Mantra, plus contrasté, éditorial) et **Tinos** (Littérature et Encadré, façon Times). Les deux sont gratuites sur Google Fonts (licences OFL et Apache 2.0).
+
+À retenir pour S2 :
+- **Un style = une police + un marquage + une couleur d'accent.** Tout le reste (voile, colonne, position) est commun.
+- Les 5 styles libres montrent le minimum viable : 2 sans-serif (Inter, Poppins), 1 serif, 3 marquages (couleur, souligné, surligné).
+- L'aperçu du style dans la grille est le nom écrit dans sa propre police : simple à reproduire, sans image.
+
+### Kit de polices mis à jour pour S1 et S2
+
+Inter (400/700/800), Poppins (500/600/700), **DM Serif Display**, **Tinos** (400/700 + italique). Ajouter Anton, Playfair Display et Caveat seulement pour les styles de la V1.1.
+
+### Nos 3 styles de la V1 (originaux, inspirés de ces familles)
+
+| Notre style | Police | Marquage | Accent |
+|---|---|---|---|
+| **Cap** (sans-serif, le style par défaut) | Poppins 600 | Mots en couleur | doré `#E8B84B` ou bleu Luma `#CADFED` |
+| **Marge** (éditorial) | DM Serif Display | Mots en couleur | corail `#E0654F` |
+| **Marqueur** (surligné) | Inter 700 | Pastille sous les mots clés | orange `#F97316` |
+
+Les noms sont à nous : on ne reprend ni les noms ni les combinaisons exactes de Staura.
