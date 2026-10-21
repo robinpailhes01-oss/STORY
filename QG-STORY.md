@@ -26,15 +26,21 @@ Risques : moteur de rendu (typo, mobile) plus long que prévu ;
 
 | # | Chantier | Branche | État | Prochaine instruction | Fichiers touchés |
 |---|---|---|---|---|---|
-| S1 | Socle + rendu + export sans IA | à créer | **à lancer** | Prompt S1 ci-dessous | tout le squelette `src/`, `public/fonts/` |
-| S2 | Moteur de styles (voile, grain, marquages, 3 styles) | — | en attente de S1 | — | `src/lib/layout/`, `src/styles/` |
-| S4 | Copywriting IA (méthode, 3 structures, JSON, contrôles) | — | en attente de S1 | — | `src/lib/ai/`, `src/app/api/generations/` |
+| S1 | Socle + rendu + export sans IA | `claude/s1-socle-rendu` (PR #1, brouillon) | **terminée, vérifiée par le QG** ; reste à fusionner | Relire et fusionner la PR #1 | `src/`, `public/fonts/`, `scripts/`, `DECISIONS.md` |
+| S2 | Fonds photo, accents, story suite, 5 styles | `claude/s2-styles` | à lancer après fusion de S1 | Prompt dans `PROMPTS_SESSIONS.md` | `src/domain/story-document.ts`, `src/lib/layout/`, `src/lib/fonts/`, `src/features/renderer/`, `src/styles/` |
+| S4 | Copywriting IA | `claude/s4-copywriting` | à lancer après fusion de S1 (en parallèle de S2) | Prompt dans `PROMPTS_SESSIONS.md` | `src/lib/ai/`, `src/app/api/generations/`, `src/domain/story-plan.ts`, `data/luma/` |
 | S3 | Éditeur minimal (texte, photo, style, brouillon local) | — | en attente de S2 | — | `src/features/editor/` |
+
+**Contrôle S1 par le QG (22 oct.)** : 1 commit, 48 fichiers, aucune modification de `docs/`, `ARCHITECTURE.md` ni `QG-STORY.md` (vérifié sur le diff propre à S1). Dépendances épinglées (Next 16.4.2, Konva 10.9.0, react-konva 19.3.2). Les 5 PNG font 1080×1920 ; le ZIP contient les mêmes fichiers ; écart aperçu/PNG de 0,3/255. Rendu visuellement sobre (crème, sans photo) : normal pour S1.
+Points repris : zones Instagram (surtitre y=170, signature y=1660) → S2 ; fonds photo et accents mot par mot → S2 ; espace fine U+202F remplacée par l'espace insécable U+00A0 → accepté.
 
 Ordre : S1 → (S2 ∥ S4) → S3. S5 (Supabase) et S6 (photos/détourage) après la V1.
 
 ## Références ajoutées
 
+- `docs/research/deep-research-report.md` + `docs/research/EVALUATION.md` : rapport de recherche et ce qu'on en garde ou écarte.
+- `docs/luma/briefs-test.md` : 10 briefs de test pour S4.
+- `PROMPTS_SESSIONS.md` : prompts de S2 et S4 et propriété des fichiers.
 - `docs/REFERENCE_EDITEUR_MOBILE.md` : interface mobile de l'éditeur, mécanisme « story suite » (bloc précédent grisé), première séquence de référence. À donner à S2, S3 et S4.
 
 ## Décisions de Robin (22 oct.)
@@ -47,7 +53,10 @@ Ordre : S1 → (S2 ∥ S4) → S3. S5 (Supabase) et S6 (photos/détourage) aprè
 ## Ce qui attend Robin
 
 - [x] Lancer la session S1 (prompt ci-dessous)
-- [ ] Coller ici `[S1]` + son rapport quand elle a fini
+- [x] Coller ici `[S1]` + son rapport
+- [ ] Relire et fusionner la PR #1 (S1) — **bloque S2 et S4**
+- [ ] Tester la case « Zones Instagram » sur ton téléphone
+- [ ] Lancer S2 et S4 (prompts dans `PROMPTS_SESSIONS.md`)
 - [ ] Remplir `docs/luma/contexte.md` (modèle ci-dessous) — **avant S4**
 - [ ] Rassembler 20-30 séquences de stories de référence (captures de créateurs) dans `docs/luma/corpus/` — **avant S4**
 - [ ] Mettre 15-20 photos Luma dans `public/samples/luma/` — **avant S3**
