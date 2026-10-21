@@ -1,7 +1,7 @@
 import type { StoryDocument } from "@/domain/story-document";
 import { resolveFont } from "@/lib/fonts/registry";
 import { mergeRequirements, type FontRequirement } from "@/lib/fonts/load-fonts";
-import { composeFrench } from "./french";
+import { renderedText } from "./french";
 import { layoutTextBlock, type TextLayout } from "./text-layout";
 
 export interface LayoutProblem {
@@ -26,7 +26,7 @@ export function fontRequirements(doc: StoryDocument): FontRequirement[] {
     for (const block of slide.blocks) {
       if (block.kind !== "text") continue;
       const { family, weight, style } = resolveFont(block.style.fontId, block.style.fontWeight, block.style.fontStyle);
-      requirements.push({ family, weight, style, text: composeFrench(block.content) });
+      requirements.push({ family, weight, style, text: renderedText(block.content, block.style.transform) });
     }
   }
   return mergeRequirements(requirements);

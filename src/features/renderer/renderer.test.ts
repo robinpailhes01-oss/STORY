@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { AccentBox } from "@/lib/layout/text-layout";
 import { markerKindFor } from "@/lib/layout/text-layout";
 import { coverCrop } from "./images";
-import { handDrawnOval, skewedPastillePoints } from "./markers";
+import { handDrawnOval, ovalInBox, skewedPastillePoints, underlineRect } from "./markers";
 import { seededRandom } from "./random";
 
 const box: AccentBox = { accentIndex: 0, piece: 0, kind: "cercle", text: "l’argent.", x: 100, y: 0, width: 200, height: 55, baseline: 42 };
@@ -62,5 +62,24 @@ describe("rotation des marquages", () => {
     expect(markerKindFor({ ...marker, rotationOffset: 2 }, 0)).toBe("souligne");
     expect(markerKindFor({ kind: "couleur", color: "#E8B84B" }, 5)).toBe("couleur");
     expect(markerKindFor(undefined, 0)).toBeNull();
+  });
+});
+
+describe("souligné réglable et ovale du Crayon", () => {
+  it("décalage et épaisseur du souligné en tailles de police", () => {
+    const standard = underlineRect(box, 40);
+    expect(standard.y).toBeCloseTo(42 - 2.8);
+    expect(standard.height).toBeCloseTo(10);
+    const fin = underlineRect(box, 40, { underlineOffset: 0.1, underlineThickness: 0.05 });
+    expect(fin.y).toBeCloseTo(46);
+    expect(fin.height).toBeCloseTo(2);
+  });
+
+  it("ovale en deux points : dans le rectangle tracé, déterministe", () => {
+    const points = ovalInBox(100, 200, 500, 400, "crayon-a");
+    expect(points).toEqual(ovalInBox(100, 200, 500, 400, "crayon-a"));
+    const xs = points.filter((_, i) => i % 2 === 0);
+    expect(Math.min(...xs)).toBeLessThan(110);
+    expect(Math.max(...xs)).toBeGreaterThan(490);
   });
 });

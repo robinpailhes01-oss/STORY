@@ -33,6 +33,13 @@ export const MISSING_GLYPHS: Record<string, string> = {
   "DM Serif Display":
     "U+007F-009F,U+02BB-02BC,U+0329,U+2000-2012,U+2015-2017,U+201B,U+201F-2021,U+2023-2025,U+2027-2038,U+203B-2043,U+2045-206F,U+2191,U+2193,U+FEFF,U+FFFD",
   Tinos: "U+007F-009F,U+2000-2001,U+2003-2008,U+200A,U+200C-2012,U+2015-2017,U+201B,U+201F-2021,U+2023-2025,U+2027-2031,U+2034-2038,U+203B-2043,U+2045-206F",
+  // Phase 3 (relevé fontTools sur les fichiers Fontsource 5.3.0) : Ÿ est dans le fichier latin-ext.
+  Anton:
+    "U+007F-009F,U+2000-2008,U+200A,U+200C-2012,U+2015-2017,U+201B,U+201F-2021,U+2023-2025,U+2027-2031,U+2034-2038,U+203B-2043,U+2045-206F,U+FEFF,U+FFFD",
+  "Abril Fatface":
+    "U+007F-009F,U+02BB,U+0304,U+0308,U+0329,U+2000-2012,U+2015-2017,U+201B,U+201F-2021,U+2023-2025,U+2027-2038,U+203B-2043,U+2045-206F,U+2191,U+2193,U+FEFF,U+FFFD",
+  "Playfair Display":
+    "U+007F-009F,U+00B5,U+0329,U+2000-2008,U+200A-2012,U+2015-2017,U+201B,U+201F-2021,U+2023-2025,U+2027-2031,U+2034-2038,U+203B-2043,U+2045-206F,U+2215,U+FEFF,U+FFFD",
 };
 
 function faces(family: string, slug: string, variants: Array<[number, FontStyle]>): FontFaceFile[] {
@@ -65,6 +72,9 @@ export const FONT_FACES: FontFaceFile[] = [
     [700, "normal"],
     [400, "italic"],
   ]),
+  ...faces("Anton", "anton", [[400, "normal"]]),
+  ...faces("Abril Fatface", "abril-fatface", [[400, "normal"]]),
+  ...faces("Playfair Display", "playfair-display", [[400, "normal"]]),
 ];
 
 /** fontId → famille. « inter-regular » et « jost-regular » restent pour l’exemple Luma de S1. */
@@ -75,6 +85,9 @@ export const FONT_REGISTRY: Record<string, { family: string }> = {
   poppins: { family: "Poppins" },
   "dm-serif-display": { family: "DM Serif Display" },
   tinos: { family: "Tinos" },
+  anton: { family: "Anton" },
+  "abril-fatface": { family: "Abril Fatface" },
+  "playfair-display": { family: "Playfair Display" },
 };
 
 export interface ResolvedFont {

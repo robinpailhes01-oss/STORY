@@ -4,6 +4,7 @@ import type { StylePreset } from "./types";
 /**
  * Serif : DM Serif Display, éditorial ; mots clés en rouge.
  * #C8323A est trop sombre sur photo voilée (≈ 2,6:1) : éclairci en #F0565C (≈ 4,6:1 sur fond sombre).
+ * Texte légèrement incliné (−3°, monte vers la droite), comme la référence.
  */
 export const serif: StylePreset = {
   id: "serif",
@@ -19,4 +20,5 @@ export const serif: StylePreset = {
   continuationDim: 0.4,
   grain: 0.12,
   swatchBackground: SWATCH_BACKGROUND,
+  tilt: -3,
 };

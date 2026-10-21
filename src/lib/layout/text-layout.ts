@@ -1,7 +1,7 @@
 import type { MarkerKind, TextBlock, TextStyle, Marker } from "@/domain/story-document";
 import { accentRanges, type AccentRange } from "@/domain/story-plan";
 import { cssFont, resolveFont, type FontStyle } from "@/lib/fonts/registry";
-import { composeFrench } from "./french";
+import { renderedText } from "./french";
 
 /** Morceau de ligne : texte ordinaire (accentIndex null) ou morceau d’un accent. */
 export interface LineSegment {
@@ -136,11 +136,12 @@ export function layoutRichText(input: RichTextInput): TextLayout {
   const ctx = context();
   applyFont(ctx, font, letterSpacing);
 
-  const text = composeFrench(input.content);
+  const draw = (s: string) => renderedText(s, style.transform);
+  const text = draw(input.content);
   const problems: string[] = [];
   const warnings: string[] = [];
 
-  const found = accentRanges(input.content, input.accents ?? [], composeFrench);
+  const found = accentRanges(input.content, input.accents ?? [], draw);
   for (const missing of found.missing) warnings.push(`accent introuvable dans le texte : « ${missing} »`);
   const ranges = found.ranges;
   const kinds = ranges.map((_, i) => markerKindFor(marker, i));

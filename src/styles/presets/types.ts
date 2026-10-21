@@ -15,6 +15,28 @@ export interface TypeSettings {
   minSize: number;
   lineHeight: number;
   letterSpacing: number;
+  /** Couleur du texte de ce rôle ; « accent » = couleur d’accent (suit la couleur choisie). Défaut : colors.text. */
+  color?: HexColor | "accent";
+  /** Capitales au rendu. */
+  transform?: "uppercase";
+  /** Lettres seulement contourées : épaisseur du trait en tailles de police (ex. 0,035). */
+  outline?: number;
+}
+
+/**
+ * Mot géant (styles Géant et Théâtre) : le premier accent de la story (son mot le plus long), en très grand,
+ * centré, posé derrière la personne détourée, entre l’amorce et le texte courant.
+ */
+export interface GiantSettings {
+  font: FontChoice;
+  /** Taille de départ (réduite avec la scène, puis pour tenir dans `width`). */
+  size: number;
+  lineHeight: number;
+  letterSpacing: number;
+  /** « accent » = couleur d’accent (suit la couleur choisie). */
+  color: HexColor | "accent";
+  /** Largeur maximale, centrée dans le cadre. */
+  width: number;
 }
 
 /**
@@ -44,4 +66,13 @@ export interface StylePreset {
   grain: number;
   /** Fond de la tuile du sélecteur de styles. */
   swatchBackground: HexColor;
+  /** Amorce : premier paragraphe des stories 2 et 4 (corps sinon). */
+  lead?: TypeSettings;
+  giant?: GiantSettings;
+  /** Inclinaison du texte en degrés (négatif = monte vers la droite), autour du centre de la scène. */
+  tilt?: number;
+  /** Largeur de la colonne de l’accroche (860 px sinon) ; plus large = « d’un bord à l’autre ». */
+  hookWidth?: number;
+  /** Rôle dont la tuile reprend la police et l’effet (corps par défaut). */
+  swatchRole?: "hook" | "lead" | "body" | "giant";
 }

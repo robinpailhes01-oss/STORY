@@ -1,4 +1,5 @@
-import type { StoryDocument, TextBlock } from "@/domain/story-document";
+import type { DecorationBlock, DrawingBlock, StoryDocument, TextBlock } from "@/domain/story-document";
+import type { RenderOptions } from "@/domain/render-options";
 import type { ComposeResult } from "@/lib/compose";
 import type { LoadedFontReport } from "@/lib/fonts/load-fonts";
 import type { DocumentLayout } from "@/lib/layout/document-layout";
@@ -36,6 +37,13 @@ export interface LaboBlockReport {
   accentContrast: number | null;
   /** null pour un paragraphe repris (grisé volontairement) : non soumis au seuil. */
   contrastOk: boolean | null;
+  /** Couleur du texte, capitales, contour, halo des accents, inclinaison, mot géant. */
+  color: string;
+  transform: string | null;
+  outline: number | null;
+  glow: number | null;
+  rotation: number | null;
+  behindSubject: boolean;
 }
 
 export interface LaboStoryReport {
@@ -43,6 +51,8 @@ export interface LaboStoryReport {
   slideId: string;
   assetId: string | null;
   blocks: LaboBlockReport[];
+  decoration: { kind: string; color: string; shapes: number; bounds: { x: number; y: number; width: number; height: number } } | null;
+  drawing: { strokes: number; tools: string[] } | null;
 }
 
 export interface LaboStyleReport {
@@ -52,12 +62,20 @@ export interface LaboStyleReport {
   problems: string[];
   warnings: string[];
   contrastWarnings: string[];
+  /** Mots géants sans détourage (non bloquant). */
+  cutoutWarnings: string[];
   sceneSizes: Array<{ stories: number[]; fontSize: number; top: number; height: number }>;
   stories: LaboStoryReport[];
 }
 
 export interface LaboReport {
   ready: boolean;
+  /** Signature des réglages affichés (options, photos, dessin, détourage) : change à chaque réglage. */
+  signature: string;
+  options: RenderOptions;
+  photoCount: number;
+  cutouts: boolean;
+  drawing: boolean;
   fonts: LoadedFontReport[];
   photos: string[];
   styles: LaboStyleReport[];
@@ -83,11 +101,13 @@ export function buildStyleReport(
   composition: ComposeResult,
   layout: DocumentLayout,
   samples: ReadonlyMap<string, Record<string, BackgroundSample>>,
+  cutoutWarnings: string[] = [],
+  sampleKey: (slideId: string) => string = (slideId) => `${style.id}/${slideId}`,
 ): LaboStyleReport {
   const doc: StoryDocument = composition.document;
   const contrastWarnings: string[] = [];
   const stories = doc.slides.map((slide, index): LaboStoryReport => {
-    const measured = samples.get(`${style.id}/${slide.id}`) ?? {};
+    const measured = samples.get(sampleKey(slide.id)) ?? {};
     const blocks = slide.blocks
       .filter((b): b is TextBlock => b.kind === "text")
       .map((block): LaboBlockReport => {
@@ -100,7 +120,8 @@ export function buildStyleReport(
         const accentColor = block.marker && t.accents.kinds.includes("couleur") ? block.marker.color : null;
         const accentContrast =
           bg && accentColor && t.accents.ranges.length ? contrastRatio(relativeLuminance(...hexToRgb(accentColor)), bg.luminance) : null;
-        const contrastOk = repeated || contrast === null ? null : contrast >= MIN_CONTRAST;
+        // Le mot géant est un élément graphique (souvent derrière la personne) : rapporté, non soumis au seuil.
+        const contrastOk = repeated || contrast === null || block.behindSubject ? null : contrast >= MIN_CONTRAST;
         if (contrastOk === false) {
           contrastWarnings.push(`story ${index + 1}, ${block.id} : contraste ${contrast!.toFixed(2)}:1 sous ${MIN_CONTRAST}:1`);
         }
@@ -128,13 +149,25 @@ export function buildStyleReport(
           contrast,
           accentContrast,
           contrastOk,
+          color: block.style.color,
+          transform: block.style.transform ?? null,
+          outline: block.style.outline?.width ?? null,
+          glow: block.marker?.glow ?? null,
+          rotation: block.rotation?.angle ?? null,
+          behindSubject: Boolean(block.behindSubject),
         };
       });
+    const deco = slide.blocks.find((b): b is DecorationBlock => b.kind === "decoration");
+    const drawing = slide.blocks.find((b): b is DrawingBlock => b.kind === "drawing");
     return {
       index,
       slideId: slide.id,
       assetId: slide.background.kind === "image" ? slide.background.assetId : null,
       blocks,
+      decoration: deco
+        ? { kind: deco.decoration, color: deco.color, shapes: deco.shapes.length, bounds: { x: deco.x, y: deco.y, width: deco.width, height: deco.height } }
+        : null,
+      drawing: drawing ? { strokes: drawing.strokes.length, tools: drawing.strokes.map((s) => s.tool) } : null,
     };
   });
   return {
@@ -144,6 +177,7 @@ export function buildStyleReport(
     problems: [...composition.problems, ...layout.problems.map((p) => `${p.slideId}/${p.blockId} : ${p.message}`)],
     warnings: [...composition.warnings],
     contrastWarnings,
+    cutoutWarnings,
     sceneSizes: composition.scenes,
     stories,
   };

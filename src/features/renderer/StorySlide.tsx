@@ -8,12 +8,14 @@ import {
   DEFAULT_VEIL_COLOR,
   blocksInDrawOrder,
   type ImageBackground,
+  type Block,
   type ImageBlock,
   type Slide,
 } from "@/domain/story-document";
 import type { DocumentLayout } from "@/lib/layout/document-layout";
 import { grainTile } from "./grain";
 import { EMPTY_IMAGES, coverCrop, sourceSize, type ImageTable } from "./images";
+import { DecorationNode, DrawingNode, GiantWordBehindSubject } from "./overlays";
 import { TextBlockNode } from "./TextBlockNode";
 
 /**
@@ -108,15 +110,54 @@ interface StorySlideProps {
   layout: DocumentLayout;
   /** Images décodées par assetId ; une photo absente donne un fond de secours. */
   images?: ImageTable;
+  /**
+   * Détourages de la personne par assetId de photo (RGBA, transparent hors de la personne, même cadrage) :
+   * le mot géant passe derrière la personne. Absent : le mot géant est dessiné derrière le texte seulement.
+   */
+  cutouts?: ImageTable;
   /** Aides visuelles de l’aperçu ; toujours false à l’export. */
   showGuides?: boolean;
   /** Fond seul (photo, voile, grain), sans texte : sert à mesurer le contraste réel sous les blocs. */
   backgroundOnly?: boolean;
 }
 
-/** Renderer unique : utilisé tel quel par l’aperçu, l’export et le laboratoire. */
-function StorySlideNodes({ slide, layout, images = EMPTY_IMAGES, showGuides = false, backgroundOnly = false }: StorySlideProps) {
+/**
+ * Renderer unique : utilisé tel quel par l’aperçu, l’export et le laboratoire.
+ * Ordre : fond (photo, voile, grain), mot géant, personne détourée (en découpant le mot), texte, décoration,
+ * dessins du Crayon, guides.
+ */
+function StorySlideNodes({ slide, layout, images = EMPTY_IMAGES, cutouts = EMPTY_IMAGES, showGuides = false, backgroundOnly = false }: StorySlideProps) {
   const background = slide.background;
+  const cutout = background.kind === "image" ? cutouts.get(background.assetId) : undefined;
+  const ordered = blocksInDrawOrder(slide);
+  const behind = ordered.filter((b) => b.kind === "text" && b.behindSubject);
+  const front = ordered.filter((b) => !(b.kind === "text" && b.behindSubject));
+  const draw = (block: Block) => {
+    if (block.kind === "shape") {
+      return (
+        <Rect
+          key={block.id}
+          x={block.x}
+          y={block.y}
+          width={block.width}
+          height={block.height}
+          fill={block.fill}
+          opacity={block.opacity}
+          cornerRadius={block.cornerRadius}
+          listening={false}
+        />
+      );
+    }
+    if (block.kind === "image") return <ImageBlockNode key={block.id} block={block} images={images} />;
+    if (block.kind === "decoration") return <DecorationNode key={block.id} block={block} />;
+    if (block.kind === "drawing") return <DrawingNode key={block.id} block={block} />;
+    const textLayout = layout.texts.get(block.id);
+    if (!textLayout) return null;
+    if (block.behindSubject && cutout && background.kind === "image") {
+      return <GiantWordBehindSubject key={block.id} block={block} layout={textLayout} cutout={cutout} crop={background.crop} />;
+    }
+    return <TextBlockNode key={block.id} block={block} layout={textLayout} />;
+  };
   return (
     <>
       {background.kind === "solid" ? (
@@ -124,27 +165,8 @@ function StorySlideNodes({ slide, layout, images = EMPTY_IMAGES, showGuides = fa
       ) : (
         <PhotoBackground background={background} images={images} />
       )}
-      {!backgroundOnly &&
-        blocksInDrawOrder(slide).map((block) => {
-          if (block.kind === "shape") {
-            return (
-              <Rect
-                key={block.id}
-                x={block.x}
-                y={block.y}
-                width={block.width}
-                height={block.height}
-                fill={block.fill}
-                opacity={block.opacity}
-                cornerRadius={block.cornerRadius}
-                listening={false}
-              />
-            );
-          }
-          if (block.kind === "image") return <ImageBlockNode key={block.id} block={block} images={images} />;
-          const textLayout = layout.texts.get(block.id);
-          return textLayout ? <TextBlockNode key={block.id} block={block} layout={textLayout} /> : null;
-        })}
+      {!backgroundOnly && behind.map(draw)}
+      {!backgroundOnly && front.map(draw)}
       {showGuides && <SafeZoneGuides />}
     </>
   );

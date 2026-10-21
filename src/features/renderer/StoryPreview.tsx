@@ -16,6 +16,8 @@ interface StoryPreviewProps {
   showGuides: boolean;
   /** Images décodées par assetId (photos de fond). */
   images?: ImageTable;
+  /** Détourages de la personne par assetId de photo (mot géant derrière la personne). */
+  cutouts?: ImageTable;
   /** Fond seul, sans texte (mesure du contraste). */
   backgroundOnly?: boolean;
   /** Reçoit la Stage après chaque dessin (lecture des pixels, captures). */
@@ -29,6 +31,7 @@ function StoryPreviewStage({
   displayWidth,
   showGuides,
   images = EMPTY_IMAGES,
+  cutouts = EMPTY_IMAGES,
   backgroundOnly = false,
   onStage,
 }: StoryPreviewProps) {
@@ -41,7 +44,7 @@ function StoryPreviewStage({
     if (!stage) return;
     stage.batchDraw();
     onStage?.(stage);
-  }, [layout, showGuides, images, slide, onStage]);
+  }, [layout, showGuides, images, cutouts, slide, onStage]);
 
   return (
     <Stage
@@ -53,7 +56,7 @@ function StoryPreviewStage({
       listening={false}
     >
       <Layer listening={false}>
-        <StorySlide slide={slide} layout={layout} images={images} showGuides={showGuides} backgroundOnly={backgroundOnly} />
+        <StorySlide slide={slide} layout={layout} images={images} cutouts={cutouts} showGuides={showGuides} backgroundOnly={backgroundOnly} />
       </Layer>
     </Stage>
   );

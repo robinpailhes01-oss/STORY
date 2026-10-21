@@ -1,6 +1,9 @@
 // StoryDocument v1 : état métier, indépendant de Konva.
 // Miroir TypeScript de docs/staura-architecture-claude-code/contracts/story-document.schema.json,
-// étendu (champs optionnels, rétrocompatibles) pour le moteur visuel : photo, voile, grain, accents, marquages.
+// étendu (champs optionnels, rétrocompatibles) pour le moteur visuel : photo, voile, grain, accents, marquages ;
+// phase 3 : capitales, lettres contourées, halo des accents, mot géant derrière la personne, inclinaison,
+// décorations et dessins du Crayon.
+import type { DecorationId, Stroke } from "./render-options";
 
 export const CANVAS_WIDTH = 1080;
 export const CANVAS_HEIGHT = 1920;
@@ -64,6 +67,10 @@ export interface TextStyle {
   letterSpacing: number;
   /** Halo sombre discret pour la lisibilité sur photo. */
   shadow?: TextShadow;
+  /** Capitales au rendu (le contenu reste la source ; les accents sont cherchés dans le texte transformé). */
+  transform?: "uppercase";
+  /** Lettres seulement contourées : trait de `width` px (repère 1080 × 1920), intérieur transparent. */
+  outline?: { width: number };
 }
 
 export type MarkerKind = "couleur" | "souligne" | "pastille" | "cercle" | "bandeau";
@@ -91,6 +98,11 @@ export interface Marker {
    */
   rotation?: Exclude<MarkerKind, "bandeau">[];
   rotationOffset?: number;
+  /** Halo lumineux de la couleur du marquage autour des accents (flou en tailles de police, ex. 0,5). */
+  glow?: number;
+  /** Souligné : décalage sous la ligne de base et épaisseur, en tailles de police (défauts −0,07 et 0,25). */
+  underlineOffset?: number;
+  underlineThickness?: number;
 }
 
 interface BlockBase {
@@ -111,6 +123,38 @@ export interface TextBlock extends BlockBase {
   marker?: Marker;
   /** 0..1 ; 0,4 pour les paragraphes repris d’une story précédente. */
   opacity?: number;
+  /**
+   * Mot géant : dessiné juste après le fond, puis recouvert par la personne détourée (si le détourage
+   * de la photo est fourni au renderer), sous le texte courant.
+   */
+  behindSubject?: boolean;
+  /** Inclinaison en degrés autour d’un point absolu du repère (le même pour une story et sa suite). */
+  rotation?: { angle: number; originX: number; originY: number };
+}
+
+/** Un tracé d’une décoration (flèche, étoile, éclair…), points absolus [x0, y0, x1, y1…]. */
+export interface DecorationShape {
+  points: number[];
+  closed: boolean;
+  /** Rempli de la couleur de la décoration (sinon trait seul). */
+  filled: boolean;
+  strokeWidth: number;
+  /** Lissage Konva (0 = segments droits). */
+  tension: number;
+}
+
+/** Décoration calculée à la composition (géométrie déterministe, graine), dessinée telle quelle. */
+export interface DecorationBlock extends BlockBase {
+  kind: "decoration";
+  decoration: DecorationId;
+  color: HexColor;
+  shapes: DecorationShape[];
+}
+
+/** Dessins du Crayon d’une story, au-dessus du texte. */
+export interface DrawingBlock extends BlockBase {
+  kind: "drawing";
+  strokes: Stroke[];
 }
 
 export interface ImageBlock extends BlockBase {
@@ -127,7 +171,7 @@ export interface ShapeBlock extends BlockBase {
   cornerRadius: number;
 }
 
-export type Block = TextBlock | ImageBlock | ShapeBlock;
+export type Block = TextBlock | ImageBlock | ShapeBlock | DecorationBlock | DrawingBlock;
 
 export interface Slide {
   id: string;
@@ -198,6 +242,13 @@ function checkTextBlock(block: TextBlock, where: string, problems: string[]) {
     problems.push(`${where} : ombre invalide`);
   }
   if (block.opacity !== undefined && !unit(block.opacity)) problems.push(`${where} : opacité hors de 0..1`);
+  if (s.transform !== undefined && s.transform !== "uppercase") problems.push(`${where} : transformation « ${String(s.transform)} » inconnue`);
+  if (s.outline !== undefined && !(s.outline.width > 0 && s.outline.width <= 20)) problems.push(`${where} : contour hors de 0..20 px`);
+  if (block.rotation !== undefined) {
+    const r = block.rotation;
+    const finite = [r.angle, r.originX, r.originY].every((n) => typeof n === "number" && Number.isFinite(n));
+    if (!finite || Math.abs(r.angle) > 15) problems.push(`${where} : inclinaison hors de ±15°`);
+  }
   if (block.accents !== undefined) {
     if (!Array.isArray(block.accents) || !block.accents.every((a) => typeof a === "string" && a.trim().length > 0)) {
       problems.push(`${where} : accents invalides`);
@@ -218,7 +269,65 @@ function checkTextBlock(block: TextBlock, where: string, problems: string[]) {
     if (m.rotationOffset !== undefined && !(Number.isInteger(m.rotationOffset) && m.rotationOffset >= 0)) {
       problems.push(`${where} : rotationOffset invalide`);
     }
+    if (m.glow !== undefined && !(m.glow >= 0 && m.glow <= 2)) problems.push(`${where} : halo hors de 0..2 em`);
+    if (m.underlineOffset !== undefined && !(Math.abs(m.underlineOffset) <= 1)) problems.push(`${where} : décalage du souligné hors de ±1 em`);
+    if (m.underlineThickness !== undefined && !(m.underlineThickness > 0 && m.underlineThickness <= 1)) {
+      problems.push(`${where} : épaisseur du souligné hors de 0..1 em`);
+    }
   }
+}
+
+/** Limites des dessins : de quoi dessiner librement sans document démesuré. */
+export const DRAWING_LIMITS = { strokesPerStory: 120, pointsPerStroke: 2000, maxWidth: 200 } as const;
+
+const DECORATION_IDS = new Set(["fleche-mot", "fleche-suite", "etoiles", "eclair", "etincelles"]);
+const STROKE_TOOLS = new Set(["stylo", "surligneur", "ovale"]);
+
+/** Points [x, y…] en nombre pair, tous finis et dans le cadre 1080 × 1920. */
+function pointsInFrame(points: unknown, max: number): string | null {
+  if (!Array.isArray(points) || points.length < 2 || points.length % 2 !== 0) return "points en nombre impair ou absents";
+  if (points.length / 2 > max) return `${points.length / 2} points (maximum ${max})`;
+  for (let i = 0; i < points.length; i += 2) {
+    const x = points[i];
+    const y = points[i + 1];
+    if (typeof x !== "number" || typeof y !== "number" || !Number.isFinite(x) || !Number.isFinite(y)) return "point non numérique";
+    if (x < 0 || x > CANVAS_WIDTH || y < 0 || y > CANVAS_HEIGHT) return `point (${Math.round(x)}, ${Math.round(y)}) hors du cadre`;
+  }
+  return null;
+}
+
+function checkDecorationBlock(block: DecorationBlock, where: string, problems: string[]) {
+  if (!DECORATION_IDS.has(block.decoration)) problems.push(`${where} : décoration « ${String(block.decoration)} » inconnue`);
+  if (!HEX.test(block.color)) problems.push(`${where} : couleur de décoration invalide`);
+  if (!Array.isArray(block.shapes) || block.shapes.length < 1 || block.shapes.length > 40) {
+    problems.push(`${where} : entre 1 et 40 tracés attendus`);
+    return;
+  }
+  block.shapes.forEach((shape, i) => {
+    const bad = pointsInFrame(shape.points, 400);
+    if (bad) problems.push(`${where}, tracé ${i + 1} : ${bad}`);
+    if (!(shape.strokeWidth >= 0 && shape.strokeWidth <= 60)) problems.push(`${where}, tracé ${i + 1} : épaisseur invalide`);
+    if (!(shape.tension >= 0 && shape.tension <= 1)) problems.push(`${where}, tracé ${i + 1} : lissage hors de 0..1`);
+  });
+}
+
+function checkDrawingBlock(block: DrawingBlock, where: string, problems: string[]) {
+  if (!Array.isArray(block.strokes) || block.strokes.length > DRAWING_LIMITS.strokesPerStory) {
+    problems.push(`${where} : ${DRAWING_LIMITS.strokesPerStory} traits au plus par story`);
+    return;
+  }
+  const ids = new Set<string>();
+  block.strokes.forEach((stroke, i) => {
+    const label = `${where}, trait ${i + 1}`;
+    if (typeof stroke.id !== "string" || !stroke.id || stroke.id.length > 64) problems.push(`${label} : identifiant invalide`);
+    else if (ids.has(stroke.id)) problems.push(`${label} : identifiant en double`);
+    ids.add(stroke.id);
+    if (!STROKE_TOOLS.has(stroke.tool)) problems.push(`${label} : outil « ${String(stroke.tool)} » inconnu`);
+    if (!HEX.test(stroke.color)) problems.push(`${label} : couleur invalide`);
+    if (!(stroke.width > 0 && stroke.width <= DRAWING_LIMITS.maxWidth)) problems.push(`${label} : épaisseur hors de 0..${DRAWING_LIMITS.maxWidth} px`);
+    const bad = pointsInFrame(stroke.points, DRAWING_LIMITS.pointsPerStroke);
+    if (bad) problems.push(`${label} : ${bad}`);
+  });
 }
 
 /**
@@ -269,6 +378,8 @@ export function parseStoryDocument(input: unknown): StoryDocument {
       if (block.kind === "text") checkTextBlock(block, where, problems);
       if (block.kind === "shape" && !HEX.test(block.fill)) problems.push(`${where} : couleur invalide`);
       if (block.kind === "image") checkCrop(block.crop, where, problems);
+      if (block.kind === "decoration") checkDecorationBlock(block, where, problems);
+      if (block.kind === "drawing") checkDrawingBlock(block, where, problems);
     }
   }
 

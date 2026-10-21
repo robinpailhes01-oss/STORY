@@ -58,3 +58,19 @@ export function missingImages(doc: StoryDocument, images: ImageTable): Array<{ s
   }
   return missing;
 }
+
+/**
+ * Mots géants sans détourage de la personne : non bloquant, le mot est dessiné derrière le texte mais
+ * devant la photo. Les détourages sont fournis par assetId de photo (même taille ou même rapport que la photo).
+ */
+export function cutoutWarnings(doc: StoryDocument, cutouts: ImageTable): string[] {
+  const warnings: string[] = [];
+  doc.slides.forEach((slide, index) => {
+    const giant = slide.blocks.some((b) => b.kind === "text" && b.behindSubject);
+    if (!giant || slide.background.kind !== "image") return;
+    if (!cutouts.has(slide.background.assetId)) {
+      warnings.push(`story ${index + 1} : détourage indisponible, le mot géant passe devant la personne`);
+    }
+  });
+  return warnings;
+}

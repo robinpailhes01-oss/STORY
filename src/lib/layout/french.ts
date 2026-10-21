@@ -17,3 +17,22 @@ export function composeFrench(input: string): string {
     .replace(/«[ \t]*/g, `«${NBSP}`)
     .replace(/([^\s ])»/g, `$1${NBSP}»`);
 }
+
+/**
+ * Capitales au rendu, caractère par caractère, en gardant la longueur (les positions des accents restent
+ * valables) : un caractère dont la capitale change de longueur (ß → SS) est gardé tel quel.
+ */
+export function transformText(input: string, transform: "uppercase" | undefined): string {
+  if (transform !== "uppercase") return input;
+  let out = "";
+  for (const char of input) {
+    const upper = char.toLocaleUpperCase("fr");
+    out += upper.length === char.length ? upper : char;
+  }
+  return out;
+}
+
+/** Texte tel que dessiné : composition française puis transformation du style. */
+export function renderedText(input: string, transform?: "uppercase"): string {
+  return transformText(composeFrench(input), transform);
+}

@@ -2,22 +2,42 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Layer, Rect, Stage } from "react-konva";
-import type { TextBlock } from "@/domain/story-document";
+import type { TextBlock, TextStyle } from "@/domain/story-document";
 import { loadFonts } from "@/lib/fonts/load-fonts";
 import { resolveFont } from "@/lib/fonts/registry";
-import { composeFrench } from "@/lib/layout/french";
+import { renderedText } from "@/lib/layout/french";
 import { layoutRichText } from "@/lib/layout/text-layout";
-import { getStyle, type StylePreset } from "@/styles/presets";
+import { getStyle, resolveRoleColor, type StylePreset } from "@/styles/presets";
 import { TextBlockNode } from "./TextBlockNode";
 
 /** Hauteur logique d’une tuile ; la largeur suit le rapport demandé. */
 const LOGICAL_HEIGHT = 200;
 const NAME_SIZE = 74;
 
-/** Police de la tuile : celle du corps du style, avec le texte réel (le nom). */
+/** Rôle repris par la tuile : police, couleur, capitales et contour (Géant : le mot géant ; Liseré : l’amorce…). */
+function swatchLook(style: StylePreset) {
+  const role = style.swatchRole ?? "body";
+  if (role === "giant" && style.giant) {
+    const g = style.giant;
+    return { font: g.font, letterSpacing: g.letterSpacing, color: resolveRoleColor(style, g.color), transform: undefined, outline: undefined, plain: true };
+  }
+  const settings = role === "hook" ? style.hook : role === "lead" ? (style.lead ?? style.body) : style.body;
+  return {
+    font: settings.font,
+    letterSpacing: settings.letterSpacing,
+    color: resolveRoleColor(style, settings.color),
+    transform: settings.transform,
+    outline: settings.outline,
+    // Couleur propre au rôle ou lettres contourées : l’effet se suffit, pas de marquage par-dessus.
+    plain: settings.color !== undefined || settings.outline !== undefined,
+  };
+}
+
+/** Police de la tuile : celle du rôle montré par le style, avec le texte réel (le nom). */
 export function swatchFontRequirement(style: StylePreset) {
-  const font = resolveFont(style.body.font.fontId, style.body.font.weight, style.body.font.style);
-  return { ...font, text: composeFrench(style.name) };
+  const look = swatchLook(style);
+  const font = resolveFont(look.font.fontId, look.font.weight, look.font.style);
+  return { ...font, text: renderedText(style.name, look.transform) };
 }
 
 /** Bloc « nom du style » : le nom entier est l’accent, avec le marquage du style (hors bandeau : la bande suffit). */
@@ -25,6 +45,19 @@ function swatchBlock(style: StylePreset, logicalWidth: number, fontSize = NAME_S
   const lineHeight = 1.2;
   const height = fontSize * lineHeight;
   const marker = { ...style.marker, rotationOffset: 0 };
+  const look = swatchLook(style);
+  const textStyle: TextStyle = {
+    fontId: look.font.fontId,
+    fontWeight: look.font.weight,
+    fontStyle: look.font.style,
+    fontSize,
+    color: look.color,
+    align: "center",
+    lineHeight,
+    letterSpacing: look.letterSpacing,
+    ...(look.transform ? { transform: look.transform } : {}),
+    ...(look.outline ? { outline: { width: Math.max(1.5, look.outline * fontSize) } } : {}),
+  };
   return {
     id: `swatch-${style.id}`,
     kind: "text",
@@ -34,17 +67,8 @@ function swatchBlock(style: StylePreset, logicalWidth: number, fontSize = NAME_S
     height,
     zIndex: 0,
     content: style.name,
-    style: {
-      fontId: style.body.font.fontId,
-      fontWeight: style.body.font.weight,
-      fontStyle: style.body.font.style,
-      fontSize,
-      color: style.colors.text,
-      align: "center",
-      lineHeight,
-      letterSpacing: style.body.letterSpacing,
-    },
-    accents: marker.kind === "bandeau" ? [] : [style.name],
+    style: textStyle,
+    accents: marker.kind === "bandeau" || look.plain ? [] : [style.name],
     marker,
   };
 }

@@ -13,6 +13,8 @@ interface ExportStageProps {
   layout: DocumentLayout;
   /** Images décodées par assetId (photos de fond). */
   images?: ImageTable;
+  /** Détourages de la personne par assetId de photo (mot géant derrière la personne). */
+  cutouts?: ImageTable;
   /** Appelé une fois la story montée et dessinée, avec la Stage non réduite. */
   onReady: (stage: Konva.Stage) => void;
 }
@@ -21,7 +23,7 @@ interface ExportStageProps {
  * Scène d’export hors écran, 1080 × 1920 à l’échelle 1, sans guides ni poignées.
  * Montée pour une story à la fois, puis démontée pour libérer le canvas.
  */
-export function ExportStage({ slide, layout, images = EMPTY_IMAGES, onReady }: ExportStageProps) {
+export function ExportStage({ slide, layout, images = EMPTY_IMAGES, cutouts = EMPTY_IMAGES, onReady }: ExportStageProps) {
   const stageRef = useRef<Konva.Stage>(null);
 
   useEffect(() => {
@@ -29,13 +31,13 @@ export function ExportStage({ slide, layout, images = EMPTY_IMAGES, onReady }: E
     if (!stage) return;
     stage.draw();
     onReady(stage);
-  }, [slide, layout, images, onReady]);
+  }, [slide, layout, images, cutouts, onReady]);
 
   return (
     <div aria-hidden style={{ position: "fixed", left: -10000, top: 0, width: 0, height: 0, overflow: "hidden" }}>
       <Stage ref={stageRef} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} listening={false}>
         <Layer listening={false}>
-          <StorySlide slide={slide} layout={layout} images={images} showGuides={false} />
+          <StorySlide slide={slide} layout={layout} images={images} cutouts={cutouts} showGuides={false} />
         </Layer>
       </Stage>
     </div>

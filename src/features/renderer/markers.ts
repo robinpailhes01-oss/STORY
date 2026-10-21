@@ -1,5 +1,6 @@
 // Géométrie des marquages, en px du bloc, exprimée en fractions de la taille de police (em)
 // pour rester juste quelle que soit la police ou la taille.
+import type { Marker } from "@/domain/story-document";
 import type { AccentBox, LaidOutLine } from "@/lib/layout/text-layout";
 import { seededRandom } from "./random";
 
@@ -11,14 +12,23 @@ export interface RectGeometry {
   cornerRadius: number;
 }
 
-/** Barre épaisse sous les mots, légèrement sous la ligne de base, dessinée derrière le texte. */
-export function underlineRect(box: AccentBox, fontSize: number): RectGeometry {
+/**
+ * Barre sous les mots, dessinée derrière le texte : par défaut épaisse et légèrement sous la ligne de base ;
+ * le style peut la décaler et l’affiner (Discret : trait fin ; Feutre : trait épais sous les lettres).
+ */
+export function underlineRect(
+  box: AccentBox,
+  fontSize: number,
+  marker?: Pick<Marker, "underlineOffset" | "underlineThickness">,
+): RectGeometry {
+  const offset = marker?.underlineOffset ?? -0.07;
+  const thickness = marker?.underlineThickness ?? 0.25;
   return {
     x: box.x - fontSize * 0.04,
-    y: box.baseline - fontSize * 0.07,
+    y: box.baseline + fontSize * offset,
     width: box.width + fontSize * 0.08,
-    height: fontSize * 0.25,
-    cornerRadius: fontSize * 0.03,
+    height: Math.max(2, fontSize * thickness),
+    cornerRadius: Math.min(fontSize * 0.03, (fontSize * thickness) / 2),
   };
 }
 
@@ -47,11 +57,19 @@ export function skewedPastillePoints(box: AccentBox, fontSize: number, skewDeg: 
  * légèrement irrégulier. Aléatoire déterministe : même graine, même trait (aperçu = export).
  */
 export function handDrawnOval(box: AccentBox, fontSize: number, seed: string): number[] {
+  return handDrawnEllipse(box.x + box.width / 2, box.baseline - fontSize * 0.34, box.width / 2 + fontSize * 0.36, fontSize * 0.78, fontSize, seed);
+}
+
+/** Ovale du Crayon tracé dans un rectangle (deux coins opposés), même trait que le marquage « cercle ». */
+export function ovalInBox(x0: number, y0: number, x1: number, y1: number, seed: string): number[] {
+  const rx = Math.max(4, Math.abs(x1 - x0) / 2);
+  const ry = Math.max(4, Math.abs(y1 - y0) / 2);
+  return handDrawnEllipse((x0 + x1) / 2, (y0 + y1) / 2, rx, ry, Math.min(ry, 60), seed);
+}
+
+/** Ellipse tracée à la main ; `fontSize` règle la dérive du second passage. */
+function handDrawnEllipse(cx: number, cy: number, rx: number, ry: number, fontSize: number, seed: string): number[] {
   const random = seededRandom(seed);
-  const cx = box.x + box.width / 2;
-  const cy = box.baseline - fontSize * 0.34;
-  const rx = box.width / 2 + fontSize * 0.36;
-  const ry = fontSize * 0.78;
   const start = -Math.PI * (0.62 + random() * 0.16);
   const turns = 1.1 + random() * 0.08;
   const tilt = (random() - 0.5) * 0.06;
