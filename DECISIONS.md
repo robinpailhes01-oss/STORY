@@ -169,7 +169,7 @@ photo : la même partout, avec un avertissement.
 Liseré = les lettres contourées de l’amorce, Théâtre = les capitales dorées, les autres = le corps avec son marquage
 (Lueur : halo rose).
 
-**Vérification** : `npm run build && npm run verify:render` (≈ 10 min). 17 styles sans police de secours, effets propres
+**Vérification** : `npm run build && npm run verify:render` (≈ 15 min, 139 contrôles). 17 styles sans police de secours, effets propres
 à chaque nouveau style, reprises, contraste, chaque option (3 couleurs, accents masqués, 5 décorations hors du texte,
 2 photos, crayon, sans détourage), export PNG 1080 × 1920 de 6 styles + une combinaison d’options, aperçu ≈ PNG,
 halo visible dans le PNG, et mot géant : entre l’export avec et sans détourage, les pixels qui changent sont dans la
