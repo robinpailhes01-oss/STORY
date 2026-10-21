@@ -42,3 +42,6 @@ next-env.d.ts
 
 # exports bruts du script de vérification (les captures composites sont versionnées)
 /captures/s1/export/
+
+# Copies de travail temporaires des agents Claude Code
+/.claude/worktrees/
