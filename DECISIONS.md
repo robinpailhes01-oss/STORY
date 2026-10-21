@@ -102,6 +102,85 @@ vertical unique (la référence semble ajuster de ± 10 px selon la photo) ; PNG
 `scripts/verify-export.mjs` (S1) laissait un `next-server` actif à la fin (`child.kill()` ne tue que `npx`, corrigé : voir « Page ») ;
 `verify-render` arrête tout le groupe de processus.
 
+## Moteur visuel, phase 3 (branche build3/visual)
+
+**Sept styles de plus, dans l’ordre de la grille de la référence.** `STYLE_PRESETS` suit maintenant la grille
+(Underline, Autorité, Highlight… DRAMA) avec nos noms : trait, dore, orange, rose, serif, entoure, fluo, turquoise,
+roman, bandeau, puis **massif** (condensé très gras, accroche en capitales, accents vert-jaune `#D4F25A`),
+**discret** (petit serif Tinos, aéré, souligné fin crème), **lueur** (didone grasse, accents rose `#FF2BD6` avec halo),
+**geant** (amorce Inter 800, mot géant vert `#4ADE80`, texte courant Inter 400), **liseret** (accroche et amorce en
+condensé aux lettres contourées, mots clés pleins bleu glacier, texte courant Inter 700), **feutre** (condensé blanc,
+souligné blanc épais sous les lettres), **theatre** (capitales Playfair dorées `#D4AF37` sur 960 px, mot géant rouge
+`#E0141B` en Abril Fatface, corps Tinos aéré). « dore » reste le style par défaut. Serif (« Mantra ») est incliné de
+−3° autour du centre de la scène : la story et sa suite tournent autour du même point, les paragraphes repris gardent
+leurs positions.
+
+**Polices.** Anton, Abril Fatface et Playfair Display 400 (Fontsource 5.3.0, fichiers latin + latin-ext et licence OFL
+téléchargés depuis jsDelivr, aucune dépendance npm ajoutée). Couverture relevée avec fontTools et inscrite dans
+`MISSING_GLYPHS` ; Ÿ est dans le fichier latin-ext, Œ œ ’ « » … – — et U+00A0 sont dans le latin. Les capitales
+sont appliquées au rendu (`transformText`, caractère par caractère, longueur conservée) : le contrôle des glyphes
+porte sur le texte transformé.
+
+**Rôles typographiques.** Un style peut définir, en plus de l’accroche et du corps, une **amorce** (premier paragraphe
+des stories 2 et 4) et un **mot géant**. Chaque rôle peut avoir sa couleur (« accent » = suit la couleur choisie),
+ses capitales et son contour (`TextStyle.outline`, en px). Quand une scène ne tient pas, toutes les tailles baissent
+dans la même proportion.
+
+**Mot géant derrière la personne.** Le mot = le mot le plus long du premier accent du premier paragraphe qui en a,
+sans ponctuation, en capitales, centré sur 1000 px de large, inséré juste après l’amorce. Réduit pour tenir sur une
+ligne. Dessin : fond (photo, voile, grain), mot géant (`behindSubject`), puis le texte. Le détourage n’est pas une
+seconde photo posée par-dessus : on **découpe la silhouette dans le mot** (toile de travail à la résolution réelle du
+contexte, `destination-out` avec le détourage recadré par le même `coverCrop`), si bien que la personne garde
+exactement les pixels de la photo voilée. Paramètre `cutouts` (assetId → image RGBA, transparente hors de la
+personne, même taille ou même rapport que la photo) sur `StorySlide`, `StoryPreview`, `ExportStage`. Sans détourage :
+le mot reste derrière le texte, `cutoutWarnings(doc, cutouts)` donne l’avertissement « détourage indisponible ».
+Repris à 40 % dans la story suite, comme les paragraphes. Exclu du seuil de contraste (élément graphique).
+
+**Options de rendu** (`RenderOptions`). `composeSequence({ plan, styleId, photos, options?, drawings? })`, compatible
+avec les appels existants. `accentColor` remplace la couleur d’accent du style (`applyRenderOptions`) : marquages,
+mots en couleur, rôles « accent » ; sur une pastille, le texte passe en noir ou blanc selon le meilleur contraste ;
+sur bandeau, la bande reste noire et ce sont les mots clés qui prennent la couleur. Une couleur invalide est ignorée
+avec un avertissement. `showAccents = false` vide les accents des blocs (aucun marquage) ; les bandes du style
+Bandeau, les couleurs de rôle et le mot géant restent (ce sont la typographie du style, pas des marquages).
+
+**Décorations** (une par story, couleur d’accent). Géométrie calculée à la composition (`src/lib/compose/decorations.ts`),
+déterministe (graine story + texte), stockée dans le document (bloc `decoration`, tracés absolus validés) : l’aperçu
+et l’export dessinent exactement les mêmes points. Chaque décoration essaie plusieurs placements autour du premier mot
+en évidence, puis des suivants, puis la fin du texte, et garde le premier qui reste dans 30–1050 × 262–1606 px à
+12 px au moins de toute ligne de texte (mot géant compris). Flèche vers le mot : courbe tracée à la main + pointe en deux
+traits ; flèche vers la suite : vers le bord droit sous le texte, jamais sur la story 5 ; traînée d’étoiles : 8 étoiles
+à 4 branches de plus en plus grandes ; éclair : polygone plein ; étincelles : 3 à 5 étoiles autour du mot. Sans place
+libre : pas de décoration et un avertissement, jamais un tracé sur le texte. Sur un texte incliné, les tracés tournent
+avec lui.
+
+**Crayon.** `drawings[story]` → bloc `drawing` (au-dessus du texte, une story suite n’hérite pas des traits de la
+précédente). Stylo : trait plein arrondi. Surligneur : trait large à 35 % d’opacité en mélange normal ; le mode
+`multiply` rendait le trait invisible sur les photos sombres voilées, l’opacité garde le texte dessous lisible.
+Ovale : deux points = coins du rectangle tracé → ovale « fait main » (même algorithme que le marquage cercle) ;
+plus de deux points = le geste lissé (tension 0,4). Validation : 120 traits par story, 2000 points par trait,
+épaisseur ≤ 200 px, points dans le cadre ; la composition ramène au bord les points hors cadre (avertissement) et
+espace les points d’un trait trop long.
+
+**Deux ou trois photos.** Le nombre de photos est la position de la dernière photo fournie (`[p1, p2, null]` = 2 photos),
+puis `photoIndexFor` : avec 2 photos, la photo 1 sert aux stories 1, 4, 5 et la photo 2 aux stories 2 et 3. Une seule
+photo : la même partout, avec un avertissement.
+
+**Tuiles.** Chaque tuile reprend le rôle qui caractérise le style (`swatchRole`) : Géant = le mot géant vert,
+Liseré = les lettres contourées de l’amorce, Théâtre = les capitales dorées, les autres = le corps avec son marquage
+(Lueur : halo rose).
+
+**Vérification** : `npm run build && npm run verify:render` (≈ 10 min). 17 styles sans police de secours, effets propres
+à chaque nouveau style, reprises, contraste, chaque option (3 couleurs, accents masqués, 5 décorations hors du texte,
+2 photos, crayon, sans détourage), export PNG 1080 × 1920 de 6 styles + une combinaison d’options, aperçu ≈ PNG,
+halo visible dans le PNG, et mot géant : entre l’export avec et sans détourage, les pixels qui changent sont dans la
+silhouette. Détourages de test : silhouettes des photos synthétiques relevées à la main (`test-photos.ts`).
+Planches dans `captures/render/` (`planche-17-styles`, `decorations`, `couleurs`, `crayon`, `deux-photos`, `mot-geant`,
+`options-export`, une par style). Les comparaisons avec les captures de la référence restent locales (non versionnées).
+
+**Limites.** Le mot géant n’est pas placé selon la position réelle de la personne (il suit l’amorce) : avec un vrai
+détourage, on pourra le descendre au niveau de la tête. Le halo néon dépend du flou canvas : identique à l’aperçu et
+à l’export (flou multiplié par l’échelle réelle du contexte), mais plus diffus sur les petites vignettes.
+
 ## Page (« / », src/features/creator)
 
 **Routes.** `/` est l’application ; le studio S1 passe sur `/s1` (`src/features/studio` inchangé) et

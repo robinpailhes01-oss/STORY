@@ -56,7 +56,8 @@ function swatchBlock(style: StylePreset, logicalWidth: number, fontSize = NAME_S
     lineHeight,
     letterSpacing: look.letterSpacing,
     ...(look.transform ? { transform: look.transform } : {}),
-    ...(look.outline ? { outline: { width: Math.max(1.5, look.outline * fontSize) } } : {}),
+    // Tuile réduite au quart environ : contour plus épais pour qu’il reste lisible, comme sur la référence.
+    ...(look.outline ? { outline: { width: Math.max(4, look.outline * fontSize * 1.6) } } : {}),
   };
   return {
     id: `swatch-${style.id}`,

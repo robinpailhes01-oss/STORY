@@ -44,6 +44,10 @@ export interface LaboBlockReport {
   glow: number | null;
   rotation: number | null;
   behindSubject: boolean;
+  markerColor: string | null;
+  markerTextColor: string | null;
+  /** Hauteur d’une ligne en px (boîtes de lignes : lineBoxes × lineHeight). */
+  lineHeight: number;
 }
 
 export interface LaboStoryReport {
@@ -51,7 +55,14 @@ export interface LaboStoryReport {
   slideId: string;
   assetId: string | null;
   blocks: LaboBlockReport[];
-  decoration: { kind: string; color: string; shapes: number; bounds: { x: number; y: number; width: number; height: number } } | null;
+  decoration: {
+    kind: string;
+    color: string;
+    shapes: number;
+    bounds: { x: number; y: number; width: number; height: number };
+    /** Points de chaque tracé, pour vérifier qu’aucun ne touche une ligne de texte. */
+    points: number[][];
+  } | null;
   drawing: { strokes: number; tools: string[] } | null;
 }
 
@@ -155,6 +166,9 @@ export function buildStyleReport(
           glow: block.marker?.glow ?? null,
           rotation: block.rotation?.angle ?? null,
           behindSubject: Boolean(block.behindSubject),
+          markerColor: block.marker?.color ?? null,
+          markerTextColor: block.marker?.textColor ?? null,
+          lineHeight: t.lineHeightPx,
         };
       });
     const deco = slide.blocks.find((b): b is DecorationBlock => b.kind === "decoration");
@@ -165,7 +179,13 @@ export function buildStyleReport(
       assetId: slide.background.kind === "image" ? slide.background.assetId : null,
       blocks,
       decoration: deco
-        ? { kind: deco.decoration, color: deco.color, shapes: deco.shapes.length, bounds: { x: deco.x, y: deco.y, width: deco.width, height: deco.height } }
+        ? {
+            kind: deco.decoration,
+            color: deco.color,
+            shapes: deco.shapes.length,
+            bounds: { x: deco.x, y: deco.y, width: deco.width, height: deco.height },
+            points: deco.shapes.map((shape) => shape.points),
+          }
         : null,
       drawing: drawing ? { strokes: drawing.strokes.length, tools: drawing.strokes.map((s) => s.tool) } : null,
     };
