@@ -1,0 +1,229 @@
+{
+  "photos": [
+    {
+      "file": "jpeg-exif6-1600x1200.jpg",
+      "sourceType": "image/jpeg",
+      "viewWidth": 1200,
+      "viewHeight": 1600,
+      "expectedWidth": 1200,
+      "expectedHeight": 1600,
+      "markers": {
+        "rouge": [
+          0.125,
+          0.0938
+        ],
+        "bleu": [
+          0.875,
+          0.0938
+        ],
+        "vert": [
+          0.125,
+          0.9062
+        ]
+      },
+      "orientation": 6,
+      "warnings": []
+    },
+    {
+      "file": "jpeg-exif3-1200x1600.jpg",
+      "sourceType": "image/jpeg",
+      "viewWidth": 1200,
+      "viewHeight": 1600,
+      "expectedWidth": 1200,
+      "expectedHeight": 1600,
+      "markers": {
+        "rouge": [
+          0.125,
+          0.0938
+        ],
+        "bleu": [
+          0.875,
+          0.0938
+        ],
+        "vert": [
+          0.125,
+          0.9062
+        ]
+      },
+      "orientation": 3,
+      "warnings": []
+    },
+    {
+      "file": "jpeg-exif8-1600x1200.jpg",
+      "sourceType": "image/jpeg",
+      "viewWidth": 1200,
+      "viewHeight": 1600,
+      "expectedWidth": 1200,
+      "expectedHeight": 1600,
+      "markers": {
+        "rouge": [
+          0.125,
+          0.0938
+        ],
+        "bleu": [
+          0.875,
+          0.0938
+        ],
+        "vert": [
+          0.125,
+          0.9062
+        ]
+      },
+      "orientation": 8,
+      "warnings": []
+    },
+    {
+      "file": "jpeg-paysage-1920x1440.jpg",
+      "sourceType": "image/jpeg",
+      "viewWidth": 1920,
+      "viewHeight": 1440,
+      "expectedWidth": 1920,
+      "expectedHeight": 1440,
+      "markers": {
+        "rouge": [
+          0.0938,
+          0.125
+        ],
+        "bleu": [
+          0.9062,
+          0.125
+        ],
+        "vert": [
+          0.0938,
+          0.875
+        ]
+      },
+      "orientation": 1,
+      "warnings": []
+    },
+    {
+      "file": "grosse-6000x8000.jpg",
+      "sourceType": "image/jpeg",
+      "viewWidth": 6000,
+      "viewHeight": 8000,
+      "expectedWidth": 1920,
+      "expectedHeight": 2560,
+      "markers": {
+        "rouge": [
+          0.125,
+          0.0938
+        ],
+        "bleu": [
+          0.875,
+          0.0938
+        ],
+        "vert": [
+          0.125,
+          0.9062
+        ]
+      },
+      "orientation": 1,
+      "warnings": []
+    },
+    {
+      "file": "png-alpha-1080x1350.png",
+      "sourceType": "image/png",
+      "viewWidth": 1080,
+      "viewHeight": 1350,
+      "expectedWidth": 1080,
+      "expectedHeight": 1350,
+      "markers": {
+        "rouge": [
+          0.125,
+          0.1
+        ],
+        "bleu": [
+          0.875,
+          0.1
+        ],
+        "vert": [
+          0.125,
+          0.9
+        ]
+      },
+      "orientation": 1,
+      "warnings": [],
+      "transparentCorner": [
+        0.95,
+        0.95
+      ]
+    },
+    {
+      "file": "webp-900x1200.webp",
+      "sourceType": "image/webp",
+      "viewWidth": 900,
+      "viewHeight": 1200,
+      "expectedWidth": 900,
+      "expectedHeight": 1200,
+      "markers": {
+        "rouge": [
+          0.125,
+          0.0938
+        ],
+        "bleu": [
+          0.875,
+          0.0938
+        ],
+        "vert": [
+          0.125,
+          0.9062
+        ]
+      },
+      "orientation": 1,
+      "warnings": [
+        "basse_definition"
+      ]
+    },
+    {
+      "file": "heic-1200x1600.heic",
+      "sourceType": "image/heic",
+      "viewWidth": 1200,
+      "viewHeight": 1600,
+      "expectedWidth": 1200,
+      "expectedHeight": 1600,
+      "markers": {
+        "rouge": [
+          0.125,
+          0.0938
+        ],
+        "bleu": [
+          0.875,
+          0.0938
+        ],
+        "vert": [
+          0.125,
+          0.9062
+        ]
+      },
+      "orientation": 1,
+      "warnings": []
+    },
+    {
+      "file": "heic-irot-1600x1200.heic",
+      "sourceType": "image/heic",
+      "viewWidth": 1200,
+      "viewHeight": 1600,
+      "expectedWidth": 1200,
+      "expectedHeight": 1600,
+      "markers": {
+        "rouge": [
+          0.125,
+          0.0938
+        ],
+        "bleu": [
+          0.875,
+          0.0938
+        ],
+        "vert": [
+          0.125,
+          0.9062
+        ]
+      },
+      "orientation": 6,
+      "warnings": []
+    }
+  ],
+  "invalid": [
+    "faux.jpg"
+  ]
+}
