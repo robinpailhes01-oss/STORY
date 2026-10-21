@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { CreatorClient } from "@/features/creator/CreatorClient";
 
 export const metadata: Metadata = {
-  title: "STORY · 5 stories à partir de 3 photos et une idée",
-  description: "Écris ton idée, ajoute 3 photos : l’IA écrit 5 stories, tu choisis le style, tu ajustes et tu exportes.",
+  title: "Story · 5 stories à partir de 2 ou 3 photos",
+  description: "Ajoute 2 ou 3 photos, une idée si tu en as une : l’IA écrit 5 stories à partir de ton profil, tu choisis le style, tu ajustes et tu exportes.",
 };
 
 export const viewport: Viewport = {

@@ -29,16 +29,16 @@ Légende : ✅ fait · 🔜 prévu dans la prochaine phase · ⏳ plus tard (ave
 | Contenus importés = données, jamais instructions | ✅ balises + neutralisation |
 | Un appel principal + une réparation ciblée, mesurer avant d'ajouter des agents | ✅ (10/10 sans réparation à l'évaluation) |
 | Aucun chiffre, client ou témoignage inventé | ✅ contrôle `chiffre_invente` + méthode |
-| **Relier chaque affirmation chiffrée à une preuve approuvée** (proofIds) | 🔜 les preuves du contexte reçoivent un identifiant ; un paragraphe qui cite un chiffre doit référencer la preuve, et le contrôle vérifie que le chiffre y figure |
-| **Réécrire une seule story** sans écraser les autres ni les retouches | 🔜 « Refaire cette story » (en plus de « Refaire la séquence ») |
-| Mode « mon texte » : conserver les mots, seulement découper | ✅ contrôle `mots_modifies` · 🔜 ne jamais couper une phrase, refuser un texte trop court |
-| Mémoire : distinguer exporté / approuvé / performant ; suivre ce que l'utilisateur garde ou corrige | 🔜 version légère sur l'appareil : les 3 dernières séquences **exportées** servent d'exemples de ta voix · ⏳ suivi complet avec la base de données |
+| **Relier chaque affirmation chiffrée à une preuve approuvée** (proofIds) | ✅ les preuves du contexte ont un identifiant (p1, p2… affichés dans « Mon contexte ») ; un paragraphe qui cite un chiffre référence la preuve, le contrôle vérifie que le chiffre y figure ; les retouches de texte gardent la référence |
+| **Réécrire une seule story** sans écraser les autres ni les retouches | ✅ « Refaire la story n » (consigne facultative), en plus de « Refaire les 5 stories » ; style, photos, dessins et retouches des autres stories gardés |
+| Mode « mon texte » : conserver les mots, seulement découper | ✅ contrôle `mots_modifies`, phrases jamais coupées (`phrase_coupee`), texte trop court refusé avec un message affiché sous le champ |
+| Mémoire : distinguer exporté / approuvé / performant ; suivre ce que l'utilisateur garde ou corrige | ✅ version légère sur l'appareil : les 3 dernières séquences **exportées** servent d'exemples de ta voix (visible et effaçable dans « Mon contexte ») · ⏳ suivi complet avec la base de données |
 
 ## Robustesse
 
 | Recommandation | État |
 |---|---|
-| Résultat enregistré avant d'annoncer le succès ; récupérer une génération terminée après fermeture de l'onglet | ⏳ demande une base (Supabase). En attendant : 🔜 l'écran reste allumé pendant la génération (Wake Lock) et la demande est reprise si l'iPhone l'a coupée |
+| Résultat enregistré avant d'annoncer le succès ; récupérer une génération terminée après fermeture de l'onglet | ⏳ demande une base (Supabase). En attendant : ✅ l'écran reste allumé pendant la génération (Wake Lock) et une demande coupée pendant que la page était en arrière-plan est relancée une fois au retour · 🔜 à confirmer sur ton iPhone |
 | Clé d'idempotence, file de jobs durable (Trigger.dev), outbox, quotas réservés en transaction | ⏳ inutile pour un outil personnel à ~16 s par génération ; indispensable avant de vendre |
 | Limites de durée, de relances et de coût | ✅ délai 90 s, 2 relances SDK, 1 réparation, limite de débit par IP |
 
@@ -61,4 +61,4 @@ Légende : ✅ fait · 🔜 prévu dans la prochaine phase · ⏳ plus tard (ave
 ## Critère d'acceptation global du dossier
 
 « Robin peut donner une idée, recevoir cinq stories cohérentes avec Luma, corriger une phrase, changer une photo, quitter/revenir et exporter les images dans l'ordre. Aucun chiffre client n'est inventé et aucune donnée d'un autre espace n'est accessible. »
-→ Couvert par la page en cours de finition et sa vérification automatique ; reste la recette sur ton iPhone.
+→ Couvert par la page (parcours de référence complet : idée facultative, 2 ou 3 photos, 17 styles, Crayon, Présenter, Refaire cette story) et sa vérification automatique (`npm run verify:app`) ; reste la recette sur ton iPhone.

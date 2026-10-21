@@ -30,6 +30,8 @@ export interface AppReport {
     crop: { focalX: number; focalY: number; zoom: number } | null;
     /** Nombre de traits du Crayon dessinés sur cette story. */
     strokes: number;
+    /** Outil et points de chaque trait (repère 1080 × 1920). */
+    strokeList: Array<{ tool: string; points: number[] }>;
     decoration: string | null;
     /** Mot géant (texte) posé derrière la personne. */
     giant: string | null;
@@ -67,6 +69,7 @@ export function publishAppReport(
             assetId: slide.background.kind === "image" ? slide.background.assetId : null,
             crop: slide.background.kind === "image" ? slide.background.crop : null,
             strokes: slide.blocks.reduce((n, b) => n + (b.kind === "drawing" ? b.strokes.length : 0), 0),
+            strokeList: slide.blocks.flatMap((b) => (b.kind === "drawing" ? b.strokes.map((st) => ({ tool: st.tool, points: st.points })) : [])),
             decoration: slide.blocks.flatMap((b) => (b.kind === "decoration" ? [b.decoration] : []))[0] ?? null,
             giant: (slide.blocks.find((b) => b.kind === "text" && b.behindSubject) as TextBlock | undefined)?.content ?? null,
             blocks: slide.blocks

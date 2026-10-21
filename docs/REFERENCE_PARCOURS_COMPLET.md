@@ -59,3 +59,6 @@ Feuille qui monte du bas, titre « STYLE » en petites capitales espacées, ✕ 
 | Décorations (5), interrupteur « Mots en évidence », couleur d'accent personnalisable | styles + renderer + page |
 | Mantra : texte légèrement incliné | style Serif |
 | Mode « J'ai mon texte » : ne jamais couper une phrase ; texte trop court refusé avec un message | IA |
+
+**État (phase 3)** : tous ces écarts sont traités (moteurs : styles, décorations, crayon, détourage, IA ; page : voir
+`DECISIONS.md`, « Page, phase 3 »), vérifiés par `npm run verify:app`. Reste la recette sur l'iPhone de Robin.

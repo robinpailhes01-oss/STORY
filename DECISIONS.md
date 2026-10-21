@@ -245,7 +245,99 @@ Contrôle aussi : aucune erreur JavaScript, aucun défilement horizontal, zones 
 hors de `/api/generations`, `/api/ideas` et des fichiers du site. Captures dans `captures/app/`.
 
 **Hors périmètre (voir `docs/REFERENCE_PARCOURS_COMPLET.md` §4).** Idée facultative, 2 photos, carte profil,
-Présenter, zoom, Crayon, 7 styles et décorations supplémentaires : non traités ici.
+Présenter, zoom, Crayon, 7 styles et décorations supplémentaires : traités en « Page, phase 3 » ci-dessous.
+
+## Page, phase 3 (parcours de référence, src/features/creator)
+
+**Cahier de recette.** Les 13 captures de `docs/REFERENCE_PARCOURS_COMPLET.md`, avec nos noms, notre logo et nos textes.
+Comparées à `captures/app/` (photos de test synthétiques) : Créer, Génération, Éditeur et panneau Style reprennent la
+mise en page de la référence.
+
+**Logo et titres.** « Story » en Playfair Display **italique** 400 (Fontsource 5.3.0, `playfair-display-latin-400-italic.woff2`,
+OFL déjà fournie dans `public/fonts/OFL-Playfair-Display.txt`), déclarée en CSS sous le nom « Playfair UI » pour ne pas
+toucher au registre du canvas (même principe qu’« Inter UI »). Classe `.font-display`. Titre de l’écran Créer : « Deux ou
+trois photos, / on écrit le reste. »
+
+**Écran Créer.** En-tête : logo + fil « Ton profil • Tes photos » (« Ton profil » ouvre Mon contexte, « Tes photos » =
+étape en cours, `aria-current`). Carte profil (avatar, « nom ✦ bio », @identifiant, « Voir la bio + » qui déplie
+l’activité) ; toucher la carte ouvre Mon contexte ; squelette animé pendant l’ouverture du brouillon. Photos : vide = grande
+zone en pointillés ; rempli = rangée de 4 colonnes (vignettes 4:5 numérotées, ✕ rond translucide de 44 px, tuile « + »
+tant qu’il y a moins de 3 photos), ajout multiple ; toucher une vignette = Remplacer / Échanger avec la photo n / Retirer
+(l’ordre reste modifiable, discrètement). Retirer une photo tasse les suivantes (`compactPhotos`) : 2 photos = emplacements
+1 et 2, donc `photoIndexFor` s’applique (photo 1 → stories 1, 4, 5). « Facultatif » + « Ton idée de séquence » + ⓘ (explication
+dépliable) ; « Pas d’idée ? » et « J’ai déjà mon texte » sur une ligne discrète ; les puces de structure passent dans un repli
+« Structure : Auto ». **Générer n’est plus fixé en bas** (il recouvrait l’interrupteur et le compteur) : il suit le champ, la
+page garde une marge `safe-area` en bas ; le compteur est dans le coin du champ, visible seulement quand il y a du texte.
+Générer est actif dès 2 photos (`MIN_PHOTO_COUNT`) ; idée vide = `idea: ""` ; en mode texte, texte requis, et le refus
+`texte_trop_court` de l’API ramène sur Créer avec le message sous le champ.
+
+**Mon contexte.** Sections « Ton profil » (photo de profil, prénom, identifiant, bio) et « Ton activité ». La **photo de profil**
+passe par `importPhoto` (format, orientation, métadonnées), puis un carré 192 px JPEG 0,82 (≈ 10 à 20 Ko) en data URL dans
+localStorage (`story.avatar.v1`) : jamais dans le contexte, jamais envoyée (vérifié sur toutes les requêtes). Les preuves sont
+listées avec leur identifiant (p1, p2…) et le rappel « un chiffre n’est cité que s’il figure dans une preuve ».
+
+**Écran de génération.** Noir, logo en grand, barre fine et pourcentage. Le serveur ne donne pas d’étapes : progression
+estimée `min(95, 100·(1 − e^(−t/9 s)))` (≈ 83 % à 16 s, ≈ 94 % à 25 s), 100 % à la réponse (affiché 350 ms avant l’éditeur).
+Annuler discret. **Wake Lock** (`navigator.wakeLock.request("screen")`) pendant la génération et la réécriture d’une story,
+repris au retour au premier plan, libéré à la fin ; refusé = sans effet. **Reprise** : si la demande échoue faute de réseau
+(TypeError → code `reseau`) alors que la page est passée en arrière-plan pendant l’envoi, elle est relancée UNE fois dès que
+la page revient au premier plan, avec un message ; une coupure au premier plan reste une erreur normale (Réessayer).
+
+**Éditeur.** En-tête : Créer, « Présenter », « Exporter ». Ligne : annuler, rétablir, « − 100 % + », « n / 5 », badge
+Remarques compact. Barre : Style · Photo · Crayon · Texte · Refaire (outil ouvert surligné). Les panneaux montent du bas sur
+toute la largeur (titre en petites capitales espacées, ✕) ; l’aperçu reste visible au-dessus. **Zoom** 50 à 200 % par pas de
+25 %, « 100 % » remet à 100 % ; au-delà de 100 % l’aperçu défile (cadre `overflow: auto`, aperçu centré par marges
+automatiques, recentré à chaque changement) et le glisser pour changer de story est coupé. **Présenter** : plein écran noir,
+story ajustée à la hauteur, barres de progression en haut, toucher le tiers gauche = reculer, le reste = avancer, avance
+automatique toutes les 5 s, fin de la story 5 ou ✕ / Échap = sortie sur la dernière story vue. Le petit ✕ en haut de l’aperçu
+de la référence n’a pas de rôle clair : pas reproduit.
+
+**Panneau Style.** Grille 2 colonnes des 17 `StyleSwatch` (active : anneau blanc + halo), puis décorations en puces
+(`aria-pressed`, une seule, re-toucher = aucune), interrupteur « Mots en évidence », « Couleur » : 8 pastilles
+d’`ACCENT_PALETTE`, « Couleur du style » (`accentColor: null`) et un champ `#RRGGBB` (appliqué dès qu’il est valide, saisie
+regroupée dans une seule étape d’annulation, format rappelé sinon). `Snapshot.options` (couleur, accents, décoration) est dans
+l’historique et le brouillon ; `composeSequence` reçoit `options` et `drawings`. Les avertissements de décoration sans place
+arrivent dans Remarques avec ceux de la composition.
+
+**Détourage.** Styles dont le preset a `giant` (Géant, Théâtre) : `preloadSegmenter()` à l’ouverture du panneau Style,
+`getCutout(photo.id, photo.image)` pour chaque photo dès qu’un tel style est choisi (indicateur « Détourage… »), table
+`cutouts` passée à l’aperçu, aux miniatures, à Présenter et à l’export (l’export attend la fin du calcul). Sous
+`MIN_SUBJECT_COVERAGE` ou en erreur : « Photo n : aucune personne détectée / détourage impossible, le mot géant reste devant »
+dans le panneau et dans Remarques (sinon `cutoutWarnings`). `releaseCutout` avec `releasePhoto` ; `releaseAllCutouts` au
+démontage. Sur les photos de test synthétiques, le modèle détoure la silhouette « mer » et ne trouve personne sur les deux autres.
+
+**Crayon.** Calque posé sur l’aperçu, à sa taille exacte : pointer events (doigt, stylet, souris, `getCoalescedEvents`),
+`touch-action: none`, capture du pointeur ; coordonnées = position dans le rectangle affiché ramenée à 1080 × 1920 (zoom
+compris, vérifié à 150 %), points espacés d’au moins 3 px, `DRAWING_LIMITS` respectés (2000 points, 120 traits : refus
+expliqué). Le trait en cours est dessiné en SVG, puis rejoint le document (une étape d’annulation par trait). Stylo
+8/14/24 px, surligneur 34/52/76 px (opacité `HIGHLIGHTER_OPACITY`), ovale 7/12/20 px : glisser = boîte → `Stroke` à 2 points.
+Couleurs : la couleur d’accent du style (suit la couleur choisie) + 6 pastilles. Gomme : dernier trait, tout effacer.
+Dessins par story (`drawings[storyIndex]`), dans le brouillon et l’export. Refaire toute la séquence retire les dessins
+(nouveau texte ; Annuler les rend).
+
+**Refaire.** Feuille à deux choix. « Refaire la story n » : `POST /api/generations/story` avec une consigne facultative en
+une ligne (puces « Plus court », « Plus direct »…) ; seule `stories[n]` de la réponse est reprise dans le plan **courant**
+(les retouches faites entre-temps sur les autres stories sont gardées), contrôles remplacés, style, photos et dessins gardés ;
+annulable (calque sur l’aperçu), erreur avec Réessayer, une étape d’annulation. « Refaire les 5 stories » : comportement
+précédent ; possible sans idée en mode idée.
+
+**Texte.** `Paragraph.proofIds` est conservé par champ quand on retouche (même si le chiffre disparaît : inoffensif) et suit
+les suppressions de paragraphe. Codes de l’IA libellés dans Remarques (« Phrase coupée », « Preuve non citée », « Chiffre absent
+de la preuve », « Trop de preuves »…), message détaillé de l’API à la suite.
+
+**Mémoire de ta voix.** À chaque export réussi, le texte brut de la séquence (une story par bloc, séparées par une ligne vide,
+1500 caractères au plus) est ajouté à `story.voix.v1` : 3 au plus, la plus récente d’abord, sans doublon. Ajouté à
+`context.voiceExamples` de chaque génération, réécriture et demande d’idées (`store.requestContext()`), jamais enregistré
+dans le contexte lui-même. Mon contexte : « n séquences exportées servent d’exemples de ta voix » + Effacer.
+
+**Vérification** : `npm run build && npm run verify:app` (≈ 2 min, 165 contrôles) : iPhone (390 × 844, DPR 3, tactile),
+ordinateur court (1366 × 700) et serveur sans clé. Visibilité de la page simulée (`document.visibilityState`) et coupure
+réseau (`route.abort`) pour la reprise ; seuls le 400 attendu et la coupure simulée sont tolérés sur la console ; les messages
+d’information de MediaPipe (« INFO: Created TensorFlow Lite XNNPACK delegate ») aussi. Requêtes autorisées : nos 3 routes et
+les fichiers du site (`/mediapipe/`, `/models/` compris). Captures dans `captures/app/` (photos synthétiques uniquement).
+
+**Limites.** Wake Lock et reprise en arrière-plan à confirmer sur l’iPhone (Safari ≥ 16.4 pour le Wake Lock). Le détourage
+tourne sur le fil principal (≈ 0,5 s par photo). Pas de pincement pour zoomer ni de défilement à deux doigts pendant le dessin.
 
 ## Détourage (src/lib/segmentation, branche build3/segmentation)
 
