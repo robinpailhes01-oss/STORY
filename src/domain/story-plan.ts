@@ -87,6 +87,8 @@ export interface ControlIssue {
   story: number | null;
   code: string;
   message: string;
+  /** « bloquant » empêche ControlReport.ok ; « conseil » est affiché sans bloquer. */
+  severity?: "bloquant" | "conseil";
 }
 
 export interface ControlReport {
@@ -103,6 +105,14 @@ export interface GenerateResponse {
     repaired: boolean;
     mock: boolean;
     usage?: { inputTokens: number; outputTokens: number };
+    /** Tokens d'entrée lus depuis le cache et écrits dans le cache (cumul des appels). */
+    cache?: { readTokens: number; writeTokens: number };
+    /** Coût estimé de la génération en dollars (prix publics du modèle), si connu. */
+    costUsd?: number;
+    /** Modèle de repli qui a servi la réponse après un refus du modèle demandé. */
+    fallbackModel?: string;
+    /** Version de la méthode d'écriture utilisée (ex. "v1"). */
+    methodVersion?: string;
   };
 }
 
@@ -122,7 +132,14 @@ export interface IdeaSuggestion {
 
 export interface IdeasResponse {
   ideas: IdeaSuggestion[];
-  meta: { model: string; ms: number; mock: boolean };
+  meta: {
+    model: string;
+    ms: number;
+    mock: boolean;
+    usage?: { inputTokens: number; outputTokens: number };
+    costUsd?: number;
+    fallbackModel?: string;
+  };
 }
 
 /** Corps d'erreur de toutes les routes : message en français, lisible par l'utilisateur. */
