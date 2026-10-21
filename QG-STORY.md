@@ -33,6 +33,10 @@ Risques : moteur de rendu (typo, mobile) plus long que prévu ;
 
 Ordre : S1 → (S2 ∥ S4) → S3. S5 (Supabase) et S6 (photos/détourage) après la V1.
 
+## Références ajoutées
+
+- `docs/REFERENCE_EDITEUR_MOBILE.md` : interface mobile de l'éditeur, mécanisme « story suite » (bloc précédent grisé), première séquence de référence. À donner à S2, S3 et S4.
+
 ## Ce qui attend Robin
 
 - [ ] Lancer la session S1 (prompt ci-dessous)
