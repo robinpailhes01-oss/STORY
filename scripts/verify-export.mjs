@@ -5,9 +5,11 @@
 //  4. les guides de l’aperçu n’apparaissent jamais dans l’export.
 // Produit captures/s1/exports-5-stories.png et captures/s1/apercu-vs-export.png.
 //
+// Page visée : /s1 (le studio S1 ; la page « / » est l’application).
 // Usage : npm run build && npm run verify:export   (BASE_URL=… pour viser un serveur déjà lancé)
 
 import { spawn } from "node:child_process";
+import { createServer } from "node:net";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -37,18 +39,37 @@ function pngSize(buffer) {
 
 const sha = (buffer) => createHash("sha256").update(buffer).digest("hex");
 
+/** Port TCP libre choisi par le système. */
+function freePort() {
+  return new Promise((resolve, reject) => {
+    const srv = createServer();
+    srv.unref();
+    srv.on("error", reject);
+    srv.listen(0, () => {
+      const { port } = srv.address();
+      srv.close(() => resolve(port));
+    });
+  });
+}
+
 async function startServer() {
   if (process.env.BASE_URL) return { url: process.env.BASE_URL, stop: () => {} };
-  const port = 3199;
-  const child = spawn("npx", ["next", "start", "-p", String(port)], { cwd: ROOT, stdio: "ignore" });
+  const port = await freePort();
+  // Groupe de processus à part : npx lance next-server en enfant, il faut arrêter tout le groupe.
+  const child = spawn("npx", ["next", "start", "-p", String(port)], { cwd: ROOT, stdio: "ignore", detached: true });
+  const stop = () => {
+    try {
+      process.kill(-child.pid, "SIGTERM");
+    } catch {}
+  };
   const url = `http://localhost:${port}`;
   for (let i = 0; i < 60; i++) {
     try {
-      if ((await fetch(url)).ok) return { url, stop: () => child.kill() };
+      if ((await fetch(url)).ok) return { url, stop };
     } catch {}
     await new Promise((r) => setTimeout(r, 500));
   }
-  child.kill();
+  stop();
   throw new Error("le serveur Next.js n’a pas démarré (npm run build d’abord ?)");
 }
 
@@ -80,7 +101,7 @@ try {
   const page = await context.newPage();
   const pageErrors = [];
   page.on("pageerror", (e) => pageErrors.push(e.message));
-  await page.goto(server.url);
+  await page.goto(`${server.url}/s1`);
   await page.waitForSelector('[data-render-state="ready"], [data-render-state="error"]', { timeout: 30_000 });
   check((await page.getAttribute("[data-render-state]", "data-render-state")) === "ready", "rendu prêt, polices chargées");
   check((await page.locator("main [role=alert]").count()) === 0, "aucune erreur affichée (polices, débordement, document)");

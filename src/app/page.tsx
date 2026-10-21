@@ -1,13 +1,21 @@
-import { StudioClient } from "@/features/studio/StudioClient";
+import type { Metadata, Viewport } from "next";
+import { CreatorClient } from "@/features/creator/CreatorClient";
+
+export const metadata: Metadata = {
+  title: "STORY · 5 stories à partir de 3 photos et une idée",
+  description: "Écris ton idée, ajoute 3 photos : l’IA écrit 5 stories, tu choisis le style, tu ajustes et tu exportes.",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0a0c12",
+  colorScheme: "dark",
+  viewportFit: "cover",
+};
 
 export default function Home() {
   return (
-    <main className="mx-auto flex w-full max-w-[1480px] flex-1 flex-col gap-10 px-4 py-8 sm:px-8">
-      <header className="flex items-center justify-between">
-        <p className="text-sm font-extrabold tracking-[0.24em]">STORY</p>
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-nuit/60">Luma · rendu et export</p>
-      </header>
-      <StudioClient />
-    </main>
+    <div className="creator-root flex min-h-dvh flex-1 flex-col">
+      <CreatorClient />
+    </div>
   );
 }
