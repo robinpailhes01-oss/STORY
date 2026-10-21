@@ -3,6 +3,7 @@
     {
       "family": "Inter",
       "weight": 400,
+      "style": "normal",
       "files": [
         "/fonts/inter-latin-400-normal.woff2"
       ]
@@ -10,6 +11,7 @@
     {
       "family": "Jost",
       "weight": 400,
+      "style": "normal",
       "files": [
         "/fonts/jost-latin-400-normal.woff2"
       ]
@@ -17,6 +19,7 @@
     {
       "family": "Inter",
       "weight": 700,
+      "style": "normal",
       "files": [
         "/fonts/inter-latin-700-normal.woff2"
       ]

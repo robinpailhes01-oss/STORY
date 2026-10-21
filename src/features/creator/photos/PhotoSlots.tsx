@@ -55,7 +55,7 @@ export function PhotoSlots({ compact = false, highlight }: Props) {
                 aria-label={photo ? `${label} : ${photo.name || "photo ajoutée"}. Modifier` : `${label} : ajouter une photo`}
                 disabled={busy}
                 onClick={() => (photo ? setMenu(slot) : pick(slot))}
-                className={`group relative aspect-[3/4] w-full overflow-hidden rounded-2xl transition disabled:cursor-wait ${
+                className={`group relative w-full overflow-hidden rounded-2xl transition disabled:cursor-wait ${compact ? "h-[78px]" : "aspect-[3/4]"} ${
                   photo ? "ring-1 ring-white/15" : "border border-dashed border-white/25 bg-white/[0.03] hover:bg-white/[0.06]"
                 } ${highlight === slot ? "ring-2 ring-white" : ""}`}
               >
@@ -70,7 +70,7 @@ export function PhotoSlots({ compact = false, highlight }: Props) {
                 )}
                 <span
                   aria-hidden
-                  className="absolute top-1.5 left-1.5 flex size-6 items-center justify-center rounded-full bg-black/65 text-xs font-extrabold text-white ring-1 ring-white/25"
+                  className="absolute bottom-1.5 left-1.5 flex size-6 items-center justify-center rounded-full bg-black/65 text-xs font-extrabold text-white ring-1 ring-white/25"
                 >
                   {slot + 1}
                 </span>
@@ -104,11 +104,13 @@ export function PhotoSlots({ compact = false, highlight }: Props) {
         })}
       </ol>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <button type="button" className="btn-ghost min-h-11 text-sm" disabled={busy} onClick={() => multi.current?.click()}>
-          <IconImage size={18} />
-          {filled === 0 ? "Ajouter 3 photos" : filled < PHOTO_COUNT ? "Compléter les photos" : "Changer les 3 photos"}
-        </button>
+      <div className={compact ? "contents" : "flex flex-wrap items-center gap-2"}>
+        {!compact && (
+          <button type="button" className="btn-ghost min-h-11 text-sm" disabled={busy} onClick={() => multi.current?.click()}>
+            <IconImage size={18} />
+            {filled === 0 ? "Ajouter 3 photos" : filled < PHOTO_COUNT ? "Compléter les photos" : "Changer les 3 photos"}
+          </button>
+        )}
         <input
           ref={multi}
           type="file"

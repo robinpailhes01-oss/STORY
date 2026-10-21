@@ -99,5 +99,71 @@ et du halo à l’échelle réduite.
 
 **Limites.** Photos de test synthétiques : le voile et le contraste sont à rejuger sur de vraies photos ; ancrage
 vertical unique (la référence semble ajuster de ± 10 px selon la photo) ; PNG ≈ 3,5 Mo à cause du grain ;
-`scripts/verify-export.mjs` (S1) laisse un `next-server` actif à la fin (`child.kill()` ne tue que `npx`) :
+`scripts/verify-export.mjs` (S1) laissait un `next-server` actif à la fin (`child.kill()` ne tue que `npx`, corrigé : voir « Page ») ;
 `verify-render` arrête tout le groupe de processus.
+
+## Page (« / », src/features/creator)
+
+**Routes.** `/` est l’application ; le studio S1 passe sur `/s1` (`src/features/studio` inchangé) et
+`scripts/verify-export.mjs` le vise, sur un port libre, avec `next start` dans son propre groupe de processus
+(`detached` + `process.kill(-pid)`) : plus de `next-server` orphelin.
+
+**Découpage.** `src/features/creator/` : `model/` (pur, testé : historique, astérisques ↔ accents, brouillon,
+appels API), `store.ts` (état métier hors React et hors Konva, lu par `useSyncExternalStore` : idée, plan, style,
+photos, génération, brouillon), `create/`, `editor/`, `photos/`, `ui/` (feuilles, icônes SVG fines inline).
+Chargé par `next/dynamic(..., { ssr: false })` comme le studio. Côté client, seul `src/domain/*` est importé
+du moteur d’écriture.
+
+**Historique.** Un snapshot = plan + contrôles de l’IA + style + ordre des 3 photos + cadrages (par identifiant
+de photo : le cadrage suit la photo quand on échange). 50 étapes. La saisie est regroupée **par champ**
+(clé `texte:story:paragraphe`, fenêtre de 1,5 s) : regrouper par story fusionnait deux paragraphes modifiés
+coup sur coup. Les curseurs de cadrage sont regroupés de la même façon. Une nouvelle génération (Refaire) est une
+étape : Annuler revient à la version d’avant.
+
+**Photos et mémoire.** Une photo remplacée ou retirée reste en mémoire tant qu’un état de l’historique la
+référence (Annuler peut la faire revenir) ; dès qu’aucun état ne la référence, `releasePhoto`. Au démontage,
+toutes sont libérées (elles restent dans IndexedDB).
+
+**Texte.** Les mots mis en valeur s’écrivent entre astérisques ; chaque frappe est appliquée (aperçu en direct) :
+astérisques retirés, `accents[]` déduits, 3 au plus **par story** (les suivants sont signalés et ignorés), champ vide
+ignoré (le contrat exige du texte), astérisque isolé ignoré et signalé. Les stories suite (3 et 5) affichent en
+lecture seule les paragraphes repris.
+
+**Rendu.** `useSequenceRender` : polices du texte réel (`fontRequirementsForSequence`) → `composeSequence` →
+`layoutDocument`, références stables pour les `StoryPreview` mémoïsés, recomposition à chaque `loadingdone`.
+Au changement de style, l’ancien rendu reste affiché jusqu’au chargement des polices du nouveau ; le panneau
+Style précharge les polices des 10 styles avec le texte courant, le changement est donc immédiat. Le contraste
+est mesuré comme au laboratoire (fond seul dessiné hors écran, 108 px de large, luminance sous chaque ligne),
+700 ms après le dernier changement, et rapporté en avertissement sous 4,5:1.
+
+**Export.** Bloqué tant qu’il reste un problème (composition, mise en page, police) : la feuille Remarques
+s’ouvre avec l’explication. Sinon `ExportStage` 1080 × 1920 une story à la fois, polices revérifiées, PNG relus.
+Feuille finale : « Enregistrer dans Photos / Partager » (`navigator.share({ files })` si `canShare`), et toujours
+le ZIP et les 5 PNG (sous « Ou télécharge les fichiers » quand le partage existe). Object URLs libérées à la
+fermeture.
+
+**Génération.** Pas d’étapes côté serveur : « Lecture » (0–2,5 s), « Écriture » (jusqu’à 22 s), « Relecture »
+(jusqu’à la réponse) sont indicatives ; « Mise en page » = chargement réel des polices. Annulable
+(`AbortController`). Les erreurs de l’API sont affichées telles quelles ; `cle_absente` propose l’exemple,
+429 indique le délai (`Retry-After`). Refaire : même idée, structure choisie (sinon Auto),
+`avoid = [ancienne structure, ancienne accroche]` ; une génération normale envoie les accroches récentes.
+
+**Brouillon.** localStorage `story.brouillon.v1` (idée, mode, structure, snapshot courant, 5 dernières
+générations), enregistré 500 ms après le dernier changement et à `pagehide` ; photos dans IndexedDB
+(`savePhotos("brouillon-courant")`) seulement quand la liste des photos change. Le contexte a sa propre clé
+(`story.contexte.v1`) : « Nouvelle séquence » efface le brouillon mais garde le contexte. Stockage indisponible :
+avertissement visible, la page reste utilisable.
+
+**Exemple.** « Voir un exemple » et « Essayer avec l’exemple » ouvrent `EXAMPLE_PLAN` ; les emplacements photo
+vides reçoivent les photos de test (`fetch` + `importPhoto`), les photos déjà ajoutées sont gardées.
+
+**Écran Créer.** Photos d’abord (comme la référence), puis l’idée, puis la structure ; « Générer » fixe en bas,
+actif dès 3 caractères, avec l’avertissement « fond sombre » s’il manque des photos.
+
+**Vérification** : `npm run build && npm run verify:app` (≈ 1 min 30) : parcours iPhone (390 × 844, DPR 3,
+tactile) et ordinateur (1440 × 900) avec l’IA simulée, puis un serveur sans clé (`cle_absente` → exemple).
+Contrôle aussi : aucune erreur JavaScript, aucun défilement horizontal, zones tactiles ≥ 44 px, aucune requête
+hors de `/api/generations`, `/api/ideas` et des fichiers du site. Captures dans `captures/app/`.
+
+**Hors périmètre (voir `docs/REFERENCE_PARCOURS_COMPLET.md` §4).** Idée facultative, 2 photos, carte profil,
+Présenter, zoom, Crayon, 7 styles et décorations supplémentaires : non traités ici.

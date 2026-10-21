@@ -415,6 +415,8 @@ export class CreatorStore {
     this.generationId++;
     this.controller?.abort();
     this.state.photos.forEach(releasePhoto);
+    if (this.saveTimer) clearTimeout(this.saveTimer); // un enregistrement en attente réécrirait le brouillon
+    this.saveTimer = null;
     clearDraft();
     this.savedPhotosKey = "||";
     this.set(

@@ -107,6 +107,16 @@ export function CreateScreen() {
           </section>
         )}
 
+        <section className="flex flex-col gap-3" aria-labelledby="photos-titre">
+          <div>
+            <h2 id="photos-titre" className="text-base font-bold text-white">
+              Tes 3 photos
+            </h2>
+            <p className="mt-0.5 text-[13px] text-mute">De préférence verticales, avec le haut de l’image dégagé pour le texte.</p>
+          </div>
+          <PhotoSlots />
+        </section>
+
         <section className="flex flex-col gap-3" aria-labelledby="idee-titre">
           <div className="flex items-center justify-between gap-3">
             <h2 id="idee-titre" className="text-base font-bold text-white">
@@ -190,7 +200,7 @@ export function CreateScreen() {
                         onClick={() => chooseIdea(s)}
                         className="card flex w-full flex-col gap-1.5 p-4 text-left transition hover:bg-white/[0.07]"
                       >
-                        <span className="text-[15px] leading-snug font-bold text-white">« {s.hook} »</span>
+                        <span className="text-[15px] leading-snug font-bold text-white">{/^[«"“]/.test(s.hook.trim()) ? s.hook : `« ${s.hook} »`}</span>
                         <span className="text-[13px] leading-snug text-soft">{s.idea}</span>
                         <span className="mt-0.5 self-start rounded-full bg-white/8 px-2.5 py-1 text-[11px] font-bold tracking-wide text-mute uppercase">
                           {isStructureId(s.structureId) ? getStructure(s.structureId).nom : s.structureId}
@@ -211,15 +221,6 @@ export function CreateScreen() {
           <StructurePicker value={structure} onChange={store.setStructure} />
         </section>
 
-        <section className="flex flex-col gap-3" aria-labelledby="photos-titre">
-          <div>
-            <h2 id="photos-titre" className="text-base font-bold text-white">
-              Tes 3 photos
-            </h2>
-            <p className="mt-0.5 text-[13px] text-mute">De préférence verticales, avec le haut de l’image dégagé pour le texte.</p>
-          </div>
-          <PhotoSlots />
-        </section>
       </main>
 
       <div className="fixed inset-x-0 bottom-0 z-30 bg-gradient-to-t from-[#0a0c12] via-[#0a0c12]/95 to-transparent pt-8 pb-[max(env(safe-area-inset-bottom),14px)]">

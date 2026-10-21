@@ -425,12 +425,34 @@ try {
   await page.locator("#cadrage-zoom").fill("1.6");
   await page.waitForFunction(() => window.__storyApp?.slides[3].crop?.zoom === 1.6 && window.__storyApp.slides[4].crop?.focalX === 0.2);
   await sleep(400);
+  await page.evaluate(() => document.querySelector("[data-panel=photo] .overflow-y-auto")?.scrollTo(0, 0));
   rep = await report(page);
   check(rep.slides[3].crop.focalY === 0.3 && rep.slides[4].crop.zoom === 1.6, "Cadrage : point focal et zoom appliqués aux stories 4 et 5");
   check((await canvasHash(page, "[data-testid=apercu] canvas")) !== before4, "Cadrage : l’aperçu change en direct");
   await shot(page, "photo-mobile");
   await page.click("[data-tool=photo]");
   await noHorizontalScroll(page, "Éditeur, panneaux");
+
+  // Texte trop long : problème bloquant, l’export est refusé avec une explication, puis on annule
+  const story4Before = textOfStory(await report(page), 3);
+  await page.click("[data-tool=texte]");
+  const long = "Une phrase volontairement beaucoup trop longue pour tenir dans la story, répétée pour remplir toute la place disponible et plus encore. ".repeat(3).slice(0, 300);
+  for (let i = 1; i <= 3; i++) await page.locator(`[data-panel=texte] [data-paragraph='${i}']`).fill(`${long} (${i})`);
+  await page.getByRole("button", { name: "Ajouter un paragraphe" }).click();
+  await page.locator("[data-panel=texte] [data-paragraph='4']").fill(`${long} (4)`);
+  await page.waitForFunction(() => window.__storyApp?.problems.length > 0, null, { timeout: 10_000 });
+  await page.click("[data-tool=texte]");
+  await page.click("[data-action=exporter]");
+  await page.getByTestId("remarques").waitFor();
+  check(
+    await page.getByTestId("remarques").getByText("À corriger avant l’export").isVisible(),
+    "Texte trop long : l’export est bloqué et la feuille Remarques explique pourquoi",
+  );
+  await shot(page, "export-bloque-mobile");
+  await page.getByTestId("remarques").getByRole("button", { name: "Fermer" }).click();
+  for (let i = 0; i < 4; i++) await page.click("[data-action=annuler]");
+  await page.waitForFunction(() => window.__storyApp?.problems.length === 0);
+  check(JSON.stringify(textOfStory(await report(page), 3)) === JSON.stringify(story4Before), "Annuler ×4 : la story 4 retrouve son texte, plus de problème bloquant");
 
   // Remarques (contraste, contrôles) : la feuille s’ouvre si le badge existe
   if (await page.locator("[data-action=remarques]").count()) {

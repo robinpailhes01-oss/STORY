@@ -78,7 +78,7 @@ export function TextPanel({ plan, storyIndex }: Props) {
                 id={id}
                 data-paragraph={i + 1}
                 className="field text-[15px]"
-                minRows={2}
+                minRows={1}
                 maxLength={MAX_PARAGRAPH_LENGTH + 20}
                 value={value}
                 onChange={(e) => apply(fields.map((f, k) => (k === i ? e.target.value : f)), i)}

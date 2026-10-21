@@ -81,9 +81,6 @@ export function GenerationScreen() {
             {error.retryAfterSec !== undefined && (
               <p className="mt-2 text-sm font-bold text-amber-100">Tu pourras réessayer dans {retryDelayLabel(error.retryAfterSec)}.</p>
             )}
-            {error.code === "cle_absente" && (
-              <p className="mt-2 text-sm text-mute">En attendant, le mode démo charge une séquence d’exemple pour essayer photos, styles et export.</p>
-            )}
           </div>
           <div className="flex w-full max-w-[340px] flex-col gap-2.5">
             {error.code === "cle_absente" ? (

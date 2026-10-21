@@ -59,7 +59,7 @@ body:has(.creator-root) {
   -webkit-tap-highlight-color: transparent;
 }
 
-.creator-root :focus-visible {
+.creator-root :focus-visible:not(.field) {
   outline: 2px solid #a8c8ff;
   outline-offset: 2px;
 }

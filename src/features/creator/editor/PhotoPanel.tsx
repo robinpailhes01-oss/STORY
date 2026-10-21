@@ -16,12 +16,13 @@ export function PhotoPanel() {
   const pct = (v: number) => `${Math.round(v * 100)} %`;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       <PhotoSlots compact highlight={slot} />
-      <section aria-labelledby="cadrage-titre" className="flex flex-col gap-3">
-        <div className="flex items-baseline justify-between gap-3">
+      <section aria-labelledby="cadrage-titre" className="flex flex-col gap-1">
+        <div className="flex items-center justify-between gap-3">
           <h3 id="cadrage-titre" className="text-sm font-bold text-white">
             Cadrage de la photo {slot + 1}
+            <span className="block text-xs font-normal text-mute">Pour toutes les stories de cette photo.</span>
           </h3>
           {photoId && (
             <button type="button" className="min-h-11 text-xs font-bold text-soft underline underline-offset-2" onClick={() => store.setCrop(photoId, DEFAULT_CROP)}>
@@ -30,11 +31,10 @@ export function PhotoPanel() {
           )}
         </div>
         {photoId ? (
-          <div className="flex flex-col gap-3" data-testid="cadrage">
+          <div className="flex flex-col" data-testid="cadrage">
             <Slider label="Horizontal" value={crop.focalX} min={0} max={1} step={0.01} display={pct(crop.focalX)} onChange={(focalX) => set({ focalX })} hint="gauche ↔ droite" />
             <Slider label="Vertical" value={crop.focalY} min={0} max={1} step={0.01} display={pct(crop.focalY)} onChange={(focalY) => set({ focalY })} hint="haut ↔ bas" />
             <Slider label="Zoom" value={crop.zoom} min={1} max={2} step={0.01} display={`× ${crop.zoom.toFixed(2).replace(".", ",")}`} onChange={(zoom) => set({ zoom })} />
-            <p className="text-xs text-mute">S’applique à toutes les stories de cette photo.</p>
           </div>
         ) : (
           <p className="text-sm text-mute">Ajoute la photo {slot + 1} pour régler son cadrage.</p>

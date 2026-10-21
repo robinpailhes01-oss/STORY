@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { DEFAULT_CONTEXT } from "@/domain/example-plan";
 import { BrandContextSchema, type BrandContext } from "@/domain/story-plan";
+import { AutoTextarea } from "../ui/AutoTextarea";
 import { Sheet } from "../ui/Sheet";
 
 interface Props {
@@ -15,7 +16,7 @@ const FIELDS: Array<{ key: "name" | "activity" | "offer" | "target" | "cta" | "t
   { key: "activity", label: "Ton activité", hint: "Qui tu es, ce que tu fais.", multiline: true },
   { key: "offer", label: "Ton offre", hint: "Ce que tu vends, comment ça se passe.", multiline: true },
   { key: "target", label: "Ta cible", hint: "Ton client idéal : qui, sa situation, ce qu’il veut.", multiline: true },
-  { key: "cta", label: "Ton appel à l’action", hint: "La dernière phrase de la séquence (« audit offert », « réponds AUDIT »…)." },
+  { key: "cta", label: "Ton appel à l’action", hint: "La dernière phrase de la séquence (« audit offert », « réponds AUDIT »…)." },
   { key: "tone", label: "Ton ton", hint: "Tutoiement, expressions, emojis ou non." },
   { key: "name", label: "Ton nom ou ta marque", hint: "Facultatif." },
 ];
@@ -98,9 +99,9 @@ export function ContextSheet({ context, onSave, onClose }: Props) {
             <span className="text-sm font-bold text-white">{f.label}</span>
             <span className="text-xs text-mute">{f.hint}</span>
             {f.multiline ? (
-              <textarea
-                className="field min-h-[76px] resize-y"
-                rows={2}
+              <AutoTextarea
+                className="field"
+                minRows={1}
                 maxLength={400}
                 value={form[f.key]}
                 onChange={(e) => update({ [f.key]: e.target.value })}
@@ -113,21 +114,21 @@ export function ContextSheet({ context, onSave, onClose }: Props) {
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-bold text-white">Tes preuves réelles</span>
           <span className="text-xs text-mute">Une par ligne : témoignages, chiffres, résultats vérifiables.</span>
-          <textarea
-            className="field min-h-[88px] resize-y"
-            rows={3}
+          <AutoTextarea
+            className="field"
+            minRows={2}
             value={form.proofsText}
             onChange={(e) => update({ proofsText: e.target.value })}
-            placeholder="« J’ai gagné 4 h par semaine » — Julie, fleuriste"
+            placeholder="« J’ai gagné 4 h par semaine » — Julie, fleuriste"
           />
           <span className="flex items-start gap-1.5 text-xs font-bold text-or">Aucune preuve = aucun chiffre ni témoignage inventé.</span>
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-bold text-white">Mots interdits</span>
           <span className="text-xs text-mute">Un mot ou une tournure par ligne.</span>
-          <textarea
-            className="field min-h-[88px] resize-y"
-            rows={3}
+          <AutoTextarea
+            className="field"
+            minRows={2}
             value={form.forbiddenText}
             onChange={(e) => update({ forbiddenText: e.target.value })}
           />

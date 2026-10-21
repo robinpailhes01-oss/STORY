@@ -16,6 +16,7 @@ import { publishAppReport } from "../test-report";
 import { useCreator, useStore } from "../use-creator";
 import { IconChevronLeft, IconClose, IconImage, IconPalette, IconRedo, IconRefresh, IconText, IconUndo, IconWarning } from "../ui/icons";
 import { ConfirmSheet } from "../ui/Sheet";
+import { useMediaQuery } from "../ui/use-media-query";
 import { ContrastProbes, type ContrastResult } from "./ContrastProbes";
 import { ExportSheet, type ExportState } from "./ExportSheet";
 import { PhotoPanel } from "./PhotoPanel";
@@ -46,6 +47,7 @@ export function EditorScreen() {
   const snapshot = history.present;
   const plan = snapshot.plan;
   const render = useSequenceRender(snapshot, pool);
+  const wide = useMediaQuery("(min-width: 1024px)");
   const { composition, layout, images, fontsReady, fontError } = render;
 
   const [tool, setTool] = useState<Tool | null>(null);
@@ -70,7 +72,16 @@ export function EditorScreen() {
       const photo = id ? pool.get(id) : undefined;
       photo?.warnings.forEach((w) => warnings.push(`Photo ${slot + 1} : ${w.message}`));
     });
-    return { controls: snapshot.controls?.issues ?? [], problems: [...new Set(problems)], warnings: [...new Set(warnings)] };
+    // Identifiants techniques (« story_05/s5_p3 ») → « Story 5, paragraphe 3 ».
+    const human = (m: string) =>
+      m
+        .replace(/\bstory_0?(\d)\/s\d_([pr])(\d+)/g, (_, n, kind, k) => `Story ${n}, paragraphe ${kind === "r" ? `repris ${k}` : k}`)
+        .replace(/\bstory_0?(\d)\b/g, "Story $1");
+    return {
+      controls: snapshot.controls?.issues ?? [],
+      problems: [...new Set(problems.map(human))],
+      warnings: [...new Set(warnings.map(human))],
+    };
   }, [fontError, composition, layout, contrast, snapshot.photos, snapshot.controls, pool]);
   const count = remarksCount(remarks);
 
@@ -158,6 +169,7 @@ export function EditorScreen() {
   };
 
   const changeStory = (index: number) => store.setStoryIndex(index);
+  const thumbWidth = wide ? 54 : 44;
   const toggleTool = (t: Tool) => setTool((current) => (current === t ? null : t));
 
   if (!plan) return null;
@@ -167,7 +179,7 @@ export function EditorScreen() {
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden pt-[env(safe-area-inset-top)]" data-screen="editor">
-      <header className="flex h-14 shrink-0 items-center justify-between gap-2 px-2 sm:px-4">
+      <header className="mx-auto flex h-14 w-full max-w-[1180px] shrink-0 items-center justify-between gap-2 px-2 sm:px-4">
         <button type="button" onClick={store.goCreate} className="flex min-h-11 items-center gap-1 rounded-full pr-3 pl-1.5 text-[15px] font-bold text-soft hover:bg-white/5">
           <IconChevronLeft size={22} /> Créer
         </button>
@@ -176,7 +188,7 @@ export function EditorScreen() {
         </button>
       </header>
 
-      <div className="grid h-11 shrink-0 grid-cols-[1fr_auto_1fr] items-center px-2 sm:px-4">
+      <div className="mx-auto grid h-11 w-full max-w-[1180px] shrink-0 grid-cols-[1fr_auto_1fr] items-center px-2 sm:px-4">
         <div className="flex items-center">
           <button type="button" className="icon-btn" onClick={store.undo} disabled={!canUndo(history)} aria-label="Annuler" data-action="annuler">
             <IconUndo />
@@ -195,23 +207,27 @@ export function EditorScreen() {
               type="button"
               onClick={() => setModal("remarques")}
               data-action="remarques"
-              className={`flex min-h-11 items-center gap-1.5 rounded-full px-3 text-xs font-bold ${
-                remarks.problems.length ? "bg-red-500/20 text-red-100 ring-1 ring-red-400/40" : "bg-amber-300/12 text-amber-100 ring-1 ring-amber-200/25"
-              }`}
+              className="flex min-h-11 items-center"
               aria-label={`Remarques : ${count}${remarks.problems.length ? ", dont des problèmes à corriger avant l’export" : ""}`}
             >
-              <IconWarning size={15} /> Remarques <span className="tabular-nums">{count}</span>
+              <span
+                className={`flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-bold ${
+                  remarks.problems.length ? "bg-red-500/20 text-red-100 ring-1 ring-red-400/40" : "bg-amber-300/10 text-amber-100 ring-1 ring-amber-200/20"
+                }`}
+              >
+                <IconWarning size={14} /> Remarques <span className="tabular-nums">{count}</span>
+              </span>
             </button>
           )}
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col lg:flex-row lg:gap-6 lg:px-6 lg:pb-3">
+      <div className="mx-auto flex min-h-0 w-full max-w-[1180px] flex-1 flex-col lg:flex-row lg:gap-6 lg:px-6 lg:pb-3">
         <div className="flex min-h-0 flex-1 flex-col items-stretch gap-3 px-4 pt-2 pb-2">
           <StoryViewport slide={slide} layout={layout} images={images} index={storyIndex} count={STORY_COUNT} onChange={changeStory} sideArrows={false} />
           {layout && slides.length > 0 && (
             <div className={tool ? "hidden shrink-0 lg:block" : "shrink-0"}>
-              <Thumbnails slides={slides} layout={layout} images={images} index={storyIndex} onChange={changeStory} width={44} />
+              <Thumbnails slides={slides} layout={layout} images={images} index={storyIndex} onChange={changeStory} width={thumbWidth} />
             </div>
           )}
         </div>

@@ -42,7 +42,7 @@ Sans clé API, un **mode démo** charge la séquence de référence, pour essaye
 | `src/domain/example-plan.ts` | Séquence de référence (démo, tests, exemple de ton) |
 | `src/lib/ai/`, `src/app/api/` | Méthode d'écriture, structures, appel à Claude, contrôles, réparation ciblée, routes `/api/generations` et `/api/ideas` |
 | `src/lib/fonts/`, `src/lib/layout/`, `src/lib/compose/`, `src/features/renderer/`, `src/styles/presets/` | Polices, mise en page mot par mot, composition « séquence → stories dessinables », styles, rendu Konva |
-| `src/features/studio/` | La page : création, éditeur, export, contexte, brouillon local |
+| `src/features/creator/` | La page « / » : création, génération, éditeur, export, contexte, brouillon local (le studio S1 reste sur `/s1`) |
 
 ## Comment c'est construit
 

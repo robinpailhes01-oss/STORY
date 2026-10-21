@@ -13,7 +13,7 @@
       "fileName": "jpeg-exif6-1600x1200.jpg",
       "status": "ok",
       "restored": false,
-      "id": "photo-ed243a77-7366-477c-8e5d-68b25a005794",
+      "id": "photo-b1ddcff7-cd9a-4ad9-88fd-61ce7c7eed6c",
       "width": 1200,
       "height": 1600,
       "blobType": "image/jpeg",
@@ -28,13 +28,13 @@
       "sourceWidth": 1200,
       "sourceHeight": 1600,
       "sourceBytes": 53625,
-      "durationMs": 115
+      "durationMs": 121
     },
     {
       "fileName": "jpeg-exif3-1200x1600.jpg",
       "status": "ok",
       "restored": false,
-      "id": "photo-56492d2c-575c-40dd-99eb-bc96047369d8",
+      "id": "photo-f021aaf4-72b7-41cc-be8f-b014bd6de2bb",
       "width": 1200,
       "height": 1600,
       "blobType": "image/jpeg",
@@ -49,13 +49,13 @@
       "sourceWidth": 1200,
       "sourceHeight": 1600,
       "sourceBytes": 54277,
-      "durationMs": 102
+      "durationMs": 99
     },
     {
       "fileName": "jpeg-exif8-1600x1200.jpg",
       "status": "ok",
       "restored": false,
-      "id": "photo-1182567c-681a-4194-9b49-96894b69746f",
+      "id": "photo-ad4f5e9d-12ea-4518-823c-0fbd667d7804",
       "width": 1200,
       "height": 1600,
       "blobType": "image/jpeg",
@@ -70,13 +70,13 @@
       "sourceWidth": 1200,
       "sourceHeight": 1600,
       "sourceBytes": 53784,
-      "durationMs": 101
+      "durationMs": 120
     },
     {
       "fileName": "jpeg-paysage-1920x1440.jpg",
       "status": "ok",
       "restored": false,
-      "id": "photo-a7050b99-2dbb-457b-983c-0b7357b5534f",
+      "id": "photo-a9665de2-30cd-4f28-a4aa-3bdb5518f5b0",
       "width": 1920,
       "height": 1440,
       "blobType": "image/jpeg",
@@ -91,13 +91,13 @@
       "sourceWidth": 1920,
       "sourceHeight": 1440,
       "sourceBytes": 77939,
-      "durationMs": 84
+      "durationMs": 94
     },
     {
       "fileName": "grosse-6000x8000.jpg",
       "status": "ok",
       "restored": false,
-      "id": "photo-dca2e13f-73d3-473a-bece-80fed8b2807c",
+      "id": "photo-ae955b85-08bb-4129-8ce1-c5ca5fa80798",
       "width": 1920,
       "height": 2560,
       "blobType": "image/jpeg",
@@ -112,13 +112,13 @@
       "sourceWidth": 6000,
       "sourceHeight": 8000,
       "sourceBytes": 816359,
-      "durationMs": 2520
+      "durationMs": 702
     },
     {
       "fileName": "png-alpha-1080x1350.png",
       "status": "ok",
       "restored": false,
-      "id": "photo-b2618252-5fd4-4e33-a3ba-1c5818339bcc",
+      "id": "photo-bc22b7f5-650c-4adf-af02-5b7679abb4e2",
       "width": 1080,
       "height": 1350,
       "blobType": "image/jpeg",
@@ -133,13 +133,13 @@
       "sourceWidth": 1080,
       "sourceHeight": 1350,
       "sourceBytes": 9413,
-      "durationMs": 75
+      "durationMs": 60
     },
     {
       "fileName": "webp-900x1200.webp",
       "status": "ok",
       "restored": false,
-      "id": "photo-c6561cac-336c-4c8c-bc90-b65659c25c6a",
+      "id": "photo-6a1d2a1f-624d-42b2-bbe0-2bda60f33391",
       "width": 900,
       "height": 1200,
       "blobType": "image/jpeg",
@@ -158,13 +158,13 @@
       "sourceWidth": 900,
       "sourceHeight": 1200,
       "sourceBytes": 5156,
-      "durationMs": 60
+      "durationMs": 48
     },
     {
       "fileName": "heic-1200x1600.heic",
       "status": "ok",
       "restored": false,
-      "id": "photo-5afb582e-0b27-4bc4-a6c2-7d15ec283bf2",
+      "id": "photo-93a80263-59ab-4ef0-a48e-adc8b908c0e3",
       "width": 1200,
       "height": 1600,
       "blobType": "image/jpeg",
@@ -179,13 +179,13 @@
       "sourceWidth": 1200,
       "sourceHeight": 1600,
       "sourceBytes": 31232,
-      "durationMs": 1593
+      "durationMs": 1554
     },
     {
       "fileName": "heic-irot-1600x1200.heic",
       "status": "ok",
       "restored": false,
-      "id": "photo-17f02c20-0483-4f6d-bab5-dc6a596475ff",
+      "id": "photo-02712c3e-877b-49fd-b77e-e7f777ae10c7",
       "width": 1200,
       "height": 1600,
       "blobType": "image/jpeg",
@@ -200,7 +200,7 @@
       "sourceWidth": 1200,
       "sourceHeight": 1600,
       "sourceBytes": 28971,
-      "durationMs": 654
+      "durationMs": 520
     }
   ],
   "manuel": [
@@ -208,7 +208,7 @@
       "fileName": "jpeg-exif6-1600x1200.jpg",
       "status": "ok",
       "restored": false,
-      "id": "photo-41f32fae-0c0b-45b3-aade-f0bc71537e11",
+      "id": "photo-7c75cf30-87d2-411a-be34-d636990c9ac1",
       "width": 1200,
       "height": 1600,
       "blobType": "image/jpeg",
@@ -223,13 +223,13 @@
       "sourceWidth": 1200,
       "sourceHeight": 1600,
       "sourceBytes": 53625,
-      "durationMs": 172
+      "durationMs": 111
     },
     {
       "fileName": "jpeg-exif3-1200x1600.jpg",
       "status": "ok",
       "restored": false,
-      "id": "photo-5de8948b-5029-4ff9-9fe5-b52e84c3a75b",
+      "id": "photo-fffba8c0-db35-4a51-bdd0-f9b9e1f343ac",
       "width": 1200,
       "height": 1600,
       "blobType": "image/jpeg",
@@ -244,13 +244,13 @@
       "sourceWidth": 1200,
       "sourceHeight": 1600,
       "sourceBytes": 54277,
-      "durationMs": 176
+      "durationMs": 121
     },
     {
       "fileName": "jpeg-exif8-1600x1200.jpg",
       "status": "ok",
       "restored": false,
-      "id": "photo-1a7d3d54-bcce-44da-b6b6-6ca15d8fb6b3",
+      "id": "photo-2874d3c8-4864-41bf-b36f-099d2f62bbbd",
       "width": 1200,
       "height": 1600,
       "blobType": "image/jpeg",
@@ -265,13 +265,13 @@
       "sourceWidth": 1200,
       "sourceHeight": 1600,
       "sourceBytes": 53784,
-      "durationMs": 203
+      "durationMs": 108
     },
     {
       "fileName": "jpeg-paysage-1920x1440.jpg",
       "status": "ok",
       "restored": false,
-      "id": "photo-941ebade-8600-4247-b743-c46219833e71",
+      "id": "photo-8c2effef-7315-4ddd-90bc-f9c1b1fe2ea1",
       "width": 1920,
       "height": 1440,
       "blobType": "image/jpeg",
@@ -286,7 +286,7 @@
       "sourceWidth": 1920,
       "sourceHeight": 1440,
       "sourceBytes": 77939,
-      "durationMs": 298
+      "durationMs": 103
     }
   ],
   "errors": [
