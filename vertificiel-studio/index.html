@@ -390,7 +390,7 @@
       <div class="actions">
         <button type="button" class="btn" id="render4k">Générer le rendu 4K de cette vue</button>
       </div>
-      <p class="note" id="renderStatus">Le rendu 4K transforme la composition en photo réaliste, en une à deux minutes, par le serveur de rendu.</p>
+      <p class="note" id="renderStatus">Le rendu 4K transforme la composition en photo réaliste, en une à deux minutes. Vous pouvez lancer plusieurs angles à la suite sans attendre.</p>
       <div class="block" id="galBlock" hidden>
         <div class="label">Rendus 4K du projet</div>
         <div class="gal" id="gal"></div>
@@ -1717,16 +1717,19 @@
   // 4K render: the hosted version sets window.STUDIO_RENDER_API (server keeps the kie.ai key)
   let shownRender = null;
   const renders = [];      // { view, url, test }
-  function addRender(url, test) {
-    renders.unshift({ view, url, test, w: PHOTO.w, h: PHOTO.h });
+  // job: the view the render was launched from (the user may have moved to another view since)
+  function addRender(url, test, job) {
+    const j = job || { view, w: PHOTO.w, h: PHOTO.h, label: PHOTO.name };
+    renders.unshift({ view: j.view, url, test, w: j.w, h: j.h, label: j.label });
     const gal = $("gal"); gal.innerHTML = ""; $("galBlock").hidden = false;
     renders.forEach(r => {
       const b = document.createElement("button"); b.type = "button";
-      b.innerHTML = `<img src="${r.url}" alt="Rendu 4K, ${PHOTOS[r.view].name}" loading="lazy"><span>${PHOTOS[r.view].name}${r.test ? " · test" : ""}</span>`;
+      b.innerHTML = `<img src="${r.url}" alt="" loading="lazy"><span></span>`; b.querySelector("span").textContent = r.label + (r.test ? " · test" : ""); b.querySelector("img").alt = "Rendu 4K, " + r.label;
       b.addEventListener("click", async () => { if (view !== r.view) await setView(r.view); if (PHOTO.free) Object.assign(PHOTO, { w: r.w, h: r.h }); shownRender = r.url; showShot("rendu"); });
       gal.appendChild(b);
     });
-    shownRender = url; showShot("rendu");
+    if (j.view === view && step === 3) { if (PHOTO.free) Object.assign(PHOTO, { w: j.w, h: j.h }); shownRender = url; showShot("rendu"); }
+    else toast("Rendu « " + j.label + " » prêt : touchez-le dans la galerie.");
   }
   // elements actually visible from the current photo, with where they sit in the frame:
   // the render must neither invent hidden elements nor move the visible ones
@@ -1765,13 +1768,22 @@
     return out;
   }
   async function collage() {
-    const c = document.createElement("canvas"); c.width = PHOTO.w; c.height = PHOTO.h; const g = c.getContext("2d");
-    const layer = await loadImg(exportLayer()), itemsOnly = PHOTO.custom ? await loadImg(exportLayer(false)) : layer;
-    g.drawImage(await loadImg(PHOTO.base), 0, 0, PHOTO.w, PHOTO.h);
-    g.drawImage(layer, 0, 0, PHOTO.w, PHOTO.h);
+    const P = PHOTO, c = document.createElement("canvas"); c.width = P.w; c.height = P.h; const g = c.getContext("2d");
+    const l1 = exportLayer(), l2 = P.custom ? exportLayer(false) : null;
+    const layer = await loadImg(l1), itemsOnly = l2 ? await loadImg(l2) : layer;
+    g.drawImage(await loadImg(P.base), 0, 0, P.w, P.h);
+    g.drawImage(layer, 0, 0, P.w, P.h);
     return { image: c.toDataURL("image/jpeg", 0.92), empty: await emptyZones(itemsOnly) };
   }
-  let rendering = false, ambiance = "jour";
+  let ambiance = "jour", freeCount = 0;
+  const jobs = [];   // renders in progress: several views can render at the same time
+  function showJobs() {
+    if (!jobs.length) { progress(null); return; }
+    const now = Date.now();
+    progress(jobs.length > 1 ? jobs.length + " rendus 4K en cours" : "Rendu 4K en cours",
+      jobs.map(j => j.label + " · " + Math.round((now - j.t0) / 1000) + " s").join("  |  ") + " · environ 2 minutes chacun");
+  }
+  setInterval(() => { if (jobs.length) showJobs(); }, 1000);
   document.querySelectorAll("[data-amb]").forEach(b => b.addEventListener("click", () => {
     ambiance = b.dataset.amb; document.querySelectorAll("[data-amb]").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
   }));
@@ -1796,45 +1808,44 @@
     return out;
   }
   async function render4k() {
-    if (rendering) return;
     const meta = document.querySelector('meta[name="studio-render-api"]'), api = window.STUDIO_RENDER_API || (meta && meta.content), status = $("renderStatus");
-    const shot = PHOTO.free ? freeShot() : null;
+    if (jobs.length >= 4) { toast("4 rendus sont déjà en cours : attendez qu'un se termine."); return; }
+    const shot = PHOTO.free && api ? freeShot() : null;     // also fixes the free view's camera, used by visibleItems
     const vis = visibleItems();
     if (!vis.length) { toast("Aucun élément n'est visible depuis cette prise de vue."); return; }
-    rendering = true; $("render4k").disabled = $("render4kNow").disabled = true;
-    if (!api && PHOTO.free) {
-      progress(null); status.textContent = "Le rendu d'une vue libre se lance depuis la version en ligne du studio.";
-      toast("Vue libre : rendu disponible dans la version en ligne."); rendering = false; $("render4k").disabled = $("render4kNow").disabled = false; return;
-    }
+    if (!api && PHOTO.free) { status.textContent = "Le rendu d'une vue libre se lance depuis la version en ligne du studio."; toast("Vue libre : rendu disponible dans la version en ligne."); return; }
     if (!api) {
       progress("Démonstration", "Ce prototype n'est pas relié au serveur de rendu : il affiche le rendu 4K obtenu en test sur cette vue.");
       await new Promise(ok => setTimeout(ok, 2500));
       progress(null); addRender(PHOTO.example, true);
       status.textContent = "En ligne, ce bouton génère la composition en cours (environ 2 minutes).";
-      rendering = false; $("render4k").disabled = $("render4kNow").disabled = false; return;
+      return;
     }
-    const btn = $("render4k"); progress("Rendu 4K en cours", "Envoi de la composition au serveur…");
+    // everything that depends on the current view is taken now, before any wait
+    const comp = shot ? null : collage();
+    const job = { view, w: PHOTO.w, h: PHOTO.h, label: PHOTO.free ? "Vue libre " + (++freeCount) : PHOTO.name, t0: Date.now(), aspect: shot ? shot.aspect : nearRatio(PHOTO.w / PHOTO.h), custom: !!PHOTO.custom, amb: ambiance };
+    jobs.push(job); showJobs();
     try {
-      let code = { content: "" };
-      try { code.content = localStorage.getItem("studio-code") || ""; } catch (e) { /* no storage */ }
-      if (!code.content) { code.content = (window.prompt("Code d'accès du studio (fourni par Luma) :") || "").trim(); try { localStorage.setItem("studio-code", code.content); } catch (e) { /* no storage */ } }
-      const r = await fetch(api, { method: "POST", headers: { "Content-Type": "application/json", "x-studio-code": code ? code.content : "" }, body: JSON.stringify(shot ? { mode: "free", image: shot.image, aspect: shot.aspect, items: vis, ambiance, site: site.demo ? "demo" : "custom", refs: site.demo ? [] : await houseRefs() }
-        : Object.assign(await collage(), { items: vis, ambiance, aspect: nearRatio(PHOTO.w / PHOTO.h), lawn: !!PHOTO.custom })) });
+      let code = "";
+      try { code = localStorage.getItem("studio-code") || ""; } catch (e) { /* no storage */ }
+      if (!code) { code = (window.prompt("Code d'accès du studio (fourni par Luma) :") || "").trim(); try { localStorage.setItem("studio-code", code); } catch (e) { /* no storage */ } }
+      const payload = shot ? { mode: "free", image: shot.image, aspect: job.aspect, items: vis, ambiance: job.amb, site: site.demo ? "demo" : "custom", refs: site.demo ? [] : await houseRefs() }
+        : Object.assign(await comp, { items: vis, ambiance: job.amb, aspect: job.aspect, lawn: job.custom });
+      const r = await fetch(api, { method: "POST", headers: { "Content-Type": "application/json", "x-studio-code": code }, body: JSON.stringify(payload) });
       if (r.status === 401) { try { localStorage.removeItem("studio-code"); } catch (e) { /* no storage */ } throw new Error("code d'accès incorrect"); }
       const { taskId, error } = await r.json(); if (!taskId) throw new Error(error || "refus du serveur");
-      const t0 = Date.now();
       for (;;) {
         await new Promise(ok => setTimeout(ok, 5000));
-        const sec = Math.round((Date.now() - t0) / 1000);
-        progress("Rendu 4K en cours", PHOTOS[view].name + " · " + sec + " s · environ 2 minutes");
-        const d = await (await fetch(api + "?task=" + encodeURIComponent(taskId), { headers: { "x-studio-code": code ? code.content : "" } })).json();
-        if (d.state === "success") { progress("Rendu terminé", "Téléchargement de l'image 4K…"); await loadImg(d.url); progress(null); addRender(d.url, false); break; }
+        const d = await (await fetch(api + "?task=" + encodeURIComponent(taskId), { headers: { "x-studio-code": code } })).json();
+        if (d.state === "success") { await loadImg(d.url); jobs.splice(jobs.indexOf(job), 1); showJobs(); addRender(d.url, false, job); break; }
         if (d.state === "fail") throw new Error(d.error || "échec du rendu");
-        if (Date.now() - t0 > 5 * 60 * 1000) throw new Error("délai dépassé");
+        if (Date.now() - job.t0 > 5 * 60 * 1000) throw new Error("délai dépassé");
       }
-      status.textContent = "Rendu 4K prêt : il est dans la galerie du projet. Changez de prise de vue ou d'angle pour en générer un autre.";
-    } catch (e) { progress(null); status.textContent = "Le rendu n'a pas abouti (" + e.message + "). Réessayez dans un instant."; toast("Le rendu n'a pas abouti : " + e.message); }
-    rendering = false; btn.disabled = $("render4kNow").disabled = false;
+      status.textContent = "Rendu « " + job.label + " » prêt : il est dans la galerie. Changez de prise de vue ou d'angle pour en lancer d'autres, même pendant un rendu.";
+    } catch (e) {
+      if (jobs.includes(job)) jobs.splice(jobs.indexOf(job), 1); showJobs();
+      status.textContent = "Le rendu « " + job.label + " » n'a pas abouti (" + e.message + "). Réessayez dans un instant."; toast("Le rendu « " + job.label + " » n'a pas abouti : " + e.message);
+    }
   }
   $("render4k").addEventListener("click", render4k);
   // one tap from the 3D: pick the best view, show it on the photo, render
