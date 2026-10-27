@@ -128,6 +128,8 @@
   .btn { min-height: 50px; padding: 10px 16px; border-radius: 12px; border: 0; background: var(--accent); color: var(--on-accent); font-family: var(--font-display); font-size: 15px; font-weight: 700; cursor: pointer; }
   .btn.secondary { background: var(--bg); color: var(--accent); border: 1.5px solid var(--accent); }
   .actions { display: grid; gap: 8px; }
+  .actions.sticky { position: sticky; bottom: -28px; z-index: 2; margin-inline: -18px; padding: 12px 18px 28px; background: var(--panel); border-top: 1px solid var(--line); box-shadow: 0 -8px 18px rgba(0,0,0,.06); }
+  @media (max-width: 860px) { .actions.sticky { bottom: 0; margin-inline: -16px; padding: 12px 16px; } }
   .list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
   .list li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); font-size: 14px; }
   .list li .name { flex: 1; min-width: 0; }
@@ -145,6 +147,13 @@
   .views b { font-size: 14px; }
   .views .ok { color: var(--accent); font-weight: 700; white-space: nowrap; }
   .views .todo { color: var(--gold); font-weight: 700; white-space: nowrap; }
+  .busy { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 6; display: flex; align-items: center; gap: 14px; max-width: calc(100% - 32px);
+    padding: 14px 18px; border-radius: 16px; background: rgba(13, 21, 18, .88); color: #ffffff; box-shadow: 0 8px 28px rgba(0,0,0,.35); }
+  .busy b { display: block; font-family: var(--font-display); font-size: 16px; }
+  .busy span { font-size: 13px; opacity: .85; font-variant-numeric: tabular-nums; }
+  .spin { flex: none; width: 30px; height: 30px; border-radius: 50%; border: 3px solid rgba(255,255,255,.25); border-top-color: #ffffff; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin { animation: none; border-top-color: rgba(255,255,255,.25); border-right-color: #ffffff; } }
   .toast { position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); padding: 10px 16px; border-radius: 12px; background: var(--accent); color: var(--on-accent); font-size: 14px; font-weight: 600; z-index: 20; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
 
   @media (max-width: 860px) {
@@ -193,6 +202,7 @@
     <div class="photo-view" id="photoView" hidden>
       <canvas id="shot" width="1194" height="1592" aria-label="Aperçu du projet sur la photo du terrain"></canvas>
     </div>
+    <div class="busy" id="busy" role="status" aria-live="polite" hidden><div class="spin" aria-hidden="true"></div><div><b id="busyTitle">Rendu 4K en cours</b><span id="busyText">Envoi de la composition…</span></div></div>
     <div class="loading" id="loading">Chargement du studio…</div>
   </div>
 
@@ -241,7 +251,10 @@
         <div class="row"><span>Aménagements</span><strong id="cHard">–</strong></div>
         <div class="row total"><span>Estimation gazon</span><strong id="cTotal">–</strong></div>
       </div>
-      <div class="actions"><button type="button" class="btn" data-go="3">Voir sur la photo du terrain</button></div>
+      <div class="actions sticky">
+        <button type="button" class="btn" id="render4kNow">Générer le rendu 4K</button>
+        <button type="button" class="btn secondary" data-go="3">Voir et modifier sur la photo</button>
+      </div>
     </section>
 
     <!-- step 3 -->
@@ -1073,12 +1086,31 @@
     g.drawImage(layer, 0, 0, PHOTO.w, PHOTO.h);
     return { image: c.toDataURL("image/jpeg", 0.92), empty: await emptyZones(layer) };
   }
-  $("render4k").addEventListener("click", async () => {
+  let rendering = false;
+  function progress(title, text) {
+    $("busy").hidden = !title; if (!title) return;
+    $("busyTitle").textContent = title; $("busyText").textContent = text; $("renderStatus").textContent = title + " · " + text;
+  }
+  // the view where the composition shows best: the most visible elements
+  function bestView() {
+    const keep = PHOTO; let best = view, score = -1;
+    Object.keys(PHOTOS).forEach(id => { PHOTO = PHOTOS[id]; const n = visibleItems().length; if (n > score) { score = n; best = id; } });
+    PHOTO = keep; return best;
+  }
+  async function render4k() {
+    if (rendering) return;
     const meta = document.querySelector('meta[name="studio-render-api"]'), api = window.STUDIO_RENDER_API || (meta && meta.content), status = $("renderStatus");
-    if (!api) { status.textContent = "Prototype non relié au serveur de rendu : la galerie reçoit le rendu 4K obtenu en test sur cette vue (piscine, palmier, pas japonais, massif bois). En ligne, ce bouton génère la composition en cours."; if (!renders.some(r => r.view === view && r.test)) addRender(PHOTO.example, true); else { shownRender = PHOTO.example; showShot("rendu"); } return; }
     const vis = visibleItems();
     if (!vis.length) { toast("Aucun élément n'est visible depuis cette prise de vue."); return; }
-    const btn = $("render4k"); btn.disabled = true; status.textContent = "Envoi de la composition au serveur de rendu…";
+    rendering = true; $("render4k").disabled = $("render4kNow").disabled = true;
+    if (!api) {
+      progress("Démonstration", "Ce prototype n'est pas relié au serveur de rendu : il affiche le rendu 4K obtenu en test sur cette vue.");
+      await new Promise(ok => setTimeout(ok, 2500));
+      progress(null); addRender(PHOTO.example, true);
+      status.textContent = "En ligne, ce bouton génère la composition en cours (environ 2 minutes).";
+      rendering = false; $("render4k").disabled = $("render4kNow").disabled = false; return;
+    }
+    const btn = $("render4k"); progress("Rendu 4K en cours", "Envoi de la composition au serveur…");
     try {
       let code = { content: "" };
       try { code.content = localStorage.getItem("studio-code") || ""; } catch (e) { /* no storage */ }
@@ -1089,15 +1121,24 @@
       const t0 = Date.now();
       for (;;) {
         await new Promise(ok => setTimeout(ok, 5000));
-        status.textContent = "Rendu 4K en cours… " + Math.round((Date.now() - t0) / 1000) + " s";
+        const sec = Math.round((Date.now() - t0) / 1000);
+        progress("Rendu 4K en cours", PHOTOS[view].name + " · " + sec + " s · environ 2 minutes");
         const d = await (await fetch(api + "?task=" + encodeURIComponent(taskId), { headers: { "x-studio-code": code ? code.content : "" } })).json();
-        if (d.state === "success") { status.textContent = "Rendu terminé : téléchargement de l'image 4K…"; await loadImg(d.url); addRender(d.url, false); break; }
+        if (d.state === "success") { progress("Rendu terminé", "Téléchargement de l'image 4K…"); await loadImg(d.url); progress(null); addRender(d.url, false); break; }
         if (d.state === "fail") throw new Error(d.error || "échec du rendu");
         if (Date.now() - t0 > 5 * 60 * 1000) throw new Error("délai dépassé");
       }
-      status.textContent = "Rendu 4K prêt : il est dans la galerie du projet.";
-    } catch (e) { status.textContent = "Le rendu n'a pas abouti (" + e.message + "). Réessayez dans un instant."; }
-    btn.disabled = false;
+      status.textContent = "Rendu 4K prêt : il est dans la galerie du projet. Changez de prise de vue pour en générer un autre.";
+    } catch (e) { progress(null); status.textContent = "Le rendu n'a pas abouti (" + e.message + "). Réessayez dans un instant."; toast("Le rendu n'a pas abouti : " + e.message); }
+    rendering = false; btn.disabled = $("render4kNow").disabled = false;
+  }
+  $("render4k").addEventListener("click", render4k);
+  // one tap from the 3D: pick the best view, show it on the photo, render
+  $("render4kNow").addEventListener("click", async () => {
+    if (!items.length) { toast("Ajoutez au moins un élément du catalogue."); return; }
+    const best = bestView();
+    go(3); await setView(best); await new Promise(ok => setTimeout(ok, 300));
+    render4k();
   });
 
   // ---------------------------------------------------------------- recap
