@@ -1,7 +1,8 @@
 // Studio jardin · serveur de rendu photo (fonction Vercel).
 // La clé kie.ai reste ici, dans la variable d'environnement KIE_AI_API_KEY : elle n'est jamais envoyée à la tablette.
 //
-// POST /api/render   { image: "data:image/jpeg;base64,...", nos: ["04", "07"] }  ->  { taskId }
+// POST /api/render   { image: "data:image/jpeg;base64,...", items: [{ no, where }], empty: [zones] }  ->  { taskId }
+//                    { mode: "free", image, aspect: "3:4" | "4:3", items }  (3D view from any angle)  ->  { taskId }
 // GET  /api/render?task=ID                                                     ->  { state, url, error }
 //
 // Variables d'environnement :
@@ -44,19 +45,34 @@ function buildPrompt(list, nos, empty) {
   ].filter(Boolean).join("\n");
 }
 
+// any angle of the 3D: the mock-up gives the viewpoint and the layout, the plot photos give the real house
+function buildFreePrompt(list, nos) {
+  const lines = list.map(it => `- ${CATALOGUE[it.no]}, ${it.where}, like image ${nos.indexOf(it.no) + 4} (catalogue no. ${it.no});`);
+  return [
+    "Image 1 is a 3D mock-up of a newly built house and its synthetic-grass garden, seen from a chosen viewpoint. Images 2 and 3 are real photographs of this same house and plot. Turn image 1 into one single photorealistic photograph in very high detail, taken from EXACTLY the same viewpoint, framing, height and perspective as image 1.",
+    "The house keeps exactly the volumes, proportions and position of image 1, and looks like the real house of images 2 and 3: white smooth render, the same windows, French windows and doors with dark grey frames, the same flat roofs with thin edges, the concrete terrace.",
+    "Replace each mock-up garden element by a real, photorealistic version at EXACTLY the same position, size and orientation as in image 1:",
+    ...lines,
+    "Each listed element appears exactly once, only where its mock-up is in image 1. Do not add any other garden element, tree, path, plant or furniture inside the plot, and do not move, enlarge or remove anything. The rest of the plot is a clean, flat premium synthetic grass lawn.",
+    "The surroundings stay simple and plausible as in image 1: light boundary strips, neighbouring white houses, a few trees, the street. No people, no cars in the garden.",
+    "Sunny afternoon light with realistic soft shadows, photorealistic real-estate photography, natural colours, crisp detail. No text, no watermark, no labels.",
+  ].join("\n");
+}
+
 // catalogue photos are bundled with the function and uploaded once per warm instance
 const refCache = {};
 async function upload(dataUrl, fileName, H) {
   const up = await (await fetch(UPLOAD, { method: "POST", headers: H, body: JSON.stringify({ base64Data: dataUrl, uploadPath: "studio-jardin", fileName }) })).json();
   return up && up.data && (up.data.downloadUrl || up.data.fileUrl || up.data.url);
 }
-async function catalogueUrl(no, H) {
-  if (!refCache[no]) {
-    const buf = await readFile(new URL(`../img/catalogue-${no}.jpg`, import.meta.url));
-    refCache[no] = await upload("data:image/jpeg;base64," + buf.toString("base64"), `catalogue-${no}.jpg`, H);
+async function bundledUrl(name, H) {
+  if (!refCache[name]) {
+    const buf = await readFile(new URL(`../img/${name}.jpg`, import.meta.url));
+    refCache[name] = await upload("data:image/jpeg;base64," + buf.toString("base64"), `${name}.jpg`, H);
   }
-  return refCache[no];
+  return refCache[name];
 }
+const catalogueUrl = (no, H) => bundledUrl(`catalogue-${no}`, H);
 
 export default async function handler(req, res) {
   const key = process.env.KIE_AI_API_KEY;
@@ -74,23 +90,27 @@ export default async function handler(req, res) {
     }
     if (req.method !== "POST") return res.status(405).end();
 
-    const { image, items, empty } = req.body || {};
+    const { image, items, empty, mode, aspect } = req.body || {};
+    const free = mode === "free";
     const zones = ["middle-left", "middle-centre", "middle-right", "bottom-left", "bottom-centre", "bottom-right"];
     const emptyZones = (Array.isArray(empty) ? empty : []).filter(z => zones.includes(z)).map(z => "the " + z.replace("-", " ") + " of the image");
     const clean = s => String(s || "").replace(/[^a-z ,-]/gi, "").slice(0, 120);
     const list = (Array.isArray(items) ? items : []).filter(it => it && CATALOGUE[it.no]).slice(0, 12).map(it => ({ no: it.no, where: clean(it.where) || "as placed" }));
-    const nos = [...new Set(list.map(it => it.no))].slice(0, 7);
+    const nos = [...new Set(list.map(it => it.no))].slice(0, free ? 5 : 7);
     if (typeof image !== "string" || !image.startsWith("data:image/") || image.length > 12e6 || !list.length) return res.status(400).json({ error: "composition invalide" });
 
     // the composition (photo + 3D layer, assembled on the tablet) becomes a hosted file for the model
     const imageUrl = await upload(image, `composition-${Date.now()}.jpg`, H);
     if (!imageUrl) return res.status(502).json({ error: "envoi de l'image refusé" });
 
-    const refs = [];
+    const refs = free ? [await bundledUrl("face-base", H), await bundledUrl("droite-base", H)] : [];
     for (const no of nos) refs.push(await catalogueUrl(no, H));
+    const kept = list.filter(it => nos.includes(it.no));
     const task = await (await fetch(`${API}/api/v1/jobs/createTask`, {
       method: "POST", headers: H,
-      body: JSON.stringify({ model: MODEL, input: { prompt: buildPrompt(list.filter(it => nos.includes(it.no)), nos, emptyZones), image_input: [imageUrl, ...refs], aspect_ratio: "3:4", resolution: "4K", output_format: "png" } }),
+      body: JSON.stringify({ model: MODEL, input: {
+        prompt: free ? buildFreePrompt(kept, nos) : buildPrompt(kept, nos, emptyZones),
+        image_input: [imageUrl, ...refs], aspect_ratio: free && aspect === "4:3" ? "4:3" : "3:4", resolution: "4K", output_format: "png" } }),
     })).json();
     if (task.code !== 200) return res.status(502).json({ error: task.msg || "rendu refusé" });
     return res.json({ taskId: task.data.taskId });

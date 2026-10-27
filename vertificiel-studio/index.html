@@ -260,7 +260,7 @@
     <!-- step 3 -->
     <section class="block" data-panel="3" hidden>
       <h2>Sur la photo du terrain</h2>
-      <p class="lead">La composition est posée sur la vraie photo, sous le même angle. Touchez un élément pour le déplacer, le tourner ou le retirer.</p>
+      <p class="lead">La composition est posée sur la vraie photo, sous le même angle. Touchez un élément pour le déplacer, le tourner ou le retirer. La vue libre permet de choisir n'importe quel angle.</p>
       <div class="kpi" aria-live="polite">
         <div class="row"><span>Gazon synthétique</span><strong id="pTurf">–</strong></div>
         <div class="row total"><span>Estimation gazon</span><strong id="pTotal">–</strong></div>
@@ -268,6 +268,7 @@
       <div class="block">
         <div class="label">Prise de vue</div>
         <div class="chips" id="viewChips" role="group" aria-label="Prise de vue"></div>
+        <p class="note" id="viewHint" hidden>Vue libre : tournez autour du jardin avec un doigt, zoomez avec deux, puis lancez le rendu. La maison est reconstituée d'après les photos du terrain.</p>
       </div>
       <div class="actions">
         <button type="button" class="btn" id="render4k">Générer le rendu 4K de cette vue</button>
@@ -869,6 +870,8 @@
       base: "img/face-base.jpg", avant: "img/face-avant.jpg", shadow: "img/face-ombre.webp", example: "img/rendu-4k-exemple.jpg" },
     droite: { name: "Côté droit", pos: [11.59, 0.804, 17.634], target: [11.985, -1.253, 2.781], up: [-0.0343, 0.9898, -0.138], fov: 96.82, w: 1512, h: 2016,
       base: "img/droite-base.jpg", avant: "img/droite-avant.jpg", shadow: null, example: "img/rendu-4k-droite.jpg" },
+    // any angle of the 3D: the camera is taken when the render starts, the house photos guide the model
+    libre: { name: "Vue libre", free: true, pos: [0, 0, 0], target: [0, 0, 0], up: [0, 1, 0], fov: 55, w: 1536, h: 2048 },
   };
   let view = "face", PHOTO = PHOTOS.face;
   const photoSph = (() => { const PHOTO = PHOTOS.face, o = new T.Vector3().fromArray(PHOTO.pos).sub(new T.Vector3().fromArray(PHOTO.target)), r = o.length(); return { t: PHOTO.target, r, theta: Math.atan2(o.x, o.z), phi: Math.acos(o.y / r), fov: PHOTO.fov }; })();
@@ -915,7 +918,7 @@
   let drag = null, rotating = null, pinch = null, down = null;
   function setRay(e) { const r = canvas.getBoundingClientRect(); ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); ray.setFromCamera(ndc, camera); }
   function pick(e) {
-    if (step !== 2 && !(step === 3 && photoLive)) return null;
+    if (step !== 2 && !(step === 3 && (photoLive || PHOTO.free))) return null;
     setRay(e);
     for (const h of ray.intersectObjects(items.map(it => it.g), true)) { let o = h.object; while (o && !(o.userData && o.userData.uid)) o = o.parent; if (o) return items.find(it => it.uid === o.userData.uid); }
     return null;
@@ -968,6 +971,19 @@
     renderer.setPixelRatio(ratio); renderer.setSize(size.x, size.y, false); if (sel) select(sel); requestRender();
     return url;
   }
+  function freeShot() {
+    const sel = selected; select(null);
+    const size = renderer.getSize(new T.Vector2()), ratio = renderer.getPixelRatio(), land = size.x >= size.y;
+    const w = land ? 2048 : 1536, h = land ? 1536 : 2048;
+    updateCamera();
+    Object.assign(PHOTOS.libre, { pos: camera.position.toArray(), target: cam.target.toArray(), up: [0, 1, 0], fov: camera.fov, w, h });
+    const pc = new T.PerspectiveCamera(camera.fov, w / h, 0.1, 400);
+    pc.position.copy(camera.position); pc.lookAt(cam.target);
+    renderer.setPixelRatio(1); renderer.setSize(w, h, false); renderer.render(scene, pc);
+    const url = renderer.domElement.toDataURL("image/jpeg", 0.92);
+    renderer.setPixelRatio(ratio); renderer.setSize(size.x, size.y, false); if (sel) select(sel); requestRender();
+    return { image: url, aspect: land ? "4:3" : "3:4" };
+  }
   const imgCache = {};
   const loadImg = src => imgCache[src] || (imgCache[src] = new Promise((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = src; }));
   const OMBRE = { x: 924, y: 983, w: 270, h: 609 };   // the photographer's real shadow, kept as on the photo
@@ -975,7 +991,7 @@
   async function paintShot(ctx, mode) {
     const W = PHOTO.w, H = PHOTO.h;
     if (mode === "avant") { ctx.drawImage(await loadImg(PHOTO.avant), 0, 0, W, H); return; }
-    if (mode === "rendu") { ctx.drawImage(await loadImg(shownRender || PHOTO.example), 0, 0, W, H); return; }
+    if (mode === "rendu") { const src = shownRender || PHOTO.example; if (src) ctx.drawImage(await loadImg(src), 0, 0, W, H); return; }
     ctx.drawImage(await loadImg(PHOTO.base), 0, 0, W, H);
     if (layerUrl) ctx.drawImage(await loadImg(layerUrl), 0, 0, W, H);
     if (PHOTO.shadow) ctx.drawImage(await loadImg(PHOTO.shadow), OMBRE.x, OMBRE.y, OMBRE.w, OMBRE.h);
@@ -983,6 +999,8 @@
     ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.fillText("Aperçu · projection indicative, non contractuelle", W - 26, H - 28); ctx.shadowBlur = 0;
   }
   async function showShot(mode) {
+    if (PHOTO.free && mode === "avant") mode = "apercu";
+    if (PHOTO.free && mode === "rendu" && !shownRender) { toast("Pas encore de rendu pour cette vue : réglez l'angle puis lancez le rendu 4K."); mode = "apercu"; }
     shotMode = mode;
     document.querySelectorAll("[data-shot]").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.shot === mode)));
     $("photoView").hidden = mode === "apercu";
@@ -1005,8 +1023,12 @@
   async function setView(id) {
     view = id; PHOTO = PHOTOS[id]; shownRender = null;
     document.querySelectorAll("#viewChips .chip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.view === id)));
+    document.querySelector('[data-shot="avant"]').hidden = !!PHOTO.free;
+    document.querySelector('[data-shot="apercu"]').textContent = PHOTO.free ? "Modifier en 3D" : "Modifier sur la photo";
+    $("viewHint").hidden = !PHOTO.free;
+    if (step === 3) { $("camBar").hidden = !PHOTO.free; await setPhotoLive(!PHOTO.free); }
     if (photoLive) photoBase.src = await baseWithShadow();
-    resize(); await showShot(shotMode === "rendu" ? "rendu" : shotMode);
+    resize(); await showShot(shotMode === "rendu" && !PHOTO.free ? "rendu" : shotMode === "avant" && PHOTO.free ? "apercu" : shotMode);
   }
   Object.keys(PHOTOS).forEach(id => {
     const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.dataset.view = id; b.textContent = PHOTOS[id].name;
@@ -1033,12 +1055,12 @@
   let shownRender = null;
   const renders = [];      // { view, url, test }
   function addRender(url, test) {
-    renders.unshift({ view, url, test });
+    renders.unshift({ view, url, test, w: PHOTO.w, h: PHOTO.h });
     const gal = $("gal"); gal.innerHTML = ""; $("galBlock").hidden = false;
     renders.forEach(r => {
       const b = document.createElement("button"); b.type = "button";
       b.innerHTML = `<img src="${r.url}" alt="Rendu 4K, ${PHOTOS[r.view].name}" loading="lazy"><span>${PHOTOS[r.view].name}${r.test ? " · test" : ""}</span>`;
-      b.addEventListener("click", async () => { if (view !== r.view) await setView(r.view); shownRender = r.url; showShot("rendu"); });
+      b.addEventListener("click", async () => { if (view !== r.view) await setView(r.view); if (PHOTO.free) Object.assign(PHOTO, { w: r.w, h: r.h }); shownRender = r.url; showShot("rendu"); });
       gal.appendChild(b);
     });
     shownRender = url; showShot("rendu");
@@ -1094,15 +1116,20 @@
   // the view where the composition shows best: the most visible elements
   function bestView() {
     const keep = PHOTO; let best = view, score = -1;
-    Object.keys(PHOTOS).forEach(id => { PHOTO = PHOTOS[id]; const n = visibleItems().length; if (n > score) { score = n; best = id; } });
+    Object.keys(PHOTOS).filter(id => !PHOTOS[id].free).forEach(id => { PHOTO = PHOTOS[id]; const n = visibleItems().length; if (n > score) { score = n; best = id; } });
     PHOTO = keep; return best;
   }
   async function render4k() {
     if (rendering) return;
     const meta = document.querySelector('meta[name="studio-render-api"]'), api = window.STUDIO_RENDER_API || (meta && meta.content), status = $("renderStatus");
+    const shot = PHOTO.free ? freeShot() : null;
     const vis = visibleItems();
     if (!vis.length) { toast("Aucun élément n'est visible depuis cette prise de vue."); return; }
     rendering = true; $("render4k").disabled = $("render4kNow").disabled = true;
+    if (!api && PHOTO.free) {
+      progress(null); status.textContent = "Le rendu d'une vue libre se lance depuis la version en ligne du studio.";
+      toast("Vue libre : rendu disponible dans la version en ligne."); rendering = false; $("render4k").disabled = $("render4kNow").disabled = false; return;
+    }
     if (!api) {
       progress("Démonstration", "Ce prototype n'est pas relié au serveur de rendu : il affiche le rendu 4K obtenu en test sur cette vue.");
       await new Promise(ok => setTimeout(ok, 2500));
@@ -1115,7 +1142,7 @@
       let code = { content: "" };
       try { code.content = localStorage.getItem("studio-code") || ""; } catch (e) { /* no storage */ }
       if (!code.content) { code.content = (window.prompt("Code d'accès du studio (fourni par Luma) :") || "").trim(); try { localStorage.setItem("studio-code", code.content); } catch (e) { /* no storage */ } }
-      const r = await fetch(api, { method: "POST", headers: { "Content-Type": "application/json", "x-studio-code": code ? code.content : "" }, body: JSON.stringify(Object.assign(await collage(), { items: vis })) });
+      const r = await fetch(api, { method: "POST", headers: { "Content-Type": "application/json", "x-studio-code": code ? code.content : "" }, body: JSON.stringify(shot ? { mode: "free", image: shot.image, aspect: shot.aspect, items: vis } : Object.assign(await collage(), { items: vis })) });
       if (r.status === 401) { try { localStorage.removeItem("studio-code"); } catch (e) { /* no storage */ } throw new Error("code d'accès incorrect"); }
       const { taskId, error } = await r.json(); if (!taskId) throw new Error(error || "refus du serveur");
       const t0 = Date.now();
@@ -1128,7 +1155,7 @@
         if (d.state === "fail") throw new Error(d.error || "échec du rendu");
         if (Date.now() - t0 > 5 * 60 * 1000) throw new Error("délai dépassé");
       }
-      status.textContent = "Rendu 4K prêt : il est dans la galerie du projet. Changez de prise de vue pour en générer un autre.";
+      status.textContent = "Rendu 4K prêt : il est dans la galerie du projet. Changez de prise de vue ou d'angle pour en générer un autre.";
     } catch (e) { progress(null); status.textContent = "Le rendu n'a pas abouti (" + e.message + "). Réessayez dans un instant."; toast("Le rendu n'a pas abouti : " + e.message); }
     rendering = false; btn.disabled = $("render4kNow").disabled = false;
   }
@@ -1190,8 +1217,9 @@
     lawn.material = n === 1 ? M.dirt : M.grass;
     items.forEach(it => { it.g.visible = n !== 1; });
     dimLines.visible = labW.visible = labD.visible = n <= 2;
-    $("camBar").hidden = n === 3; $("shotBar").hidden = n !== 3;
-    if (n === 3) { setPhotoLive(true); showShot("apercu"); $("catSlot3").appendChild($("catBlock")); }
+    $("camBar").hidden = n === 3 && !PHOTO.free; $("shotBar").hidden = n !== 3;
+    if (n === 4 && PHOTO.free) { view = "face"; PHOTO = PHOTOS.face; document.querySelectorAll("#viewChips .chip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.view === "face"))); document.querySelector('[data-shot="avant"]').hidden = false; $("viewHint").hidden = true; }
+    if (n === 3) { setPhotoLive(!PHOTO.free); showShot("apercu"); $("catSlot3").appendChild($("catBlock")); }
     else { setPhotoLive(false); $("photoView").hidden = true; catHome.parent.insertBefore($("catBlock"), catHome.next); }
     if (n !== 2 && n !== 3) select(null);
     if (n === 1) goTo("plan"); else if (n === 2) goTo("jardin"); else if (n === 4) goTo("plan");
