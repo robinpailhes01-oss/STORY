@@ -1,0 +1,14 @@
+{
+  "format": "vertificiel-terrain",
+  "version": 1,
+  "unite": "m",
+  "lot": "Lot 7 · villa T4",
+  "client": "M. et Mme Martin",
+  "contour": [[0, 0], [22, 0], [22, 26.5], [3, 26.5], [0, 20]],
+  "volumes": [
+    { "type": "maison", "x": 11, "z": 4.5, "largeur": 12, "profondeur": 9, "hauteur": 6.2, "rotation": 0 },
+    { "type": "maison", "x": 4, "z": 5.5, "largeur": 4, "profondeur": 7, "hauteur": 3.4, "rotation": 0 },
+    { "type": "terrasse", "x": 11, "z": 10.5, "largeur": 10, "profondeur": 3, "hauteur": 0.15, "rotation": 0 },
+    { "type": "zone", "x": 19.5, "z": 24.5, "largeur": 4, "profondeur": 3, "rotation": 0 }
+  ]
+}

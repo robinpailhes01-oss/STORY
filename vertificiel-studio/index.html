@@ -154,6 +154,31 @@
   .spin { flex: none; width: 30px; height: 30px; border-radius: 50%; border: 3px solid rgba(255,255,255,.25); border-top-color: #ffffff; animation: spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   @media (prefers-reduced-motion: reduce) { .spin { animation: none; border-top-color: rgba(255,255,255,.25); border-right-color: #ffffff; } }
+  .sub { display: grid; gap: 8px; padding: 10px 12px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); }
+  .sub .row { font-size: 13px; font-weight: 600; }
+  .link { border: 0; background: none; color: var(--accent); font-weight: 700; font-size: 13px; cursor: pointer; padding: 4px; }
+  .link.danger { color: #b4483c; }
+  .field input[type="range"] { min-height: 30px; padding: 0; border: 0; background: transparent; accent-color: var(--accent); }
+  .tabs .chip { flex: 1; }
+  .sides, .blocks { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+  .sides li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); font-size: 13px; font-weight: 600; }
+  .sides input, .blocks input { font: inherit; font-size: 15px; width: 100%; min-height: 38px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); font-variant-numeric: tabular-nums; }
+  .sides .k { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .blocks li { display: grid; gap: 6px; padding: 8px 10px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); }
+  .blocks li.on { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold) inset; }
+  .blocks .hd { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; }
+  .blocks .hd span { flex: 1; min-width: 0; cursor: pointer; }
+  .blocks .grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .blocks label { display: grid; gap: 2px; font-size: 11px; color: var(--muted); font-weight: 600; }
+  .calib { position: absolute; inset: 0; z-index: 7; background: #0d1512; display: flex; align-items: center; justify-content: center; }
+  .calib canvas { max-width: 100%; max-height: 100%; display: block; touch-action: none; cursor: crosshair; }
+  .calib-plan { width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); display: block; }
+  .cpts { display: flex; flex-wrap: wrap; gap: 6px; }
+  .cpts button { min-height: 36px; padding: 4px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); font-size: 12px; font-weight: 700; cursor: pointer; font-variant-numeric: tabular-nums; }
+  .cpts button.set { background: var(--soft); color: var(--accent); border-color: var(--accent); }
+  .cpts button[aria-pressed="true"] { background: var(--gold); border-color: var(--gold); color: #ffffff; }
+  .tip { position: absolute; left: 50%; top: 60px; transform: translateX(-50%); z-index: 6; max-width: calc(100% - 32px); padding: 8px 14px; border-radius: 12px; background: rgba(13, 21, 18, .86); color: #ffffff; font-size: 13px; font-weight: 600; text-align: center; pointer-events: none; }
+  .views .acts { display: flex; gap: 2px; }
   .toast { position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); padding: 10px 16px; border-radius: 12px; background: var(--accent); color: var(--on-accent); font-size: 14px; font-weight: 600; z-index: 20; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
 
   @media (max-width: 860px) {
@@ -184,6 +209,7 @@
       <button type="button" id="cam-jardin" data-cam="jardin" aria-pressed="true">3D</button>
       <button type="button" id="cam-plan" data-cam="plan" aria-pressed="false">Plan</button>
       <button type="button" id="cam-photo" data-cam="photo" aria-pressed="false">Angle photo</button>
+      <button type="button" id="measureBtn" aria-pressed="false">Mesurer</button>
     </div>
     <span class="legal">Maquette indicative, non contractuelle</span>
     <div class="selbar" id="selbar" hidden>
@@ -203,6 +229,8 @@
       <canvas id="shot" width="1194" height="1592" aria-label="Aperçu du projet sur la photo du terrain"></canvas>
     </div>
     <div class="busy" id="busy" role="status" aria-live="polite" hidden><div class="spin" aria-hidden="true"></div><div><b id="busyTitle">Rendu 4K en cours</b><span id="busyText">Envoi de la composition…</span></div></div>
+    <div class="calib" id="calib" hidden><canvas id="calibCv" aria-label="Photo à caler : touchez les coins de la maison"></canvas></div>
+    <div class="tip" id="tip" hidden></div>
     <div class="loading" id="loading">Chargement du studio…</div>
   </div>
 
@@ -210,28 +238,85 @@
     <!-- step 1 -->
     <section class="block" data-panel="1">
       <h2>Le terrain</h2>
-      <p class="lead">Les cotes du plan de masse ou du métré. Le terrain se met à l'échelle en direct.</p>
-      <label class="field" for="client">Client<input id="client" type="text" value="Promoteur · programme 14 villas" autocomplete="off"></label>
-      <label class="field" for="lot">Lot<select id="lot"><option>Lot 1 · villa avec photo du terrain</option></select></label>
+      <p class="lead">Importez le plan de masse ou un fichier de mesures, ou saisissez les cotes. Tout reste modifiable à la main, directement sur le plan.</p>
+      <label class="field" for="siteSel">Terrain<select id="siteSel"></select></label>
       <div class="pair">
-        <div class="field"><span>Largeur (m)</span><div class="stepper-num"><button type="button" data-dim="w" data-d="-0.5" aria-label="Réduire la largeur">−</button><input id="dimW" type="number" inputmode="decimal" min="18" max="40" step="0.5" value="23.5" aria-label="Largeur du terrain en mètres"><button type="button" data-dim="w" data-d="0.5" aria-label="Augmenter la largeur">+</button></div></div>
-        <div class="field"><span>Profondeur (m)</span><div class="stepper-num"><button type="button" data-dim="d" data-d="-0.5" aria-label="Réduire la profondeur">−</button><input id="dimD" type="number" inputmode="decimal" min="14" max="40" step="0.5" value="25.5" aria-label="Profondeur du terrain en mètres"><button type="button" data-dim="d" data-d="0.5" aria-label="Augmenter la profondeur">+</button></div></div>
+        <label class="field" for="siteName">Lot<input id="siteName" type="text" autocomplete="off"></label>
+        <label class="field" for="client">Client<input id="client" type="text" autocomplete="off"></label>
+      </div>
+      <div class="block">
+        <div class="label">Importer</div>
+        <div class="chips">
+          <button type="button" class="chip" id="impPlan">Plan de masse (image ou PDF)</button>
+          <button type="button" class="chip" id="impFile">Fichier de mesures</button>
+          <button type="button" class="chip" id="expFile">Exporter le fichier</button>
+        </div>
+        <input type="file" id="filePlan" accept="image/*,application/pdf" hidden>
+        <input type="file" id="fileSite" accept=".json,application/json" hidden>
+        <div class="sub" id="planBox" hidden>
+          <div class="row"><span>Plan de masse</span><button type="button" class="link danger" id="planDel">Retirer</button></div>
+          <button type="button" class="chip" id="planScale">Régler l'échelle : toucher deux points d'une cote connue</button>
+          <label class="field" for="planRot">Rotation du plan<input id="planRot" type="range" min="-180" max="180" step="0.5" value="0"></label>
+          <label class="field" for="planOp">Opacité<input id="planOp" type="range" min="0.2" max="1" step="0.05" value="0.85"></label>
+        </div>
+      </div>
+      <div class="chips tabs" id="subTabs" role="group" aria-label="Partie du terrain">
+        <button type="button" class="chip" data-subtab="contour" aria-pressed="true">Contour</button>
+        <button type="button" class="chip" data-subtab="bati" aria-pressed="false">Maison et existant</button>
+        <button type="button" class="chip" data-subtab="photos" aria-pressed="false">Photos</button>
+      </div>
+      <div class="block" data-sub="contour">
+        <div class="pair">
+          <label class="field" for="rectW">Largeur (m)<input id="rectW" type="number" inputmode="decimal" min="4" max="200" step="0.1"></label>
+          <label class="field" for="rectD">Profondeur (m)<input id="rectD" type="number" inputmode="decimal" min="4" max="200" step="0.1"></label>
+        </div>
+        <div class="chips">
+          <button type="button" class="chip" id="rectApply">Terrain rectangulaire</button>
+          <button type="button" class="chip" id="traceBtn">Tracer le contour sur le plan</button>
+        </div>
+        <div class="sub" id="traceBox" hidden>
+          <p class="note">Touchez chaque angle du terrain sur le plan, dans l'ordre. <b id="traceCount">0 angle</b></p>
+          <div class="chips"><button type="button" class="chip" id="traceDone" aria-pressed="true">Terminer le contour</button><button type="button" class="chip ghost" id="traceCancel">Annuler</button></div>
+        </div>
+        <div class="label">Côtés du terrain</div>
+        <ol class="sides" id="sides"></ol>
+        <p class="note">Modifiez une longueur ou faites glisser les points dorés sur le plan. « Couper » ajoute un angle au milieu du côté.</p>
+      </div>
+      <div class="block" data-sub="bati" hidden>
+        <div class="chips" id="addBlock"></div>
+        <ul class="blocks" id="blockList"></ul>
+        <p class="note">Faites glisser un volume sur le plan pour le placer ; la poignée dorée change sa taille. Les hauteurs sont sur les plans de façade du permis.</p>
+      </div>
+      <div class="block" data-sub="photos" hidden>
+        <ul class="views" id="photoList"></ul>
+        <button type="button" class="chip" id="addPhoto">Ajouter une photo du terrain</button>
+        <input type="file" id="filePhoto" accept="image/*" hidden>
+        <p class="note">Prenez 2 à 4 photos depuis les coins du jardin, maison bien visible. Sur chaque photo, touchez 4 à 8 coins de la maison : l'outil en déduit l'angle de prise de vue, et la photo devient une vue exacte pour le rendu 4K.</p>
       </div>
       <div class="kpi">
         <div class="row"><span>Surface du terrain</span><strong id="kPlot">–</strong></div>
-        <div class="row"><span>Emprise maison et terrasse</span><strong id="kHouse">–</strong></div>
+        <div class="row"><span>Emprise maison et existant</span><strong id="kHouse">–</strong></div>
         <div class="row total"><span>Jardin à aménager</span><strong id="kGarden">–</strong></div>
       </div>
-      <div class="block">
-        <div class="label">Prises de vue calées</div>
-        <ul class="views">
-          <li><img src="img/face-avant-mini.jpg" alt=""><span class="t"><b>Face</b><span>Calée sur 13 coins de la maison · écart 11 px</span></span><span class="ok">Prête</span></li>
-          <li><img src="img/droite-avant-mini.jpg" alt=""><span class="t"><b>Côté droit</b><span>Calée sur 7 coins · écart 3 px</span></span><span class="ok">Prête</span></li>
-          <li><img src="tex/wing-front.jpg" alt=""><span class="t"><b>Côté gauche</b><span>À recaler : la jonction aile / maison diffère du volume simplifié</span></span><span class="todo">À caler</span></li>
-        </ul>
-        <p class="note">Le calage se fait une fois par lot : Armand touche 6 à 8 coins de la maison sur chaque photo, l'outil en déduit l'angle de prise de vue. Le métré définitif se fait sur le chantier.</p>
+      <div class="actions">
+        <button type="button" class="btn" data-go="2">Composer le jardin</button>
+        <button type="button" class="chip ghost" id="siteDel">Supprimer ce terrain</button>
       </div>
-      <div class="actions"><button type="button" class="btn" data-go="2">Composer le jardin</button></div>
+    </section>
+
+    <!-- photo calibration -->
+    <section class="block" id="calibPanel" hidden>
+      <h2>Caler la photo</h2>
+      <p class="lead">Choisissez un coin, puis touchez-le sur la photo. Au moins 4 coins, idéalement 6 à 8 répartis sur la maison, en bas et en haut.</p>
+      <canvas class="calib-plan" id="calibPlan" width="680" height="440" aria-label="Plan de repérage des coins"></canvas>
+      <div class="cpts" id="calibPts" role="group" aria-label="Coins à placer"></div>
+      <div class="kpi"><div class="row"><span>Coins placés</span><strong id="calibN">0</strong></div><div class="row total"><span>Écart moyen</span><strong id="calibErr">–</strong></div></div>
+      <p class="note" id="calibMsg">La maquette de la maison se dessine en jaune sur la photo dès 4 coins : elle doit tomber sur les murs.</p>
+      <label class="field" for="calibName">Nom de la vue<input id="calibName" type="text" autocomplete="off"></label>
+      <div class="actions">
+        <button type="button" class="btn" id="calibSave" disabled>Enregistrer la vue</button>
+        <button type="button" class="btn secondary" id="calibCancel">Annuler</button>
+      </div>
     </section>
 
     <!-- step 2 -->
@@ -433,8 +518,8 @@
   }, 2, 9);
 
   const M = {
-    grass: lambert({ map: photoTex("grass.jpg", 9, 10) }),
-    dirt: lambert({ map: photoTex("dirt.jpg", 8, 9) }),
+    grass: lambert({ map: photoTex("grass.jpg", 1 / 2.6, 1 / 2.6) }),
+    dirt: lambert({ map: photoTex("dirt.jpg", 1 / 2.6, 1 / 2.6) }),
     render: lambert({ map: photoTex("render.jpg", 2, 2, T.MirroredRepeatWrapping) }),
     roof: lambert({ color: 0x4b4d4c }),
     concrete: lambert({ color: 0xa9a69f }),
@@ -486,33 +571,62 @@
 
   // ---------------------------------------------------------------- site (estimated from the photos)
   scene.add(flatMesh(320, 320, M.outside, -0.03));
-  const placeFlat = (w, d, mat, x, z, y) => { const m = flatMesh(w, d, mat, y); m.position.x = x; m.position.z = z; scene.add(m); };
+  // surroundings of the demo plot (estimated from its photos); hidden on other plots
+  const decor = new T.Group(); scene.add(decor);
+  const placeFlat = (w, d, mat, x, z, y) => { const m = flatMesh(w, d, mat, y); m.position.x = x; m.position.z = z; decor.add(m); };
   placeFlat(14, 70, M.road, 21.3, 0, -0.01);
-  function bigTree(x, z, h) { const g = new T.Group(); g.add(box(0.5, h * 0.45, 0.5, M.darkWood, 0, 0, 0)); for (let i = 0; i < 6; i++) g.add(blob(rr(1.6, 2.4), M.tree, rr(-1.4, 1.4), h * rr(0.55, 0.85), rr(-1.4, 1.4))); g.position.set(x, 0, z); scene.add(g); }
+  function bigTree(x, z, h) { const g = new T.Group(); g.add(box(0.5, h * 0.45, 0.5, M.darkWood, 0, 0, 0)); for (let i = 0; i < 6; i++) g.add(blob(rr(1.6, 2.4), M.tree, rr(-1.4, 1.4), h * rr(0.55, 0.85), rr(-1.4, 1.4))); g.position.set(x, 0, z); decor.add(g); }
   bigTree(-12.8, 1, 8); bigTree(-13.2, 7, 9); bigTree(-12.6, 13, 7.5); bigTree(-6, -14, 9); bigTree(3, -15, 8);
-  scene.add(box(9.5, 1.8, 0.8, M.hedge, -5.2, 0, -8.2));
-  function neighbour(x, z, w, d, h, roof) { scene.add(box(w, h, d, M.white, x, 0, z)); scene.add(box(w + 0.4, 0.5, d + 0.4, roof ? lambert({ color: 0xb4614a }) : M.roof, x, h, z)); }
+  decor.add(box(9.5, 1.8, 0.8, M.hedge, -5.2, 0, -8.2));
+  function neighbour(x, z, w, d, h, roof) { decor.add(box(w, h, d, M.white, x, 0, z)); decor.add(box(w + 0.4, 0.5, d + 0.4, roof ? lambert({ color: 0xb4614a }) : M.roof, x, h, z)); }
   neighbour(-17, -12, 9, 7, 5.5, true); neighbour(-5, -19, 8, 6, 5, true); neighbour(26, -8, 9, 8, 6.2, false); neighbour(28, 8, 8, 7, 3.4, false);
 
-  // house: simple volumes, the faces seen in the photo carry the photo itself
+  // ---------------------------------------------------------------- house and existing features: volumes of the site (b.x, b.z = centre, w along x, d along z, metres)
   const house = new T.Group(); scene.add(house);
-  // proportions calibrated on the photo's house corners (main cube 6.4 m high taken as reference)
-  house.add(box(6.6, 6.4, 9.7, M.render, 3.3, 0, -4.85));      // main cube: x 0..6.6, z -9.7..0
-  house.add(box(6.72, 0.12, 9.82, M.roof, 3.3, 6.4, -4.85));
-  house.add(box(7.6, 3.55, 7.24, M.render, -3.8, 0, -0.38));   // wing: x -7.6..0, z -4..3.24
-  house.add(box(7.7, 0.1, 7.34, M.roof, -3.8, 3.55, -0.38));
-  house.add(box(4, 6.1, 6, M.render, -5.6, 0, -3));            // upper wing: x -7.6..-3.6, z -6..0
-  house.add(box(4.1, 0.1, 6.1, M.roof, -5.6, 6.1, -3));
-  house.add(box(8, 0.14, 2.2, M.concrete, 3.8, 0, 1.1));       // terrace slab: x -0.2..7.8, z 0..2.2
+  const KINDS = {
+    maison: { name: "Volume maison", add: "Volume maison", w: 10, d: 8, h: 6, hh: true },
+    terrasse: { name: "Terrasse ou dalle", add: "Terrasse", w: 6, d: 3, h: 0.15, hh: true },
+    piscine: { name: "Piscine existante", add: "Piscine existante", w: 4, d: 8, h: 0 },
+    abri: { name: "Abri ou garage", add: "Abri, garage", w: 3, d: 2.5, h: 2.4, hh: true },
+    arbre: { name: "Arbre existant", add: "Arbre existant", w: 4, d: 4, h: 7, hh: true },
+    zone: { name: "Zone non aménageable", add: "Zone non aménageable", w: 4, d: 3, h: 0 },
+  };
+  const zoneMat = new T.MeshLambertMaterial({ color: lin(0xc9a46a), transparent: true, opacity: 0.6 });
+  function buildBlock(b) {
+    const g = new T.Group(), k = b.kind;
+    if (k === "maison" || k === "abri") { g.add(box(b.w, b.h, b.d, k === "maison" ? M.render : M.white)); g.add(box(b.w + 0.12, 0.12, b.d + 0.12, M.roof, 0, b.h, 0)); }
+    else if (k === "terrasse") g.add(box(b.w, Math.max(b.h, 0.04), b.d, M.concrete));
+    else if (k === "piscine") {
+      const c = 0.35; g.add(flatMesh(b.w, b.d, M.water, 0.03));
+      g.add(box(b.w + 2 * c, 0.06, c, M.stone, 0, 0, -(b.d + c) / 2)); g.add(box(b.w + 2 * c, 0.06, c, M.stone, 0, 0, (b.d + c) / 2));
+      g.add(box(c, 0.06, b.d, M.stone, -(b.w + c) / 2, 0, 0)); g.add(box(c, 0.06, b.d, M.stone, (b.w + c) / 2, 0, 0));
+    } else if (k === "arbre") {
+      const r = Math.min(b.w, b.d) / 2; g.add(box(0.35, b.h * 0.45, 0.35, M.darkWood));
+      [[0, 0.72, 0], [0.35, 0.62, 0.2], [-0.3, 0.6, -0.25], [0.1, 0.85, -0.3], [-0.25, 0.8, 0.3]].forEach(([x, y, z]) => g.add(blob(r * 0.62, M.tree, x * r, b.h * y, z * r)));
+    } else g.add(flatMesh(b.w, b.d, zoneMat, 0.02));
+    g.position.set(b.x, 0, b.z); g.rotation.y = b.rot || 0; g.userData.block = b;
+    return g;
+  }
+  // the demo house carries the real photo on its faces (only while its volumes are untouched)
+  const demoWalls = new T.Group();
   function photoWall(name, w, h, x, y, z, rotY) {
     const m = mesh(new T.PlaneGeometry(w, h), new T.MeshBasicMaterial({ map: photoTex(name, 1, 1, T.ClampToEdgeWrapping), color: 0xf2f2f2 }), { cast: false, receive: false });
-    m.position.set(x, y, z); m.rotation.y = rotY; house.add(m);
+    m.position.set(x, y, z); m.rotation.y = rotY; demoWalls.add(m);
   }
   photoWall("main-front.jpg", 6.6, 6.4, 3.3, 3.2, 0.012, 0);
   photoWall("main-side.jpg", 9.7, 6.4, 6.612, 3.2, -4.85, Math.PI / 2);
   photoWall("wing-front.jpg", 7.6, 3.55, -3.8, 1.775, 3.252, 0);
   photoWall("wing-door.jpg", 3.24, 3.55, 0.012, 1.775, 1.62, Math.PI / 2);
   photoWall("upper-front.jpg", 4, 2.55, -5.6, 4.825, 0.012, 0);
+  function disposeGroup(g) { g.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
+  function buildHouse() {
+    [...house.children].forEach(c => { house.remove(c); if (c !== demoWalls) disposeGroup(c); });
+    site.blocks.forEach(b => house.add(buildBlock(b)));
+    if (site.demo && site.walls !== false) house.add(demoWalls);
+    if (selBlock && !site.blocks.includes(selBlock)) selBlock = null;
+    showBlockSel();
+  }
+  const blockGroup = b => house.children.find(c => c.userData.block === b);
 
   // ---------------------------------------------------------------- catalogue elements (sizes in metres)
   function buildPool() {
@@ -653,49 +767,80 @@
   }
 
 
-  // ---------------------------------------------------------------- plot (resized from the panel, house fixed at the back)
-  const HOUSE_AREA = 120;   // house, wing and terrace inside the plot, m²
-  const PLOT = { x0: -10, x1: 13.5, z0: -6, z1: 19.5 };
-  const BLOCKED = [[0, 6.6, -9.7, 0], [-7.6, 0, -4, 3.24], [-7.6, -3.6, -6, 0], [-0.2, 7.8, 0, 2.2]];
+  // ---------------------------------------------------------------- plot: any polygon, in metres ([x, z] points)
   const fmt = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 });
   const fmt1 = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 1 });
-  const lawn = flatMesh(1, 1, M.dirt, 0); scene.add(lawn);
-  const stripR = flatMesh(0.8, 1, M.strip, 0.01), stripL = flatMesh(0.5, 1, M.strip, 0.01); scene.add(stripR, stripL);
-  const shadowCatcher = flatMesh(1, 1, new T.ShadowMaterial({ opacity: 0.32 }), 0.005); shadowCatcher.visible = false; scene.add(shadowCatcher);
+  const fmt2 = new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const polyArea = q => Math.abs(q.reduce((a, [x, z], i) => { const [x2, z2] = q[(i + 1) % q.length]; return a + x * z2 - x2 * z; }, 0)) / 2;
+  const polySign = q => Math.sign(q.reduce((a, [x, z], i) => { const [x2, z2] = q[(i + 1) % q.length]; return a + x * z2 - x2 * z; }, 0)) || 1;
+  function inPoly(x, z, q) {
+    let c = false;
+    for (let i = 0, j = q.length - 1; i < q.length; j = i++) { const [xi, zi] = q[i], [xj, zj] = q[j]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) c = !c; }
+    return c;
+  }
+  const bbox = q => q.reduce((b, [x, z]) => [Math.min(b[0], x), Math.max(b[1], x), Math.min(b[2], z), Math.max(b[3], z)], [Infinity, -Infinity, Infinity, -Infinity]);
+  function rectPts(x, z, a, b, c, d, rot) { const cs = Math.cos(rot), sn = Math.sin(rot); return [[a, c], [b, c], [b, d], [a, d]].map(([px, pz]) => [x + px * cs + pz * sn, z - px * sn + pz * cs]); }
+  const blockPts = b => rectPts(b.x, b.z, -b.w / 2, b.w / 2, -b.d / 2, b.d / 2, b.rot || 0);
+  // two convex polygons overlap by more than m metres
+  function satHit(P, Q, m) {
+    for (const S of [P, Q]) for (let i = 0; i < S.length; i++) {
+      const [x1, z1] = S[i], [x2, z2] = S[(i + 1) % S.length], nx = z1 - z2, nz = x2 - x1, l = Math.hypot(nx, nz) || 1;
+      let p0 = Infinity, p1 = -Infinity, q0 = Infinity, q1 = -Infinity;
+      P.forEach(([x, z]) => { const v = (x * nx + z * nz) / l; p0 = Math.min(p0, v); p1 = Math.max(p1, v); });
+      Q.forEach(([x, z]) => { const v = (x * nx + z * nz) / l; q0 = Math.min(q0, v); q1 = Math.max(q1, v); });
+      if (p1 <= q0 + m || q1 <= p0 + m) return false;
+    }
+    return true;
+  }
+  const lawn = mesh(new T.BufferGeometry(), M.dirt, { cast: false }); lawn.rotation.x = -Math.PI / 2; scene.add(lawn);
+  const shadowCatcher = mesh(new T.BufferGeometry(), new T.ShadowMaterial({ opacity: 0.32 }), { cast: false }); shadowCatcher.rotation.x = -Math.PI / 2; shadowCatcher.position.y = 0.005; shadowCatcher.visible = false; scene.add(shadowCatcher);
+  const curbs = new T.Group(); scene.add(curbs);
 
-  // dimension lines and labels drawn on the ground, so the scale is always visible
+  // dimension lines and side lengths drawn on the ground, so the scale is always visible
+  const dims = new T.Group(); scene.add(dims);
   const dimMat = new T.LineBasicMaterial({ color: 0xffffff, depthTest: false, transparent: true });
-  const dimLines = new T.LineSegments(new T.BufferGeometry(), dimMat); dimLines.renderOrder = 9; scene.add(dimLines);
-  function makeLabel() {
+  const dimLines = new T.LineLoop(new T.BufferGeometry(), dimMat); dimLines.renderOrder = 9; dims.add(dimLines);
+  function makeLabel(parent) {
     const c = document.createElement("canvas"); c.width = 256; c.height = 80;
     const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding;
-    const s = new T.Sprite(new T.SpriteMaterial({ map: t, depthTest: false, transparent: true }));
-    s.scale.set(3.4, 1.06, 1); s.renderOrder = 10; s.userData.c = c; scene.add(s); return s;
+    const sp = new T.Sprite(new T.SpriteMaterial({ map: t, depthTest: false, transparent: true }));
+    sp.scale.set(3.4, 1.06, 1); sp.renderOrder = 10; sp.userData.c = c; (parent || scene).add(sp); return sp;
   }
-  function setLabel(s, text) {
-    const c = s.userData.c, g = c.getContext("2d"), r = 30;
-    g.clearRect(0, 0, 256, 80); g.fillStyle = "rgba(22,57,44,.9)";
+  function setLabel(sp, text, gold) {
+    const c = sp.userData.c, g = c.getContext("2d"), r = 30;
+    g.clearRect(0, 0, 256, 80); g.fillStyle = gold ? "rgba(185,141,63,.95)" : "rgba(22,57,44,.9)";
     g.beginPath(); g.moveTo(r, 4); g.lineTo(256 - r, 4); g.arc(256 - r, 40, 36, -Math.PI / 2, Math.PI / 2); g.lineTo(r, 76); g.arc(r, 40, 36, Math.PI / 2, Math.PI * 1.5); g.fill();
     g.fillStyle = "#ffffff"; g.font = "800 38px Archivo, Arial, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(text, 128, 42);
-    s.material.map.needsUpdate = true;
+    sp.material.map.needsUpdate = true;
   }
-  const labW = makeLabel(), labD = makeLabel();
-  const plotW = () => PLOT.x1 - PLOT.x0, plotD = () => PLOT.z1 - PLOT.z0;
+  const sideLabels = [], cornerLabels = [];
+  // corner handles of the plot (step 1)
+  const handles = new T.Group(); scene.add(handles);
+  const handleMat = new T.MeshBasicMaterial({ color: 0xd4ab5f, depthTest: false }), handleGeo = new T.CylinderGeometry(0.42, 0.42, 0.12, 20);
+  function plotSpan() { const b = bbox(site.poly.concat(...site.blocks.map(blockPts))); return { cx: (b[0] + b[1]) / 2, cz: (b[2] + b[3]) / 2, w: b[1] - b[0], d: b[3] - b[2] }; }
+  let gardenCache = null;
   function layoutPlot() {
-    const W = plotW(), D = plotD(), cx = (PLOT.x0 + PLOT.x1) / 2, cz = (PLOT.z0 + PLOT.z1) / 2;
-    for (const m of [lawn, shadowCatcher]) { m.scale.set(W, D, 1); m.position.x = cx; m.position.z = cz; }
-    [M.grass.map, M.dirt.map].forEach(t => t.repeat.set(W / 2.6, D / 2.6));
-    stripR.scale.y = D; stripR.position.set(PLOT.x1 + 0.4, 0.01, cz);
-    stripL.scale.y = D; stripL.position.set(PLOT.x0 - 0.25, 0.01, cz);
-    const zf = PLOT.z1 + 0.7, xr = PLOT.x1 + 1.3, y = 0.06, k = 0.35;
-    dimLines.geometry.setFromPoints([
-      [PLOT.x0, zf], [PLOT.x1, zf], [PLOT.x0, zf - k], [PLOT.x0, zf + k], [PLOT.x1, zf - k], [PLOT.x1, zf + k],
-      [xr, PLOT.z0], [xr, PLOT.z1], [xr - k, PLOT.z0], [xr + k, PLOT.z0], [xr - k, PLOT.z1], [xr + k, PLOT.z1],
-    ].map(([x, z]) => new T.Vector3(x, y, z)));
-    setLabel(labW, fmt1.format(W) + " m"); labW.position.set(cx, 0.5, zf + 1.0);
-    setLabel(labD, fmt1.format(D) + " m"); labD.position.set(xr + 1.9, 0.5, cz);
+    gardenCache = null;
+    const q = site.poly, shape = new T.Shape(q.map(([x, z]) => new T.Vector2(x, -z)));
+    [lawn, shadowCatcher].forEach(m => { m.geometry.dispose(); m.geometry = new T.ShapeGeometry(shape); });
+    dimLines.geometry.dispose(); dimLines.geometry = new T.BufferGeometry().setFromPoints(q.map(([x, z]) => new T.Vector3(x, 0.06, z)));
+    disposeGroup(curbs); curbs.clear(); handles.clear();
+    const sg = polySign(q);
+    q.forEach(([x, z], i) => {
+      const [x2, z2] = q[(i + 1) % q.length], len = Math.hypot(x2 - x, z2 - z); if (len < 0.01) return;
+      const nx = -(z2 - z) / len * sg, nz = (x2 - x) / len * sg;      // outward normal
+      const cb = flatMesh(len, 0.3, M.strip, 0.008); cb.rotation.z = -Math.atan2(z2 - z, x2 - x); cb.position.set((x + x2) / 2 + nx * 0.15, 0.008, (z + z2) / 2 + nz * 0.15); curbs.add(cb);
+      const lab = sideLabels[i] || (sideLabels[i] = makeLabel(dims));
+      lab.visible = true; setLabel(lab, fmt1.format(len) + " m"); lab.position.set((x + x2) / 2 + nx * 1.5, 0.5, (z + z2) / 2 + nz * 1.5);
+      const h = new T.Mesh(handleGeo, handleMat); h.position.set(x, 0.1, z); h.renderOrder = 11; h.userData.vertex = i; handles.add(h);
+      const pn = cornerLabels[i] || (cornerLabels[i] = makeLabel(handles)); handles.add(pn); setLabel(pn, L(i), true); pn.scale.set(1.5, 0.47, 1);
+      const [xp, zp] = q[(i + q.length - 1) % q.length], bx = (x - xp) / (Math.hypot(x - xp, z - zp) || 1) - (x2 - x) / len, bz = (z - zp) / (Math.hypot(x - xp, z - zp) || 1) - (z2 - z) / len, bl = Math.hypot(bx, bz) || 1;
+      pn.position.set(x + bx / bl * 1.1, 0.4, z + bz / bl * 1.1);
+    });
+    for (let i = q.length; i < sideLabels.length; i++) sideLabels[i].visible = false;
+    handles.visible = step === 1 && !tool;
     items.forEach(it => { if (!fits(it.no, it.g.position.x, it.g.position.z, it.g.rotation.y)) placeFree(it); });
-    renderNumbers(); requestRender();
+    renderNumbers(); renderSiteUI(); requestRender();
   }
 
   // ---------------------------------------------------------------- catalogue (fp = footprint in the element's frame; area = hard surface taken from the lawn, m²)
@@ -734,9 +879,10 @@
   }
   const overlaps = (p, q, m) => p[0] < q[1] - m && p[1] > q[0] + m && p[2] < q[3] - m && p[3] > q[2] + m;
   function fits(no, x, z, rot) {
-    const box4 = aabb(no, x, z, rot), m = 0.02;
-    if (box4[0] < PLOT.x0 - m || box4[1] > PLOT.x1 + m || box4[2] < PLOT.z0 - m || box4[3] > PLOT.z1 + m) return false;
-    return !BLOCKED.some(b => overlaps(box4, b, m));
+    const [a, b, c, d] = TYPES[no].fp, m = 0.03, P = rectPts(x, z, a + m, b - m, c + m, d - m, rot);
+    const probes = P.concat([[x, z]], P.map(([px, pz], i) => [(px + P[(i + 1) % 4][0]) / 2, (pz + P[(i + 1) % 4][1]) / 2]));
+    if (!probes.every(([px, pz]) => inPoly(px, pz, site.poly))) return false;
+    return !site.blocks.some(bk => satHit(P, blockPts(bk), 0.02));
   }
   function freeOfOthers(it, no, x, z, rot) {
     const box4 = aabb(no, x, z, rot);
@@ -744,9 +890,9 @@
   }
   // nearest free spot, spiralling out from the middle of the garden in front of the house
   function findSpot(it, no, rot) {
-    const cx = (PLOT.x0 + PLOT.x1) / 2, cz = (Math.max(PLOT.z0, 3) + PLOT.z1) / 2;
+    const bb = bbox(site.poly), cx = (bb[0] + bb[1]) / 2, cz = (bb[2] + bb[3]) / 2;
     let fallback = null;
-    for (let r = 0; r <= 16; r += 1) for (let i = -r; i <= r; i++) for (let j = -r; j <= r; j++) {
+    for (let r = 0; r <= Math.ceil(Math.max(bb[1] - bb[0], bb[3] - bb[2]) / 2) + 1; r += 1) for (let i = -r; i <= r; i++) for (let j = -r; j <= r; j++) {
       if (Math.max(Math.abs(i), Math.abs(j)) !== r) continue;
       const x = cx + i, z = cz + j;
       if (!fits(no, x, z, rot) || !inView(x, z)) continue;
@@ -810,12 +956,19 @@
 
   // ---------------------------------------------------------------- surfaces
   const hardArea = () => items.reduce((s, it) => s + TYPES[it.no].area, 0);
-  const gardenArea = () => Math.max(0, plotW() * plotD() - HOUSE_AREA);
+  // garden = plot minus the volumes, sampled every 25 cm (works for any shape and overlap)
+  function gardenArea() {
+    if (gardenCache != null) return gardenCache;
+    const q = site.poly, [x0, x1, z0, z1] = bbox(q), st = 0.25, rects = site.blocks.map(blockPts); let n = 0;
+    for (let x = x0 + st / 2; x < x1; x += st) for (let z = z0 + st / 2; z < z1; z += st) if (inPoly(x, z, q) && !rects.some(r => inPoly(x, z, r))) n++;
+    return (gardenCache = n * st * st);
+  }
+  const plotArea = () => polyArea(site.poly);
   const turfArea = () => Math.max(0, gardenArea() - hardArea());
   const rate = () => parseFloat($("rate").value);
   function renderNumbers() {
-    $("kPlot").textContent = fmt.format(plotW() * plotD()) + " m²";
-    $("kHouse").textContent = fmt.format(HOUSE_AREA) + " m²";
+    $("kPlot").textContent = fmt.format(plotArea()) + " m²";
+    $("kHouse").textContent = fmt.format(Math.max(0, plotArea() - gardenArea())) + " m²";
     $("kGarden").textContent = fmt.format(gardenArea()) + " m²";
     $("cTurf").textContent = fmt.format(turfArea()) + " m²";
     $("cHard").textContent = items.length ? fmt.format(hardArea()) + " m²" : "aucun";
@@ -847,21 +1000,350 @@
   clear.addEventListener("click", () => { [...items].forEach(removeItem); changed(); });
   $("palChips").appendChild(clear);
 
-  // ---------------------------------------------------------------- terrain inputs
-  function setDims(w, d) {
-    w = clamp(Math.round(w * 2) / 2, 18, 30); d = clamp(Math.round(d * 2) / 2, 14, 34);
-    PLOT.x1 = PLOT.x0 + w; PLOT.z1 = PLOT.z0 + d;
-    $("dimW").value = w; $("dimD").value = d;
-    layoutPlot(); save();
+  // ---------------------------------------------------------------- sites: each plot keeps its outline, volumes, photos, plan and composition (stored on this tablet)
+  const DEMO = () => ({ id: "demo", demo: true, name: "Lot 1 · villa avec photo du terrain", client: "Promoteur · programme 14 villas",
+    poly: [[-10, -6], [13.5, -6], [13.5, 19.5], [-10, 19.5]],
+    blocks: [{ kind: "maison", x: 3.3, z: -4.85, w: 6.6, d: 9.7, h: 6.4, rot: 0 }, { kind: "maison", x: -3.8, z: -0.38, w: 7.6, d: 7.24, h: 3.55, rot: 0 },
+      { kind: "maison", x: -5.6, z: -3, w: 4, d: 6, h: 6.1, rot: 0 }, { kind: "terrasse", x: 3.8, z: 1.1, w: 8, d: 2.2, h: 0.14, rot: 0 }],
+    photos: [], plan: null, items: [] });
+  const NEW_SITE = () => ({ id: "t" + Date.now().toString(36), name: "Nouveau terrain", client: "", poly: [[-10, -8], [10, -8], [10, 17], [-10, 17]],
+    blocks: [{ kind: "maison", x: 0, z: -3, w: 10, d: 8, h: 6, rot: 0 }, { kind: "terrasse", x: 0, z: 2.5, w: 8, d: 3, h: 0.15, rot: 0 }], photos: [], plan: null, items: [] });
+  const DB = (() => {
+    let opening = null;
+    const open = () => opening || (opening = new Promise((ok, ko) => { const r = indexedDB.open("studio-jardin", 1); r.onupgradeneeded = () => r.result.createObjectStore("sites"); r.onsuccess = () => ok(r.result); r.onerror = () => ko(r.error); }));
+    const run = (mode, f) => open().then(db => new Promise((ok, ko) => { const tx = db.transaction("sites", mode), r = f(tx.objectStore("sites")); tx.oncomplete = () => ok(r.result); tx.onerror = () => ko(tx.error); }));
+    return { get: k => run("readonly", st => st.get(k)), put: (k, v) => run("readwrite", st => st.put(v, k)), del: k => run("readwrite", st => st.delete(k)), all: () => run("readonly", st => st.getAll()) };
+  })();
+  let site = null, selBlock = null, tool = null, saveTimer = null, siteList = [];
+  function flushSave() {
+    if (!site || !saveTimer) return;
+    clearTimeout(saveTimer); saveTimer = null;
+    DB.put(site.id, site).catch(() => {}); try { localStorage.setItem("studio-site", site.id); } catch (e) { /* no storage */ }
   }
-  $("dimW").addEventListener("change", e => setDims(parseFloat(e.target.value) || plotW(), plotD()));
-  $("dimD").addEventListener("change", e => setDims(plotW(), parseFloat(e.target.value) || plotD()));
-  document.querySelectorAll("[data-dim]").forEach(b => b.addEventListener("click", () => {
-    const d = parseFloat(b.dataset.d);
-    b.dataset.dim === "w" ? setDims(plotW() + d, plotD()) : setDims(plotW(), plotD() + d);
-  }));
+  function save() {
+    if (!site) return;
+    site.items = items.map(it => [it.no, +it.g.position.x.toFixed(2), +it.g.position.z.toFixed(2), +it.g.rotation.y.toFixed(3)]);
+    site.client = $("client").value; site.name = $("siteName").value.trim() || site.name;
+    clearTimeout(saveTimer); saveTimer = setTimeout(() => { saveTimer = 1; flushSave(); }, 300);
+  }
+  function siteChanged() { layoutPlot(); save(); }
+  const L = i => String.fromCharCode(65 + (i % 26)) + (i >= 26 ? Math.floor(i / 26) : "");
+  async function refreshSites() {
+    try { siteList = await DB.all(); } catch (e) { siteList = []; }
+    siteList = siteList.filter(x => x && x.id !== site.id);
+    siteList.push(site);
+    if (!siteList.some(x => x.id === "demo")) siteList.unshift(DEMO());
+    siteList.sort((a, b) => (a.demo ? -1 : b.demo ? 1 : 0));
+    const sel = $("siteSel"); sel.innerHTML = "";
+    siteList.forEach(x => { const o = document.createElement("option"); o.value = x.id; o.textContent = x.name + (x.demo ? " (démo)" : ""); sel.appendChild(o); });
+    const o = document.createElement("option"); o.value = "+"; o.textContent = "+ Nouveau terrain"; sel.appendChild(o);
+    sel.value = site.id;
+  }
+  async function loadSite(s) {
+    flushSave();
+    [...items].forEach(removeItem); select(null); setTool(null);
+    site = s; selBlock = null;
+    s.photos = s.photos || []; s.blocks = s.blocks || []; s.items = s.items || [];
+    $("siteName").value = s.name || ""; $("client").value = s.client || "";
+    decor.visible = !!s.demo; $("siteDel").hidden = !!s.demo;
+    buildHouse(); buildPlan(); setPhotos(); layoutPlot();
+    s.items.forEach(([no, x, z, r]) => { if (TYPES[no]) addItem(no, x, z, r); });
+    renders.length = 0; $("gal").innerHTML = ""; $("galBlock").hidden = true; shownRender = null;
+    changed(); await refreshSites();
+    if (step === 1) goTo("plan", true);
+  }
+  $("siteSel").addEventListener("change", async e => {
+    const v = e.target.value; save(); flushSave();
+    if (v === "+") { await loadSite(NEW_SITE()); save(); toast("Nouveau terrain : importez le plan de masse ou saisissez les cotes."); return; }
+    let s2 = null; try { s2 = await DB.get(v); } catch (err) { s2 = null; }
+    await loadSite(s2 || siteList.find(x => x.id === v) || DEMO());
+  });
+  $("siteName").addEventListener("change", () => { save(); refreshSites(); });
   $("client").addEventListener("input", save);
+  $("siteDel").addEventListener("click", async () => {
+    if (site.demo || !window.confirm("Supprimer le terrain « " + site.name + " » de cette tablette ?")) return;
+    clearTimeout(saveTimer); saveTimer = null;
+    try { await DB.del(site.id); } catch (e) { /* already gone */ }
+    let d = null; try { d = await DB.get("demo"); } catch (e) { d = null; }
+    await loadSite(d || DEMO());
+  });
   $("rate").addEventListener("change", () => { renderNumbers(); renderRecap(); });
+
+  // ---------------------------------------------------------------- step 1 panel
+  document.querySelectorAll("[data-subtab]").forEach(b => b.addEventListener("click", () => {
+    document.querySelectorAll("[data-subtab]").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    document.querySelectorAll("[data-sub]").forEach(x => { x.hidden = x.dataset.sub !== b.dataset.subtab; });
+  }));
+  function renderSiteUI() {
+    if (!site) return;
+    const q = site.poly, bb = bbox(q);
+    if (document.activeElement !== $("rectW")) $("rectW").value = +(bb[1] - bb[0]).toFixed(2);
+    if (document.activeElement !== $("rectD")) $("rectD").value = +(bb[3] - bb[2]).toFixed(2);
+    const ol = $("sides"); ol.innerHTML = "";
+    q.forEach(([x, z], i) => {
+      const j = (i + 1) % q.length, len = Math.hypot(q[j][0] - x, q[j][1] - z), li = document.createElement("li");
+      li.innerHTML = `<span class="k">${L(i)} → ${L(j)}</span><input type="number" inputmode="decimal" step="0.01" min="0.5" value="${+len.toFixed(2)}" aria-label="Longueur du côté ${L(i)}${L(j)} en mètres"><button type="button" class="link">Couper</button><button type="button" class="link danger" aria-label="Retirer l'angle ${L(j)}">×</button>`;
+      li.querySelector("input").addEventListener("change", e => setSide(i, parseFloat(e.target.value)));
+      const [cutB, delB] = li.querySelectorAll("button");
+      cutB.addEventListener("click", () => { q.splice(i + 1, 0, [+((x + q[j][0]) / 2).toFixed(3), +((z + q[j][1]) / 2).toFixed(3)]); siteChanged(); });
+      delB.addEventListener("click", () => { if (q.length <= 3) { toast("Un terrain a au moins 3 angles."); return; } q.splice(j, 1); siteChanged(); });
+      ol.appendChild(li);
+    });
+    renderBlocks(); renderPhotoList(); $("planBox").hidden = !site.plan;
+  }
+  // a side keeps its direction: its end point moves to the typed length
+  function setSide(i, len) {
+    const q = site.poly, j = (i + 1) % q.length;
+    if (!(len > 0.3)) { renderSiteUI(); return; }
+    const [x, z] = q[i], dx = q[j][0] - x, dz = q[j][1] - z, l = Math.hypot(dx, dz) || 1;
+    q[j] = [+(x + dx / l * len).toFixed(3), +(z + dz / l * len).toFixed(3)]; siteChanged();
+  }
+  $("rectApply").addEventListener("click", () => {
+    const w = parseFloat($("rectW").value), d = parseFloat($("rectD").value);
+    if (!(w >= 4 && d >= 4)) { toast("Indiquez la largeur et la profondeur en mètres."); return; }
+    const bb = bbox(site.poly); site.poly = [[bb[0], bb[2]], [bb[0] + w, bb[2]], [bb[0] + w, bb[2] + d], [bb[0], bb[2] + d]]; siteChanged(); goTo("plan");
+  });
+  $("traceBtn").addEventListener("click", () => { setTool("trace"); goTo("plan"); });
+  $("traceDone").addEventListener("click", () => {
+    if (toolPts.length < 3) { toast("Touchez au moins 3 angles du terrain."); return; }
+    site.poly = toolPts.map(p => [+p.x.toFixed(3), +p.z.toFixed(3)]); setTool(null); siteChanged();
+  });
+  $("traceCancel").addEventListener("click", () => setTool(null));
+
+  // volumes: house, terrace, existing pool, shed, tree, no-go zone
+  const touchDemo = b => { if (site.demo && b.kind === "maison" && site.walls !== false) { site.walls = false; return true; } return false; };
+  Object.keys(KINDS).forEach(k => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = "+ " + KINDS[k].add;
+    b.addEventListener("click", () => addBlock(k)); $("addBlock").appendChild(b);
+  });
+  function addBlock(kind) {
+    const K = KINDS[kind], bb = bbox(site.poly), cx = (bb[0] + bb[1]) / 2, cz = (bb[2] + bb[3]) / 2;
+    const b = { kind, x: +cx.toFixed(2), z: +cz.toFixed(2), w: K.w, d: K.d, h: K.h, rot: 0 };
+    // first free spot inside the plot, spiralling out from its centre
+    search: for (let r = 0; r <= 40; r++) for (let i = -r; i <= r; i++) for (let j = -r; j <= r; j++) {
+      if (Math.max(Math.abs(i), Math.abs(j)) !== r) continue;
+      b.x = +(cx + i).toFixed(2); b.z = +(cz + j).toFixed(2);
+      const P = blockPts(b);
+      if (P.every(([x, z]) => inPoly(x, z, site.poly)) && !site.blocks.some(o => satHit(P, blockPts(o), 0.05))) break search;
+      if (r === 40) { b.x = +cx.toFixed(2); b.z = +cz.toFixed(2); }
+    }
+    site.blocks.push(b); touchDemo(b); buildHouse(); selBlock = b; showBlockSel(); siteChanged(); goTo("plan");
+  }
+  function rebuildBlock(b) {
+    if (touchDemo(b)) { buildHouse(); return; }
+    const g = blockGroup(b); if (g) { house.remove(g); disposeGroup(g); }
+    house.add(buildBlock(b)); showBlockSel();
+  }
+  function renderBlocks() {
+    const ul = $("blockList"), count = {}; ul.innerHTML = "";
+    if (!site.blocks.length) ul.innerHTML = '<li class="empty">Aucun volume : ajoutez la maison avec les boutons ci-dessus.</li>';
+    site.blocks.forEach(b => {
+      count[b.kind] = (count[b.kind] || 0) + 1;
+      const K = KINDS[b.kind], li = document.createElement("li"), tree = b.kind === "arbre";
+      if (b === selBlock) li.className = "on";
+      const f = (k, label, v, st) => `<label>${label}<input type="number" inputmode="decimal" step="${st}" data-k="${k}" value="${v}"></label>`;
+      li.innerHTML = `<div class="hd"><span>${K.name} ${count[b.kind]}</span><button type="button" class="link danger">Retirer</button></div><div class="grid4">`
+        + f("w", tree ? "Diamètre" : "Largeur", +b.w.toFixed(2), 0.05) + (tree ? "" : f("d", "Profondeur", +b.d.toFixed(2), 0.05))
+        + (K.hh ? f("h", "Hauteur", +b.h.toFixed(2), 0.05) : "") + f("rot", "Rotation °", +((b.rot || 0) * 180 / Math.PI).toFixed(1), 1) + "</div>";
+      li.querySelector(".hd span").addEventListener("click", () => { selBlock = b; showBlockSel(); renderBlocks(); goTo("plan"); });
+      li.querySelector(".hd button").addEventListener("click", () => { site.blocks.splice(site.blocks.indexOf(b), 1); touchDemo(b); buildHouse(); siteChanged(); });
+      li.querySelectorAll("input").forEach(inp => inp.addEventListener("change", () => {
+        const v = parseFloat(inp.value), k = inp.dataset.k; if (!isFinite(v)) { renderBlocks(); return; }
+        if (k === "rot") b.rot = v * Math.PI / 180; else b[k] = Math.max(k === "h" ? 0 : 0.2, v);
+        if (tree && k === "w") b.d = b.w;
+        selBlock = b; rebuildBlock(b); siteChanged();
+      }));
+      ul.appendChild(li);
+    });
+  }
+  // selected volume: outline and a resize handle on its corner
+  const blockSel = new T.Group(); scene.add(blockSel);
+  const selLine = new T.LineLoop(new T.BufferGeometry(), new T.LineBasicMaterial({ color: 0xffd54a, depthTest: false })); selLine.renderOrder = 11; blockSel.add(selLine);
+  const resizeH = new T.Mesh(handleGeo, new T.MeshBasicMaterial({ color: 0xffd54a, depthTest: false })); resizeH.renderOrder = 12; blockSel.add(resizeH);
+  function showBlockSel() {
+    blockSel.visible = !!selBlock && step === 1 && !tool;
+    if (selBlock) {
+      const P = blockPts(selBlock);
+      selLine.geometry.dispose(); selLine.geometry = new T.BufferGeometry().setFromPoints(P.map(([x, z]) => new T.Vector3(x, 0.1, z)));
+      resizeH.position.set(P[2][0], 0.1, P[2][1]);
+    }
+    requestRender();
+  }
+
+  // ---------------------------------------------------------------- plan de masse underneath (step 1), scaled from a known dimension
+  const planMat = new T.MeshBasicMaterial({ transparent: true, opacity: 0.6, depthWrite: false, depthTest: false });
+  const planMesh = new T.Mesh(new T.PlaneGeometry(1, 1), planMat); planMesh.rotation.x = -Math.PI / 2; planMesh.renderOrder = 3; planMesh.visible = false; scene.add(planMesh);
+  function buildPlan() {
+    const pl = site.plan; planMesh.visible = !!pl && step === 1;
+    if (!pl) { requestRender(); return; }
+    if (planMat.userData.src !== pl.image) {
+      planMat.userData.src = pl.image;
+      loadImg(pl.image).then(img => { const t = new T.Texture(img); t.encoding = T.sRGBEncoding; t.anisotropy = maxAniso; t.needsUpdate = true; if (planMat.map) planMat.map.dispose(); planMat.map = t; planMat.needsUpdate = true; requestRender(); });
+    }
+    planMesh.scale.set(pl.w, pl.w * pl.ar, 1); planMesh.position.set(pl.x, 0.03, pl.z); planMesh.rotation.z = pl.rot || 0; planMat.opacity = pl.op || 0.6;
+    $("planRot").value = ((pl.rot || 0) * 180 / Math.PI).toFixed(1); $("planOp").value = pl.op || 0.6; requestRender();
+  }
+  const loadScript = src => new Promise((ok, ko) => { const sc = document.createElement("script"); sc.src = src; sc.onload = ok; sc.onerror = () => ko(new Error("chargement impossible")); document.head.appendChild(sc); });
+  function fileToImage(file, max, q) {
+    return new Promise((ok, ko) => {
+      const u = URL.createObjectURL(file), img = new Image();
+      img.onload = () => {
+        const k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight)), c = document.createElement("canvas");
+        c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+        const g = c.getContext("2d"); g.fillStyle = "#ffffff"; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(u); ok(c.toDataURL("image/jpeg", q));
+      };
+      img.onerror = () => { URL.revokeObjectURL(u); ko(new Error("format d'image non lu")); };
+      img.src = u;
+    });
+  }
+  const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
+  async function pdfToImage(file) {
+    if (!window.pdfjsLib) { await loadScript(PDFJS + "pdf.min.js"); await loadScript(PDFJS + "pdf.worker.min.js"); window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + "pdf.worker.min.js"; }
+    const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise, page = await pdf.getPage(1);
+    const v0 = page.getViewport({ scale: 1 }), vp = page.getViewport({ scale: Math.min(5, 3000 / Math.max(v0.width, v0.height)) });
+    const c = document.createElement("canvas"); c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+    const g = c.getContext("2d"); g.fillStyle = "#ffffff"; g.fillRect(0, 0, c.width, c.height);
+    await page.render({ canvasContext: g, viewport: vp }).promise;
+    return c.toDataURL("image/jpeg", 0.88);
+  }
+  $("impPlan").addEventListener("click", () => $("filePlan").click());
+  $("filePlan").addEventListener("change", async e => {
+    const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+    toast("Lecture du plan…");
+    try {
+      const url = /pdf/i.test(f.type) || /\.pdf$/i.test(f.name) ? await pdfToImage(f) : await fileToImage(f, 3000, 0.88);
+      const img = await loadImg(url), sp = plotSpan();
+      site.plan = { image: url, ar: img.naturalHeight / img.naturalWidth, w: 40, x: sp.cx, z: sp.cz, rot: 0, op: 0.6 };
+      buildPlan(); renderSiteUI(); save(); goTo("plan");
+      toast("Plan importé : réglez l'échelle avec une cote connue.");
+    } catch (err) { toast("Import du plan impossible : " + err.message); }
+  });
+  $("planDel").addEventListener("click", () => { site.plan = null; buildPlan(); renderSiteUI(); save(); });
+  $("planScale").addEventListener("click", () => { setTool("scale"); goTo("plan"); });
+  $("planRot").addEventListener("input", e => { site.plan.rot = parseFloat(e.target.value) * Math.PI / 180; buildPlan(); save(); });
+  $("planOp").addEventListener("input", e => { site.plan.op = parseFloat(e.target.value); buildPlan(); save(); });
+
+  // ---------------------------------------------------------------- measurement file: export and import (format vertificiel-terrain)
+  $("expFile").addEventListener("click", () => {
+    save();
+    const data = { format: "vertificiel-terrain", version: 1, unite: "m", lot: site.name, client: site.client,
+      contour: site.poly,
+      volumes: site.blocks.map(b => ({ type: b.kind, x: b.x, z: b.z, largeur: b.w, profondeur: b.d, hauteur: b.h, rotation: +((b.rot || 0) * 180 / Math.PI).toFixed(2) })),
+      composition: site.items, plan: site.plan, photos: site.photos };
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: "application/json" }));
+    a.download = ((site.name || "terrain").normalize("NFD").replace(/[^\w\- ]+/g, "").trim().replace(/\s+/g, "-") || "terrain") + ".vertificiel.json";
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast("Fichier exporté : il se réimporte sur une autre tablette.");
+  });
+  $("impFile").addEventListener("click", () => $("fileSite").click());
+  $("fileSite").addEventListener("change", async e => {
+    const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+    try {
+      const d = JSON.parse(await f.text()), s2 = NEW_SITE(), num = v => (typeof v === "string" ? parseFloat(v.replace(",", ".")) : +v);
+      s2.name = String(d.lot || d.nom || f.name.replace(/\.(vertificiel\.)?json$/i, "")).slice(0, 80); s2.client = String(d.client || "").slice(0, 80);
+      if (Array.isArray(d.contour) && d.contour.length >= 3) s2.poly = d.contour.map(p => Array.isArray(p) ? [num(p[0]), num(p[1])] : [num(p.x), num(p.z != null ? p.z : p.y)]);
+      else if (num(d.largeur) > 0 && num(d.profondeur) > 0) s2.poly = [[0, 0], [num(d.largeur), 0], [num(d.largeur), num(d.profondeur)], [0, num(d.profondeur)]];
+      else throw new Error("contour du terrain absent");
+      if (!s2.poly.every(p => isFinite(p[0]) && isFinite(p[1]))) throw new Error("coordonnées du contour illisibles");
+      if (Array.isArray(d.volumes)) s2.blocks = d.volumes.map(v => {
+        const kind = KINDS[v.type] ? v.type : "maison", K = KINDS[kind];
+        return { kind, x: num(v.x) || 0, z: num(v.z) || 0, w: num(v.largeur) || K.w, d: num(v.profondeur) || num(v.largeur) || K.d, h: v.hauteur != null ? num(v.hauteur) : K.h, rot: (num(v.rotation) || 0) * Math.PI / 180 };
+      });
+      if (Array.isArray(d.composition)) s2.items = d.composition.filter(x => Array.isArray(x) && TYPES[x[0]]);
+      if (d.plan && typeof d.plan.image === "string" && d.plan.image.startsWith("data:image/")) s2.plan = d.plan;
+      if (Array.isArray(d.photos)) s2.photos = d.photos.filter(ph => ph && typeof ph.image === "string" && ph.image.startsWith("data:image/"));
+      await loadSite(s2); save(); goTo("plan");
+      toast("Terrain importé : " + s2.name);
+    } catch (err) { toast("Fichier non reconnu : " + err.message); }
+  });
+
+  // ---------------------------------------------------------------- tools: trace the outline, scale the plan, measure
+  const toolGroup = new T.Group(); scene.add(toolGroup);
+  const measures = new T.Group(); scene.add(measures);
+  const markGeo = new T.SphereGeometry(0.18, 16, 12), markMat = new T.MeshBasicMaterial({ color: 0xffd54a, depthTest: false });
+  const lineMat = new T.LineBasicMaterial({ color: 0xffd54a, depthTest: false });
+  let toolPts = [];
+  const TIPS = { trace: "Touchez les angles du terrain, dans l'ordre", scale: "Touchez le premier point d'une cote connue du plan", measure: "Touchez deux points pour mesurer" };
+  function tip(text) { $("tip").hidden = !text; if (text) $("tip").textContent = text; }
+  function clearGroup(g) { g.traverse(o => { if (o.isSprite) o.material.map.dispose(); if (o.geometry && o.geometry !== markGeo) o.geometry.dispose(); }); g.clear(); }
+  function setTool(t) {
+    if (tool === "measure" && t !== "measure") clearGroup(measures);
+    tool = t; toolPts = []; clearGroup(toolGroup);
+    $("measureBtn").setAttribute("aria-pressed", String(t === "measure"));
+    $("traceBox").hidden = t !== "trace"; $("traceCount").textContent = "0 angle";
+    tip(t ? TIPS[t] : null);
+    handles.visible = step === 1 && !t; showBlockSel(); requestRender();
+  }
+  $("measureBtn").addEventListener("click", () => setTool(tool === "measure" ? null : "measure"));
+  function mark(p, g) { const m = new T.Mesh(markGeo, markMat); m.position.copy(p); m.renderOrder = 12; g.add(m); }
+  function segment(a, b, g) { const l = new T.Line(new T.BufferGeometry().setFromPoints([a, b]), lineMat); l.renderOrder = 12; g.add(l); }
+  function toolTap(e) {
+    setRay(e); let pt = null;
+    if (tool === "measure") { const hits = ray.intersectObjects([house, lawn, ...items.map(it => it.g)], true); if (hits.length) pt = hits[0].point.clone(); }
+    if (!pt && ray.ray.intersectPlane(ground, hit)) pt = hit.clone();
+    if (!pt) return;
+    if (tool !== "measure") pt.set(Math.round(pt.x * 20) / 20, 0.05, Math.round(pt.z * 20) / 20);
+    toolPts.push(pt);
+    if (tool === "measure") {
+      mark(pt, measures);
+      if (toolPts.length % 2 === 0) {
+        const a = toolPts[toolPts.length - 2]; segment(a, pt, measures);
+        const lab = makeLabel(measures); setLabel(lab, fmt2.format(a.distanceTo(pt)) + " m", true);
+        lab.position.set((a.x + pt.x) / 2, Math.max(a.y, pt.y) + 0.9, (a.z + pt.z) / 2);
+        tip("Touchez deux autres points, ou « Mesurer » pour effacer");
+      } else tip("Touchez le second point");
+    } else if (tool === "trace") {
+      mark(pt, toolGroup); if (toolPts.length > 1) segment(toolPts[toolPts.length - 2], pt, toolGroup);
+      const n = toolPts.length; $("traceCount").textContent = n + (n > 1 ? " angles" : " angle");
+      tip(n >= 3 ? "Angle suivant, ou « Terminer le contour » dans le panneau" : TIPS.trace);
+    } else if (tool === "scale") {
+      mark(pt, toolGroup);
+      if (toolPts.length === 1) { tip("Touchez le second point de la cote"); requestRender(); return; }
+      const [a, b] = toolPts, m = Math.hypot(b.x - a.x, b.z - a.z); segment(a, b, toolGroup); requestRender();
+      setTimeout(() => {
+        const v = parseFloat(String(window.prompt("Distance réelle entre ces deux points, en mètres :") || "").replace(",", "."));
+        if (v > 0 && m > 0.01 && site.plan) {
+          const k = v / m, pl = site.plan; pl.x = a.x + (pl.x - a.x) * k; pl.z = a.z + (pl.z - a.z) * k; pl.w *= k;
+          buildPlan(); save(); toast("Échelle réglée : le plan fait " + fmt1.format(pl.w) + " m de large.");
+        } else if (v) toast("Distance non valable.");
+        setTool(null);
+      }, 60);
+    }
+    requestRender();
+  }
+
+  // ---------------------------------------------------------------- step 1 editing on the plan: drag a corner, a volume, or the resize handle
+  function pickEdit(e) {
+    setRay(e);
+    let h = ray.intersectObjects(handles.children.filter(o => o.isMesh), false)[0]; if (h) return { kind: "vertex", i: h.object.userData.vertex };
+    if (blockSel.visible && ray.intersectObject(resizeH, false)[0]) return { kind: "resize", b: selBlock, o: blockPts(selBlock)[0] };
+    h = ray.intersectObjects(house.children, true)[0];
+    if (h) {
+      let o = h.object; while (o && !(o.userData && o.userData.block)) o = o.parent;
+      if (o && ray.ray.intersectPlane(ground, hit)) { const b = o.userData.block; selBlock = b; showBlockSel(); renderBlocks(); return { kind: "block", b, dx: b.x - hit.x, dz: b.z - hit.z }; }
+    }
+    return null;
+  }
+  function editDrag(e) {
+    setRay(e); if (!ray.ray.intersectPlane(ground, hit)) return;
+    const sx = Math.round(hit.x * 20) / 20, sz = Math.round(hit.z * 20) / 20, d = drag;
+    if (d.kind === "vertex") { site.poly[d.i] = [sx, sz]; layoutPlot(); return; }
+    const b = d.b;
+    if (d.kind === "block") { b.x = +(sx + d.dx).toFixed(2); b.z = +(sz + d.dz).toFixed(2); const g = blockGroup(b); if (g) g.position.set(b.x, 0, b.z); }
+    else {
+      const r = b.rot || 0, cs = Math.cos(r), sn = Math.sin(r), vx = sx - d.o[0], vz = sz - d.o[1];
+      b.w = +Math.max(0.5, vx * cs - vz * sn).toFixed(2); b.d = b.kind === "arbre" ? b.w : +Math.max(0.5, vx * sn + vz * cs).toFixed(2);
+      b.x = +(d.o[0] + b.w / 2 * cs + b.d / 2 * sn).toFixed(3); b.z = +(d.o[1] - b.w / 2 * sn + b.d / 2 * cs).toFixed(3);
+      const g = blockGroup(b); if (g) { house.remove(g); disposeGroup(g); } house.add(buildBlock(b));
+    }
+    d.moved = true; showBlockSel();
+  }
+  function endEdit() {
+    const d = drag;
+    if (d.kind !== "vertex" && d.moved && touchDemo(d.b)) buildHouse();
+    siteChanged();
+  }
 
   // ---------------------------------------------------------------- camera
   // PHOTO: camera pose solved from the house corners of the real photo (1194 x 1592 frame, ultra-wide lens)
@@ -874,12 +1356,28 @@
     libre: { name: "Vue libre", free: true, pos: [0, 0, 0], target: [0, 0, 0], up: [0, 1, 0], fov: 55, w: 1536, h: 2048 },
   };
   let view = "face", PHOTO = PHOTOS.face;
-  const photoSph = (() => { const PHOTO = PHOTOS.face, o = new T.Vector3().fromArray(PHOTO.pos).sub(new T.Vector3().fromArray(PHOTO.target)), r = o.length(); return { t: PHOTO.target, r, theta: Math.atan2(o.x, o.z), phi: Math.acos(o.y / r), fov: PHOTO.fov }; })();
+  const BUILTIN = { face: PHOTOS.face, droite: PHOTOS.droite };
+  // the views of the current site: built-in photos of the demo, then the photos Armand calibrated, then the free 3D view
+  function setPhotos() {
+    const libre = PHOTOS.libre;
+    Object.keys(PHOTOS).forEach(k => { delete PHOTOS[k]; });
+    if (site.demo) Object.assign(PHOTOS, BUILTIN);
+    site.photos.forEach(ph => { if (ph.pose) PHOTOS["p" + ph.id] = Object.assign({ name: ph.name, w: ph.w, h: ph.h, base: ph.image, avant: ph.image, shadow: null, example: null, custom: true }, ph.pose); });
+    PHOTOS.libre = libre;
+    Object.keys(baseCache).forEach(k => { delete baseCache[k]; });
+    if (!PHOTOS[view]) view = Object.keys(PHOTOS)[0];
+    PHOTO = PHOTOS[view]; renderViewChips();
+  }
+  function photoSph() {
+    const id = Object.keys(PHOTOS).find(k => !PHOTOS[k].free); if (!id) return null;
+    const P = PHOTOS[id], o = new T.Vector3().fromArray(P.pos).sub(new T.Vector3().fromArray(P.target)), r = o.length();
+    return { t: P.target, r, theta: Math.atan2(o.x, o.z), phi: Math.acos(clamp(o.y / r, -1, 1)), fov: P.fov };
+  }
   const cam = { target: new T.Vector3(), r: 20, theta: 0.5, phi: 1.3, fov: 55 };
   const R_MIN = 6, R_MAX = 70, PHI_MIN = 0.05, PHI_MAX = 1.75;
   function preset(name) {
-    const cx = (PLOT.x0 + PLOT.x1) / 2, cz = (PLOT.z0 + PLOT.z1) / 2, span = Math.max(plotW(), plotD());
-    if (name === "photo") return photoSph;
+    const sp = plotSpan(), cx = sp.cx, cz = sp.cz, span = Math.max(sp.w, sp.d, 12);
+    if (name === "photo" && photoSph()) return photoSph();
     if (name === "plan") return { t: [cx + 0.6, 0, cz + 0.6], r: span * 1.35, theta: 0, phi: 0.06, fov: 55 };
     return { t: [cx - 1, 0.8, cz + 0.5], r: span * 1.15, theta: 0.26, phi: 1.12, fov: 55 };
   }
@@ -928,6 +1426,8 @@
     if (pointers.size === 2) { if (photoLive) return; const [a, b] = [...pointers.values()]; drag = null; rotating = null; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), r: cam.r }; return; }
     if (pointers.size > 2) return;
     down = { x: e.clientX, y: e.clientY, moved: false };
+    if (tool) { rotating = { x: e.clientX, y: e.clientY }; return; }
+    if (step === 1) { const ed = pickEdit(e); if (ed) { drag = ed; return; } }
     const it = pick(e);
     if (it) { select(it); if (ray.ray.intersectPlane(ground, hit)) drag = { it, dx: it.g.position.x - hit.x, dz: it.g.position.z - hit.z }; }
     else rotating = { x: e.clientX, y: e.clientY };
@@ -937,6 +1437,7 @@
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 6) down.moved = true;
     if (pinch && pointers.size >= 2) { const [a, b] = [...pointers.values()]; cam.r = clamp((pinch.r * pinch.d) / Math.max(Math.hypot(a.x - b.x, a.y - b.y), 1), R_MIN, R_MAX); userMoved(); return; }
+    if (drag && drag.kind) { editDrag(e); requestRender(); return; }
     if (drag) { setRay(e); if (ray.ray.intersectPlane(ground, hit)) moveTo(drag.it, hit.x + drag.dx, hit.z + drag.dz); return; }
     if (rotating && !photoLive) {
       const dx = e.clientX - rotating.x, dy = e.clientY - rotating.y; rotating.x = e.clientX; rotating.y = e.clientY;
@@ -946,7 +1447,13 @@
   function endPointer(e) {
     pointers.delete(e.pointerId);
     if (pointers.size < 2) pinch = null;
-    if (pointers.size === 0) { if (drag) save(); if (rotating && down && !down.moved) select(null); drag = null; rotating = null; down = null; }
+    if (pointers.size === 0) {
+      if (tool && down && !down.moved) toolTap(e);
+      else if (drag && drag.kind) endEdit();
+      else if (drag) save();
+      else if (rotating && down && !down.moved) { select(null); if (step === 1 && selBlock) { selBlock = null; showBlockSel(); renderBlocks(); } }
+      drag = null; rotating = null; down = null;
+    }
   }
   canvas.addEventListener("pointerup", endPointer);
   canvas.addEventListener("pointercancel", endPointer);
@@ -954,10 +1461,12 @@
 
   // ---------------------------------------------------------------- photo preview: the composition rendered from the photo's own camera
   const depthOnly = new T.MeshBasicMaterial({ colorWrite: false });
-  function exportLayer() {
-    const groups = items.map(it => it.g), hidden = [], swapped = [], sel = selected;
+  function exportLayer(withLawn) {
+    const groups = items.map(it => it.g), hidden = [], swapped = [], sel = selected, lawnVis = lawn.visible;
+    if (withLawn == null) withLawn = !!PHOTO.custom;
     select(null);
-    scene.children.forEach(c => { if (c.isLight || c === sun.target || c === house || c === shadowCatcher || groups.includes(c)) return; hidden.push([c, c.visible]); c.visible = false; });
+    scene.children.forEach(c => { if (c.isLight || c === sun.target || c === house || c === shadowCatcher || groups.includes(c) || c === lawn) return; hidden.push([c, c.visible]); c.visible = false; });
+    lawn.visible = withLawn;
     house.traverse(o => { if (o.isMesh) { swapped.push([o, o.material, o.castShadow]); o.material = depthOnly; o.castShadow = false; } });
     const bg = scene.background, fog = scene.fog, scVis = shadowCatcher.visible; scene.background = null; scene.fog = null; shadowCatcher.visible = true;
     const size = renderer.getSize(new T.Vector2()), ratio = renderer.getPixelRatio();
@@ -966,7 +1475,7 @@
     pc.position.fromArray(PHOTO.pos); pc.up.fromArray(PHOTO.up); pc.lookAt(new T.Vector3().fromArray(PHOTO.target));
     renderer.setClearColor(0x000000, 0); renderer.render(scene, pc);
     const url = renderer.domElement.toDataURL("image/png");
-    hidden.forEach(([c, v]) => { c.visible = v; }); swapped.forEach(([o, m, cs]) => { o.material = m; o.castShadow = cs; });
+    hidden.forEach(([c, v]) => { c.visible = v; }); swapped.forEach(([o, m, cs]) => { o.material = m; o.castShadow = cs; }); lawn.visible = lawnVis;
     scene.background = bg; scene.fog = fog; shadowCatcher.visible = scVis;
     renderer.setPixelRatio(ratio); renderer.setSize(size.x, size.y, false); if (sel) select(sel); requestRender();
     return url;
@@ -979,7 +1488,9 @@
     Object.assign(PHOTOS.libre, { pos: camera.position.toArray(), target: cam.target.toArray(), up: [0, 1, 0], fov: camera.fov, w, h });
     const pc = new T.PerspectiveCamera(camera.fov, w / h, 0.1, 400);
     pc.position.copy(camera.position); pc.lookAt(cam.target);
+    const helpers = [measures, toolGroup, planMesh, handles, blockSel, dims].map(o => [o, o.visible]); helpers.forEach(([o]) => { o.visible = false; });
     renderer.setPixelRatio(1); renderer.setSize(w, h, false); renderer.render(scene, pc);
+    helpers.forEach(([o, v]) => { o.visible = v; });
     const url = renderer.domElement.toDataURL("image/jpeg", 0.92);
     renderer.setPixelRatio(ratio); renderer.setSize(size.x, size.y, false); if (sel) select(sel); requestRender();
     return { image: url, aspect: land ? "4:3" : "3:4" };
@@ -1026,21 +1537,24 @@
     document.querySelector('[data-shot="avant"]').hidden = !!PHOTO.free;
     document.querySelector('[data-shot="apercu"]').textContent = PHOTO.free ? "Modifier en 3D" : "Modifier sur la photo";
     $("viewHint").hidden = !PHOTO.free;
-    if (step === 3) { $("camBar").hidden = !PHOTO.free; await setPhotoLive(!PHOTO.free); }
+    if (step === 3) { $("camBar").hidden = !PHOTO.free; await setPhotoLive(false); await setPhotoLive(!PHOTO.free); }
     if (photoLive) photoBase.src = await baseWithShadow();
     resize(); await showShot(shotMode === "rendu" && !PHOTO.free ? "rendu" : shotMode === "avant" && PHOTO.free ? "apercu" : shotMode);
   }
-  Object.keys(PHOTOS).forEach(id => {
-    const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.dataset.view = id; b.textContent = PHOTOS[id].name;
-    b.setAttribute("aria-pressed", String(id === view)); b.addEventListener("click", () => setView(id)); $("viewChips").appendChild(b);
-  });
+  function renderViewChips() {
+    $("viewChips").innerHTML = "";
+    Object.keys(PHOTOS).forEach(id => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.dataset.view = id; b.textContent = PHOTOS[id].name;
+      b.setAttribute("aria-pressed", String(id === view)); b.addEventListener("click", () => setView(id)); $("viewChips").appendChild(b);
+    });
+  }
   async function setPhotoLive(on) {
     if (on === photoLive) return;
     if (on) photoBase.src = await baseWithShadow();
     photoLive = on;
     if (on) {
       const groups = items.map(it => it.g);
-      scene.children.forEach(c => { if (c.isLight || c === sun.target || c === house || c === shadowCatcher || groups.includes(c)) return; liveHidden.push([c, c.visible]); c.visible = false; });
+      scene.children.forEach(c => { if (c.isLight || c === sun.target || c === house || c === shadowCatcher || groups.includes(c) || (PHOTO.custom && c === lawn)) return; liveHidden.push([c, c.visible]); c.visible = false; });
       house.traverse(o => { if (o.isMesh) { liveMats.push([o, o.material, o.castShadow]); o.material = depthOnly; o.castShadow = false; } });
       liveBg = [scene.background, scene.fog]; scene.background = null; scene.fog = null; shadowCatcher.visible = true; renderer.setClearColor(0x000000, 0);
     } else {
@@ -1103,10 +1617,10 @@
   }
   async function collage() {
     const c = document.createElement("canvas"); c.width = PHOTO.w; c.height = PHOTO.h; const g = c.getContext("2d");
-    const layer = await loadImg(exportLayer());
+    const layer = await loadImg(exportLayer()), itemsOnly = PHOTO.custom ? await loadImg(exportLayer(false)) : layer;
     g.drawImage(await loadImg(PHOTO.base), 0, 0, PHOTO.w, PHOTO.h);
     g.drawImage(layer, 0, 0, PHOTO.w, PHOTO.h);
-    return { image: c.toDataURL("image/jpeg", 0.92), empty: await emptyZones(layer) };
+    return { image: c.toDataURL("image/jpeg", 0.92), empty: await emptyZones(itemsOnly) };
   }
   let rendering = false;
   function progress(title, text) {
@@ -1115,9 +1629,19 @@
   }
   // the view where the composition shows best: the most visible elements
   function bestView() {
-    const keep = PHOTO; let best = view, score = -1;
+    const keep = PHOTO; let best = "libre", score = 0;
     Object.keys(PHOTOS).filter(id => !PHOTOS[id].free).forEach(id => { PHOTO = PHOTOS[id]; const n = visibleItems().length; if (n > score) { score = n; best = id; } });
     PHOTO = keep; return best;
+  }
+  const RATIOS = [["1:1", 1], ["3:4", 3 / 4], ["4:3", 4 / 3], ["2:3", 2 / 3], ["3:2", 3 / 2], ["9:16", 9 / 16], ["16:9", 16 / 9]];
+  const nearRatio = r => RATIOS.reduce((b, x) => Math.abs(Math.log(x[1] / r)) < Math.abs(Math.log(b[1] / r)) ? x : b)[0];
+  async function houseRefs() {
+    const out = [];
+    for (const ph of site.photos.slice(0, 2)) {
+      const img = await loadImg(ph.image), k = Math.min(1, 1024 / Math.max(ph.w, ph.h)), c = document.createElement("canvas");
+      c.width = Math.round(ph.w * k); c.height = Math.round(ph.h * k); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); out.push(c.toDataURL("image/jpeg", 0.85));
+    }
+    return out;
   }
   async function render4k() {
     if (rendering) return;
@@ -1142,7 +1666,8 @@
       let code = { content: "" };
       try { code.content = localStorage.getItem("studio-code") || ""; } catch (e) { /* no storage */ }
       if (!code.content) { code.content = (window.prompt("Code d'accès du studio (fourni par Luma) :") || "").trim(); try { localStorage.setItem("studio-code", code.content); } catch (e) { /* no storage */ } }
-      const r = await fetch(api, { method: "POST", headers: { "Content-Type": "application/json", "x-studio-code": code ? code.content : "" }, body: JSON.stringify(shot ? { mode: "free", image: shot.image, aspect: shot.aspect, items: vis } : Object.assign(await collage(), { items: vis })) });
+      const r = await fetch(api, { method: "POST", headers: { "Content-Type": "application/json", "x-studio-code": code ? code.content : "" }, body: JSON.stringify(shot ? { mode: "free", image: shot.image, aspect: shot.aspect, items: vis, site: site.demo ? "demo" : "custom", refs: site.demo ? [] : await houseRefs() }
+        : Object.assign(await collage(), { items: vis, aspect: nearRatio(PHOTO.w / PHOTO.h), lawn: !!PHOTO.custom })) });
       if (r.status === 401) { try { localStorage.removeItem("studio-code"); } catch (e) { /* no storage */ } throw new Error("code d'accès incorrect"); }
       const { taskId, error } = await r.json(); if (!taskId) throw new Error(error || "refus du serveur");
       const t0 = Date.now();
@@ -1170,24 +1695,25 @@
 
   // ---------------------------------------------------------------- recap
   async function renderRecap() {
-    $("rClient").textContent = ($("client").value.trim() || "Client") + " · " + $("lot").value;
+    $("rClient").textContent = ($("client").value.trim() || "Client") + " · " + site.name;
     const groups = {};
     items.forEach(it => { (groups[it.no] = groups[it.no] || { n: 0, a: 0 }); groups[it.no].n++; groups[it.no].a += TYPES[it.no].area; });
     const ul = $("rList"); ul.innerHTML = "";
     const nos = Object.keys(groups);
     if (!nos.length) ul.innerHTML = '<li class="empty">Aucun élément : gazon synthétique seul.</li>';
     nos.forEach(no => { const li = document.createElement("li"); li.innerHTML = `<span class="no">${no}</span><span class="name">${TYPES[no].name}${groups[no].n > 1 ? " × " + groups[no].n : ""}</span><strong>${fmt1.format(groups[no].a)} m²</strong>`; ul.appendChild(li); });
-    $("rPlot").textContent = fmt1.format(plotW()) + " × " + fmt1.format(plotD()) + " m";
+    $("rPlot").textContent = fmt.format(plotArea()) + " m²";
     $("rTurf").textContent = fmt.format(turfArea()) + " m²";
     $("rTotal").textContent = fmt.format(turfArea() * rate()) + " € HT";
+    if (PHOTO.free) { goTo("jardin", true); $("rImg").src = freeShot().image; goTo("plan"); return; }
     layerUrl = exportLayer();
     const c = document.createElement("canvas"); c.width = PHOTO.w; c.height = PHOTO.h;
     await paintShot(c.getContext("2d"), "apercu");
     $("rImg").src = c.toDataURL("image/jpeg", 0.82);
   }
   function recapText() {
-    const lines = ["Projet jardin · " + ($("client").value.trim() || "Client"), $("lot").value,
-      "Terrain : " + fmt1.format(plotW()) + " × " + fmt1.format(plotD()) + " m",
+    const lines = ["Projet jardin · " + ($("client").value.trim() || "Client"), site.name,
+      "Terrain : " + fmt.format(plotArea()) + " m²",
       "Gazon synthétique : " + fmt.format(turfArea()) + " m²"];
     const seen = {};
     items.forEach(it => { seen[it.no] = (seen[it.no] || 0) + 1; });
@@ -1204,10 +1730,200 @@
     else toast("Copie impossible sur cet appareil.");
   });
 
+  // ---------------------------------------------------------------- photo calibration: Armand touches house corners, the camera pose is solved (position, orientation, focal)
+  // pinhole camera, rotation R = Ry(yaw) Rx(pitch) Rz(roll) (three.js "YXZ"); q = [x, y, z, yaw, pitch, roll, fov°]
+  function rotM(yaw, pitch, roll) {
+    const cy = Math.cos(yaw), sy = Math.sin(yaw), cx = Math.cos(pitch), sx = Math.sin(pitch), cz = Math.cos(roll), sz = Math.sin(roll);
+    return [[cy * cz + sy * sx * sz, -cy * sz + sy * sx * cz, sy * cx], [cx * sz, cx * cz, -sx], [-sy * cz + cy * sx * sz, sy * sz + cy * sx * cz, cy * cx]];
+  }
+  function projector(q, W, H) {
+    const R = rotM(q[3], q[4], q[5]), f = 1 / Math.tan(q[6] * Math.PI / 360), asp = W / H;
+    return p => {
+      const dx = p[0] - q[0], dy = p[1] - q[1], dz = p[2] - q[2];
+      const xc = R[0][0] * dx + R[1][0] * dy + R[2][0] * dz, yc = R[0][1] * dx + R[1][1] * dy + R[2][1] * dz, depth = -(R[0][2] * dx + R[1][2] * dy + R[2][2] * dz);
+      if (depth < 0.3) return null;
+      return [(f * xc / depth / asp + 1) / 2 * W, (1 - f * yc / depth) / 2 * H];
+    };
+  }
+  function nelderMead(fn, x0, steps, iters) {
+    const n = x0.length; let S = [x0.slice()];
+    for (let i = 0; i < n; i++) { const x = x0.slice(); x[i] += steps[i]; S.push(x); }
+    let F = S.map(fn);
+    for (let k = 0; k < iters; k++) {
+      const idx = F.map((v, i) => i).sort((a, b) => F[a] - F[b]); S = idx.map(i => S[i]); F = idx.map(i => F[i]);
+      if (F[n] - F[0] < 1e-9 * (1 + F[0])) break;
+      const c = new Array(n).fill(0); for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) c[j] += S[i][j] / n;
+      const at = t => c.map((v, j) => v + t * (S[n][j] - v)), xr = at(-1), fr = fn(xr);
+      if (fr < F[0]) { const xe = at(-2), fe = fn(xe); if (fe < fr) { S[n] = xe; F[n] = fe; } else { S[n] = xr; F[n] = fr; } }
+      else if (fr < F[n - 1]) { S[n] = xr; F[n] = fr; }
+      else { const xc = at(0.5), fc = fn(xc); if (fc < F[n]) { S[n] = xc; F[n] = fc; } else { for (let i = 1; i <= n; i++) { S[i] = S[i].map((v, j) => S[0][j] + 0.5 * (v - S[0][j])); F[i] = fn(S[i]); } } }
+    }
+    let b = 0; F.forEach((v, i) => { if (v < F[b]) b = i; }); return { x: S[b], f: F[b] };
+  }
+  function solvePose(pts, W, H) {
+    const cost = q => {
+      if (q[6] < 25 || q[6] > 125 || q[1] < 0.2 || q[1] > 60) return 1e15;
+      const pr = projector(q, W, H); let s = 0;
+      for (const t of pts) { const r = pr(t.p); if (!r) return 1e15; s += (r[0] - t.u) ** 2 + (r[1] - t.v) ** 2; }
+      return s;
+    };
+    const tall = site.blocks.filter(b => b.kind === "maison" || b.kind === "abri"), cs = tall.length ? tall : site.blocks.length ? site.blocks : [{ x: 0, z: 0, h: 2 }];
+    const gx = cs.reduce((a, b) => a + b.x, 0) / cs.length, gz = cs.reduce((a, b) => a + b.z, 0) / cs.length, gy = cs.reduce((a, b) => a + (b.h || 2), 0) / cs.length / 2;
+    const starts = [];
+    for (let a = 0; a < 12; a++) for (const dist of [10, 18, 28]) for (const fov of [55, 85]) {
+      const ang = a * Math.PI / 6, x = gx + Math.sin(ang) * dist, z = gz + Math.cos(ang) * dist, y = 1.6;
+      const vx = gx - x, vy = gy - y, vz = gz - z;
+      starts.push([x, y, z, Math.atan2(-vx, -vz), Math.atan2(vy, Math.hypot(vx, vz)), 0, fov]);
+    }
+    const steps = [1.5, 0.4, 1.5, 0.15, 0.08, 0.04, 8];
+    const coarse = starts.map(q => nelderMead(cost, q, steps, 350)).sort((a, b) => a.f - b.f).slice(0, 4);
+    const best = coarse.map(r => nelderMead(cost, r.x, steps.map(v => v / 4), 2500)).sort((a, b) => a.f - b.f)[0];
+    const q = best.x, R = rotM(q[3], q[4], q[5]), fwd = [-R[0][2], -R[1][2], -R[2][2]];
+    return { err: Math.sqrt(best.f / pts.length), q,
+      pose: { pos: q.slice(0, 3).map(v => +v.toFixed(4)), target: [0, 1, 2].map(i => +(q[i] + fwd[i] * 10).toFixed(4)), up: [R[0][1], R[1][1], R[2][1]].map(v => +v.toFixed(5)), fov: +q[6].toFixed(3) } };
+  }
+  function calibKeys() {
+    const keys = []; let n = 0;
+    site.blocks.forEach(b => {
+      if (b.kind !== "maison" && b.kind !== "abri") return; n++;
+      blockPts(b).forEach(([x, z], i) => { const c = "ABCD"[i]; keys.push({ key: n + c + "0", label: n + c + " sol", p: [x, 0, z] }, { key: n + c + "1", label: n + c + " haut", p: [x, b.h, z] }); });
+    });
+    site.poly.forEach(([x, z], i) => keys.push({ key: "T" + i, label: "Terrain " + L(i), p: [x, 0, z] }));
+    return keys;
+  }
+  let cal = null;
+  const calCv = $("calibCv");
+  function openCalib(ph, isNew) {
+    if (!site.blocks.some(b => b.kind === "maison")) { toast("Ajoutez d'abord la maison dans « Maison et existant »."); return; }
+    const keys = calibKeys();
+    cal = { ph, isNew, keys, pts: new Map(), active: null, sol: null, loupe: null };
+    (ph.pts || []).forEach(t => { const k = keys.find(x => x.key === t.key); if (k) cal.pts.set(t.key, [t.u, t.v]); });
+    cal.active = (keys.find(k => !cal.pts.has(k.key)) || keys[0]).key;
+    $("calibName").value = ph.name;
+    document.querySelector('[data-panel="1"]').hidden = true; $("calibPanel").hidden = false; $("calib").hidden = false; $("panel").scrollTop = 0;
+    loadImg(ph.image).then(img => { cal.img = img; calCv.width = ph.w; calCv.height = ph.h; solveCal(); drawCalib(); });
+    renderCalibPts(); drawCalibPlan();
+  }
+  function closeCalib() { cal = null; $("calib").hidden = true; $("calibPanel").hidden = true; document.querySelector('[data-panel="1"]').hidden = step !== 1; }
+  function renderCalibPts() {
+    const box2 = $("calibPts"); box2.innerHTML = "";
+    cal.keys.forEach(k => {
+      const b = document.createElement("button"); b.type = "button"; b.textContent = k.label + (cal.pts.has(k.key) ? " ✓" : "");
+      b.className = cal.pts.has(k.key) ? "set" : ""; b.setAttribute("aria-pressed", String(k.key === cal.active));
+      b.addEventListener("click", () => { if (cal.active === k.key && cal.pts.has(k.key)) { cal.pts.delete(k.key); solveCal(); } cal.active = k.key; renderCalibPts(); drawCalib(); drawCalibPlan(); });
+      box2.appendChild(b);
+    });
+    $("calibN").textContent = cal.pts.size;
+  }
+  // small plan with the corner names, so Armand knows which corner is which
+  function drawCalibPlan() {
+    const c = $("calibPlan"), g = c.getContext("2d"), all = site.poly.concat(...site.blocks.map(blockPts)), bb = bbox(all), pad = 46;
+    const k = Math.min((c.width - 2 * pad) / (bb[1] - bb[0] || 1), (c.height - 2 * pad) / (bb[3] - bb[2] || 1));
+    const X = x => pad + (x - bb[0]) * k + ((c.width - 2 * pad) - (bb[1] - bb[0]) * k) / 2, Y = z => pad + (z - bb[2]) * k + ((c.height - 2 * pad) - (bb[3] - bb[2]) * k) / 2;
+    g.clearRect(0, 0, c.width, c.height); g.lineJoin = "round";
+    g.fillStyle = "#e8efeb"; g.strokeStyle = "#16392c"; g.lineWidth = 3; g.beginPath(); site.poly.forEach(([x, z], i) => (i ? g.lineTo(X(x), Y(z)) : g.moveTo(X(x), Y(z)))); g.closePath(); g.fill(); g.stroke();
+    g.font = "700 22px Arial, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
+    const dot = (x, y, txt, on) => { g.fillStyle = on ? "#b98d3f" : "#16392c"; g.beginPath(); g.arc(x, y, 16, 0, 7); g.fill(); g.fillStyle = "#ffffff"; g.fillText(txt, x, y + 1); };
+    site.poly.forEach(([x, z], i) => dot(X(x), Y(z), L(i), cal.active === "T" + i));
+    let n = 0;
+    site.blocks.forEach(b => {
+      const P = blockPts(b), tall = b.kind === "maison" || b.kind === "abri";
+      g.fillStyle = tall ? "#ffffff" : "rgba(169,166,159,.5)"; g.strokeStyle = "#1c2a24"; g.lineWidth = 2;
+      g.beginPath(); P.forEach(([x, z], i) => (i ? g.lineTo(X(x), Y(z)) : g.moveTo(X(x), Y(z)))); g.closePath(); g.fill(); g.stroke();
+      if (!tall) return; n++;
+      const cx = P.reduce((a, p) => a + p[0], 0) / 4, cz = P.reduce((a, p) => a + p[1], 0) / 4;
+      g.fillStyle = "#1c2a24"; g.fillText(String(n), X(cx), Y(cz));
+      P.forEach(([x, z], i) => { const ox = x - cx, oz = z - cz, l = Math.hypot(ox, oz) || 1; dot(X(x) - ox / l * 18, Y(z) - oz / l * 18, n + "ABCD"[i], cal.active && cal.active.slice(0, -1) === n + "ABCD"[i]); });
+    });
+  }
+  function solveCal() {
+    const pts = [...cal.pts].map(([key, [u, v]]) => ({ key, u, v, p: cal.keys.find(k => k.key === key).p }));
+    cal.sol = pts.length >= 4 ? solvePose(pts, cal.ph.w, cal.ph.h) : null;
+    const e = cal.sol && cal.sol.err, scale = cal.ph.w / 1600;
+    $("calibErr").textContent = e == null ? "–" : Math.round(e) + " px";
+    $("calibMsg").textContent = pts.length < 4 ? `Encore ${4 - pts.length} coin${pts.length === 3 ? "" : "s"} au minimum.`
+      : e < 9 * scale ? "Calage précis : la maquette tombe sur la maison. Vous pouvez enregistrer."
+      : e < 22 * scale ? "Calage correct. Un ou deux coins de plus, en haut et en bas, le rendront plus précis."
+      : "Écart important : vérifiez qu'aucun coin n'est inversé (voir le plan), ou contrôlez les hauteurs de la maison.";
+    $("calibSave").disabled = !cal.sol;
+  }
+  function drawCalib() {
+    if (!cal || !cal.img) return;
+    const g = calCv.getContext("2d"), W = calCv.width, H = calCv.height, r = Math.max(8, W / 140);
+    g.drawImage(cal.img, 0, 0, W, H);
+    if (cal.sol) {
+      const pr = projector(cal.sol.q, W, H); g.strokeStyle = "rgba(255,213,74,.95)"; g.lineWidth = Math.max(2, W / 600);
+      const seg = (a, b) => { const A = pr(a), B = pr(b); if (A && B) { g.beginPath(); g.moveTo(A[0], A[1]); g.lineTo(B[0], B[1]); g.stroke(); } };
+      site.blocks.forEach(b => { const P = blockPts(b), h = b.kind === "maison" || b.kind === "abri" ? b.h : 0; P.forEach(([x, z], i) => { const [x2, z2] = P[(i + 1) % 4]; seg([x, 0, z], [x2, 0, z2]); if (h) { seg([x, h, z], [x2, h, z2]); seg([x, 0, z], [x, h, z]); } }); });
+      g.strokeStyle = "rgba(255,255,255,.9)"; site.poly.forEach(([x, z], i) => { const [x2, z2] = site.poly[(i + 1) % site.poly.length]; seg([x, 0, z], [x2, 0, z2]); });
+    }
+    g.font = `700 ${Math.round(r * 1.5)}px Arial, sans-serif`; g.textBaseline = "middle";
+    cal.pts.forEach(([u, v], key) => {
+      const k = cal.keys.find(x => x.key === key), on = key === cal.active;
+      g.fillStyle = on ? "#b98d3f" : "#16392c"; g.strokeStyle = "#ffffff"; g.lineWidth = r / 3;
+      g.beginPath(); g.arc(u, v, r, 0, 7); g.fill(); g.stroke();
+      g.fillStyle = "#ffffff"; g.strokeStyle = "rgba(0,0,0,.7)"; g.lineWidth = r / 2.5; g.strokeText(k.label, u + r * 1.6, v); g.fillText(k.label, u + r * 1.6, v);
+    });
+    // magnifier while the finger is down, placed away from the finger
+    if (cal.loupe) {
+      const [u, v] = cal.loupe, R = W / 9, zoom = 3, cx = u < W / 2 ? W - R - 20 : R + 20, cy = R + 20;
+      g.save(); g.beginPath(); g.arc(cx, cy, R, 0, 7); g.clip();
+      g.drawImage(cal.img, u - R / zoom, v - R / zoom, 2 * R / zoom, 2 * R / zoom, cx - R, cy - R, 2 * R, 2 * R); g.restore();
+      g.strokeStyle = "#ffffff"; g.lineWidth = 4; g.beginPath(); g.arc(cx, cy, R, 0, 7); g.stroke();
+      g.strokeStyle = "#ffd54a"; g.lineWidth = 2; g.beginPath(); g.moveTo(cx - 14, cy); g.lineTo(cx + 14, cy); g.moveTo(cx, cy - 14); g.lineTo(cx, cy + 14); g.stroke();
+    }
+  }
+  const calXY = e => { const r = calCv.getBoundingClientRect(); return [(e.clientX - r.left) * calCv.width / r.width, (e.clientY - r.top) * calCv.height / r.height]; };
+  calCv.addEventListener("pointerdown", e => { if (!cal) return; calCv.setPointerCapture(e.pointerId); cal.loupe = calXY(e); drawCalib(); });
+  calCv.addEventListener("pointermove", e => { if (!cal || !cal.loupe) return; cal.loupe = calXY(e); drawCalib(); });
+  calCv.addEventListener("pointerup", e => {
+    if (!cal || !cal.loupe) return;
+    const [u, v] = calXY(e); cal.loupe = null; cal.pts.set(cal.active, [Math.round(u * 10) / 10, Math.round(v * 10) / 10]);
+    const next = cal.keys.find(k => !cal.pts.has(k.key)); if (next) cal.active = next.key;
+    solveCal(); renderCalibPts(); drawCalib(); drawCalibPlan();
+  });
+  calCv.addEventListener("pointercancel", () => { if (cal) { cal.loupe = null; drawCalib(); } });
+  $("calibCancel").addEventListener("click", closeCalib);
+  $("calibSave").addEventListener("click", () => {
+    if (!cal || !cal.sol) return;
+    const ph = cal.ph; ph.name = $("calibName").value.trim() || ph.name;
+    ph.pts = [...cal.pts].map(([key, [u, v]]) => ({ key, u, v })); ph.pose = cal.sol.pose; ph.err = cal.sol.err;
+    if (cal.isNew) site.photos.push(ph);
+    closeCalib(); setPhotos(); renderSiteUI(); save();
+    toast("Vue « " + ph.name + " » enregistrée : elle est disponible à l'étape 3.");
+  });
+  function renderPhotoList() {
+    const ul = $("photoList"); ul.innerHTML = "";
+    const rows = site.demo ? [{ img: "img/face-avant-mini.jpg", name: "Face", txt: "Calée sur 13 coins · écart 11 px" }, { img: "img/droite-avant-mini.jpg", name: "Côté droit", txt: "Calée sur 7 coins · écart 3 px" }] : [];
+    site.photos.forEach(ph => rows.push({ ph, img: ph.thumb || ph.image, name: ph.name, txt: ph.pose ? `Calée sur ${ph.pts.length} coins · écart ${Math.round(ph.err)} px` : "Pas encore calée" }));
+    if (!rows.length) { ul.innerHTML = '<li class="empty">Aucune photo pour ce terrain : le rendu 4K se fera en vue libre, depuis la 3D.</li>'; return; }
+    rows.forEach(r => {
+      const li = document.createElement("li");
+      li.innerHTML = `<img src="${r.img}" alt=""><span class="t"><b></b><span></span></span>` + (r.ph ? '<span class="acts"><button type="button" class="link">Caler</button><button type="button" class="link danger" aria-label="Retirer la photo">×</button></span>' : '<span class="ok">Prête</span>');
+      li.querySelector("b").textContent = r.name; li.querySelector(".t span").textContent = r.txt;
+      if (r.ph) {
+        const [calB, delB] = li.querySelectorAll("button");
+        calB.addEventListener("click", () => openCalib(r.ph, false));
+        delB.addEventListener("click", () => { site.photos.splice(site.photos.indexOf(r.ph), 1); setPhotos(); renderSiteUI(); save(); });
+      }
+      ul.appendChild(li);
+    });
+  }
+  $("addPhoto").addEventListener("click", () => $("filePhoto").click());
+  $("filePhoto").addEventListener("change", async e => {
+    const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+    try {
+      const image = await fileToImage(f, 2048, 0.9), img = await loadImg(image), c = document.createElement("canvas");
+      c.width = 120; c.height = Math.round(120 * img.naturalHeight / img.naturalWidth); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      openCalib({ id: Date.now().toString(36), name: "Vue " + (site.photos.length + 1), image, thumb: c.toDataURL("image/jpeg", 0.7), w: img.naturalWidth, h: img.naturalHeight, pts: [], pose: null, err: null }, true);
+    } catch (err) { toast("Photo illisible : " + err.message); }
+  });
+
   // ---------------------------------------------------------------- steps
   const catHome = { parent: $("catBlock").parentNode, next: $("catBlock").nextElementSibling };
   function go(n) {
-    step = n;
+    if (cal) closeCalib();
+    step = n; setTool(null);
     document.querySelectorAll("[data-panel]").forEach(p => { p.hidden = p.dataset.panel !== String(n); });
     document.querySelectorAll(".step").forEach(b => {
       const s = +b.dataset.step;
@@ -1216,9 +1932,10 @@
     });
     lawn.material = n === 1 ? M.dirt : M.grass;
     items.forEach(it => { it.g.visible = n !== 1; });
-    dimLines.visible = labW.visible = labD.visible = n <= 2;
+    dims.visible = n <= 2; handles.visible = n === 1; planMesh.visible = n === 1 && !!site.plan; showBlockSel();
     $("camBar").hidden = n === 3 && !PHOTO.free; $("shotBar").hidden = n !== 3;
-    if (n === 4 && PHOTO.free) { view = "face"; PHOTO = PHOTOS.face; document.querySelectorAll("#viewChips .chip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.view === "face"))); document.querySelector('[data-shot="avant"]').hidden = false; $("viewHint").hidden = true; }
+    const firstPhoto = Object.keys(PHOTOS).find(k => !PHOTOS[k].free);
+    if (n === 4 && PHOTO.free && firstPhoto) { view = firstPhoto; PHOTO = PHOTOS[firstPhoto]; document.querySelectorAll("#viewChips .chip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.view === firstPhoto))); document.querySelector('[data-shot="avant"]').hidden = false; $("viewHint").hidden = true; }
     if (n === 3) { setPhotoLive(!PHOTO.free); showShot("apercu"); $("catSlot3").appendChild($("catBlock")); }
     else { setPhotoLive(false); $("photoView").hidden = true; catHome.parent.insertBefore($("catBlock"), catHome.next); }
     if (n !== 2 && n !== 3) select(null);
@@ -1229,13 +1946,6 @@
   }
   document.querySelectorAll(".step").forEach(b => b.addEventListener("click", () => go(+b.dataset.step)));
   document.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => go(+b.dataset.go)));
-
-  // ---------------------------------------------------------------- local save (this tablet only)
-  function save() {
-    try { localStorage.setItem("studio-jardin", JSON.stringify({ client: $("client").value, w: plotW(), d: plotD(), items: items.map(it => [it.no, +it.g.position.x.toFixed(2), +it.g.position.z.toFixed(2), +it.g.rotation.y.toFixed(3)]) })); } catch (e) { /* storage unavailable: the session still works */ }
-  }
-  let saved = null;
-  try { saved = JSON.parse(localStorage.getItem("studio-jardin") || "null"); } catch (e) { saved = null; }
 
   // ---------------------------------------------------------------- render loop
   function resize() {
@@ -1253,14 +1963,19 @@
     needsRender = false; updateCamera(); renderer.render(scene, camera);
   }
 
-  window.studio = { visibleItems: () => visibleItems(), visibleNos: () => visibleNos(), setView: id => setView(id), items: () => items.map(it => [it.no, +it.g.position.x.toFixed(2), +it.g.position.z.toFixed(2)]), addItem: (no, x, z, rot) => { const it = addItem(no, x, z, rot); changed(); return it.uid; }, go, exportLayer, recapText };
-  if (saved && saved.items) {
-    $("client").value = saved.client || $("client").value;
-    PLOT.x1 = PLOT.x0 + clamp(saved.w || 23.5, 18, 30); PLOT.z1 = PLOT.z0 + clamp(saved.d || 25.5, 14, 34);
-    $("dimW").value = plotW(); $("dimD").value = plotD();
-    saved.items.forEach(([no, x, z, r]) => { if (TYPES[no]) addItem(no, x, z, r); });
-  }
-  layoutPlot(); renderCatalogue(); go(1); goTo("plan", true); requestAnimationFrame(loop);
+  window.studio = { visibleItems: () => visibleItems(), visibleNos: () => visibleNos(), setView: id => setView(id), items: () => items.map(it => [it.no, +it.g.position.x.toFixed(2), +it.g.position.z.toFixed(2)]), addItem: (no, x, z, rot) => { const it = addItem(no, x, z, rot); changed(); return it.uid; }, go, exportLayer, recapText,
+    toScreen: (x, y, z) => { const v = new THREE.Vector3(x, y, z).project(camera), r = renderer.domElement.getBoundingClientRect(); return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height]; },
+    site: () => site, solvePose: (pts, W, H) => solvePose(pts, W, H), projector, garden: () => gardenArea(), loadSite: s2 => loadSite(s2), photos: () => Object.keys(PHOTOS) };
+  (async () => {
+    let cur = null, id = null;
+    try { id = localStorage.getItem("studio-site"); } catch (e) { id = null; }
+    try { if (id) cur = await DB.get(id); if (!cur) cur = await DB.get("demo"); } catch (e) { cur = null; }
+    if (!cur) {
+      cur = DEMO();
+      try { const old = JSON.parse(localStorage.getItem("studio-jardin") || "null"); if (old && old.items) { cur.items = old.items; if (old.client) cur.client = old.client; } } catch (e) { /* first visit */ }
+    }
+    renderCatalogue(); await loadSite(cur); go(1); goTo("plan", true); requestAnimationFrame(loop);
+  })();
   setTimeout(() => { loadingEl.hidden = true; }, 6000);
 })();
 </script>
