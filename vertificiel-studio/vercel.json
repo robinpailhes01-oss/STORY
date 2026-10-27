@@ -3,7 +3,7 @@
   "functions": {
     "api/render.js": {
       "maxDuration": 60,
-      "includeFiles": "img/{catalogue-*,face-base,droite-base}.jpg"
+      "includeFiles": "img/{catalogue-*,face-base,droite-base,dalles/*}.jpg"
     }
   },
   "headers": [

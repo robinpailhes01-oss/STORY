@@ -179,6 +179,17 @@
   .cpts button[aria-pressed="true"] { background: var(--gold); border-color: var(--gold); color: #ffffff; }
   .tip { position: absolute; left: 50%; top: 60px; transform: translateX(-50%); z-index: 6; max-width: calc(100% - 32px); padding: 8px 14px; border-radius: 12px; background: rgba(13, 21, 18, .86); color: #ffffff; font-size: 13px; font-weight: 600; text-align: center; pointer-events: none; }
   .views .acts { display: flex; gap: 2px; }
+  .dg { border-color: var(--gold); }
+  .dg .row b { font-family: var(--font-display); color: var(--accent); }
+  .dg .label .cn { text-transform: none; letter-spacing: 0; font-family: var(--font-body); font-weight: 600; color: var(--muted); }
+  .motifs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .motifs button { padding: 0; border: 2px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--bg); color: var(--fg); cursor: pointer; display: grid; font-size: 12px; font-weight: 700; }
+  .motifs img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; }
+  .motifs span { padding: 4px; }
+  .motifs button[aria-pressed="true"] { border-color: var(--gold); }
+  .swatches { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+  .swatches button { aspect-ratio: 1; min-height: 36px; border-radius: 8px; border: 2px solid var(--line); background-size: cover; background-position: center; cursor: pointer; padding: 0; }
+  .swatches button[aria-pressed="true"] { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold); }
   .toast { position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); padding: 10px 16px; border-radius: 12px; background: var(--accent); color: var(--on-accent); font-size: 14px; font-weight: 600; z-index: 20; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
 
   @media (max-width: 860px) {
@@ -328,6 +339,25 @@
         <div class="chips" id="palChips"></div>
       </div>
       <div class="block" id="catBlock">
+        <div class="sub dg" id="dgBox" hidden>
+          <div class="row"><b>Dalles &amp; gazon sur mesure</b><strong id="dgArea"></strong></div>
+          <div class="label">Motif</div>
+          <div class="motifs" id="dgMotif" role="group" aria-label="Motif"></div>
+          <div class="label">Dalle <span class="cn" id="dgCouleurName"></span></div>
+          <div class="swatches" id="dgCouleur" role="group" aria-label="Couleur de la dalle"></div>
+          <div class="pair">
+            <label class="field" for="dgTaille"><span id="dgTailleLab">Format de dalle</span><select id="dgTaille"></select></label>
+            <label class="field" for="dgBande"><span id="dgBandeLab">Bande de gazon</span><select id="dgBande"></select></label>
+          </div>
+          <div class="block" id="dgJointBox"><div class="label">Joint des raccords</div><div class="chips" id="dgJoint" role="group" aria-label="Joint"></div></div>
+          <div class="label">Lumière</div>
+          <div class="chips" id="dgLed" role="group" aria-label="Lumière"></div>
+          <div class="pair">
+            <label class="field" for="dgW">Largeur (m)<input id="dgW" type="number" inputmode="decimal" min="1" max="40" step="0.1"></label>
+            <label class="field" for="dgD">Profondeur (m)<input id="dgD" type="number" inputmode="decimal" min="1" max="40" step="0.1"></label>
+          </div>
+          <p class="note">Teinte et rendu réel à confirmer sur échantillon. Profils LED de l'offre standard non carrossables.</p>
+        </div>
         <div class="label">Catalogue Vertificiel</div>
         <div class="cat" id="cat"></div>
       </div>
@@ -353,6 +383,8 @@
       <div class="block">
         <div class="label">Prise de vue</div>
         <div class="chips" id="viewChips" role="group" aria-label="Prise de vue"></div>
+        <div class="label">Ambiance</div>
+        <div class="chips" id="ambChips" role="group" aria-label="Ambiance du rendu"><button type="button" class="chip" data-amb="jour" aria-pressed="true">Jour</button><button type="button" class="chip" data-amb="soir" aria-pressed="false">Soirée, lumières allumées</button></div>
         <p class="note" id="viewHint" hidden>Vue libre : tournez autour du jardin avec un doigt, zoomez avec deux, puis lancez le rendu. La maison est reconstituée d'après les photos du terrain.</p>
       </div>
       <div class="actions">
@@ -839,12 +871,13 @@
     });
     for (let i = q.length; i < sideLabels.length; i++) sideLabels[i].visible = false;
     handles.visible = step === 1 && !tool;
-    items.forEach(it => { if (!fits(it.no, it.g.position.x, it.g.position.z, it.g.rotation.y)) placeFree(it); });
+    items.forEach(it => { if (!fits(it.no, it.g.position.x, it.g.position.z, it.g.rotation.y, fpOf(it))) placeFree(it); });
     renderNumbers(); renderSiteUI(); requestRender();
   }
 
   // ---------------------------------------------------------------- catalogue (fp = footprint in the element's frame; area = hard surface taken from the lawn, m²)
   const TYPES = {
+    "DG": { name: "Dalles & gazon sur mesure", build: null, fp: [-3, 3, -2, 2], area: 0 },
     "04": { name: "Piscine et plage en dalles", build: buildPool, fp: [-3.6, 3.6, -4.35, 4.35], area: 62.6 },
     "10": { name: "Olivier et terrasse bois", build: buildOlive, fp: [-2.25, 2.25, -2.25, 2.25], area: 15.9 },
     "17": { name: "Dallage géométrique", build: buildDallage, fp: [-3.75, 3.75, -1.3, 1.3], area: 19.5 },
@@ -858,6 +891,67 @@
     "14": { name: "Allée minérale et graminées", build: buildAllee, fp: [-1.15, 1.15, -6.75, 6.75], area: 23 },
     "23": { name: "Douche extérieure bois", build: buildShower, fp: [-0.8, 0.8, -0.8, 0.8], area: 2.3 },
   };
+  // made-to-measure paving from the "Dalles & gazon" catalogue: motif, slab colour, size, grass strip, joint, light
+  const DALLES = { "bergstein-ivory": "Bergstein Ivory", "bergstein-beige": "Bergstein Beige", "level-blanco": "Level Blanco", "level-gris": "Level Gris", "khala-cream": "Khala Cream", "khala-taupe": "Khala Taupe", "storm-white": "Storm White",
+    "storm-earth": "Storm Earth", "newclay-white": "Newclay White", "newclay-sand": "Newclay Sand", "newclay-cotto": "Newclay Cotto", "newclay-shadow": "Newclay Shadow", "raffaello-ivory": "Raffaello Ivory", "raffaello-cream": "Raffaello Cream" };
+  const DALLE_HEX = { "bergstein-ivory": "#d8cec5", "bergstein-beige": "#c7bead", "level-blanco": "#ece8e2", "level-gris": "#acaea9", "khala-cream": "#dfd8cb", "khala-taupe": "#c3bbaf", "storm-white": "#d9d8d7",
+    "storm-earth": "#bcab9b", "newclay-white": "#f8f5f0", "newclay-sand": "#e8dfcd", "newclay-cotto": "#caa690", "newclay-shadow": "#606060", "raffaello-ivory": "#ede9e4", "raffaello-cream": "#dbd3c8" };
+  const MOTIFS = { diagonale: ["Carrés en diagonale", "img/dalles/ref-diagonale.jpg"], droit: ["Carrés droits", "img/dalles/ref-droits-led.jpg"], cubes: ["Cubes", "img/dalles/ref-cubes.jpg"] };
+  const JOINTS = { gazon: "Gazon synthétique", gris: "Ton gris", dore: "Ton doré" };
+  const LEDS = { aucune: "Sans lumière", chaud: "Blanc chaud", neutre: "Blanc neutre", ambre: "Ambre" };
+  const LED_COL = { chaud: "#ffd59a", neutre: "#f2f5ff", ambre: "#ffb04a" }, JOINT_COL = { gazon: "#3f6b2c", gris: "#8d8f8c", dore: "#c9a253" };
+  const DG_DEFAULT = () => ({ motif: "diagonale", couleur: "bergstein-ivory", taille: 0.8, bande: 0.12, joint: "gazon", led: "aucune", w: 6, d: 4 });
+  const fpOf = it => it.spec ? [-it.spec.w / 2, it.spec.w / 2, -it.spec.d / 2, it.spec.d / 2] : TYPES[it.no].fp;
+  function dgRatio(sp) {
+    if (sp.motif === "cubes") { const k = Math.max(0, 1 - sp.bande / (sp.taille * Math.sin(Math.PI / 3))); return 1 - k * k; }
+    const k = sp.taille / (sp.taille + sp.bande); return k * k;
+  }
+  const areaOf = it => it.spec ? it.spec.w * it.spec.d * dgRatio(it.spec) : TYPES[it.no].area;
+  const dgText = sp => [MOTIFS[sp.motif][0], DALLES[sp.couleur] + (sp.motif === "cubes" ? "" : " " + Math.round(sp.taille * 100) + "×" + Math.round(sp.taille * 100)),
+    (sp.motif === "cubes" ? "bande minérale " : "bande de gazon ") + Math.round(sp.bande * 100) + " cm", sp.motif === "cubes" ? "joint " + JOINTS[sp.joint].toLowerCase() : null,
+    sp.led === "aucune" ? "sans LED" : "LED " + LEDS[sp.led].toLowerCase(), fmt1.format(sp.w) + " × " + fmt1.format(sp.d) + " m"].filter(Boolean).join(" · ");
+  function drawDG(cv, sp, img) {
+    const g = cv.getContext("2d"), W = cv.width, H = cv.height, ppm = W / sp.w, t = sp.taille * ppm, b = sp.bande * ppm;
+    let stone = DALLE_HEX[sp.couleur];
+    if (img) { stone = g.createPattern(img, "repeat"); if (stone.setTransform) stone.setTransform(new DOMMatrix().scale(0.6 * ppm / img.naturalWidth)); }
+    const led = sp.led !== "aucune" ? LED_COL[sp.led] : null, lw = Math.max(1.5, 0.018 * ppm);
+    const poly = q => { g.beginPath(); q.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); };
+    g.fillStyle = "#3f6b2c"; g.fillRect(0, 0, W, H);
+    for (let i = 0; i < W * H / 60; i++) { g.fillStyle = rnd() < 0.5 ? "rgba(90,140,60,.35)" : "rgba(30,60,25,.35)"; g.fillRect(rnd() * W, rnd() * H, 1.5, 1.5); }
+    if (sp.motif === "cubes") {
+      g.fillStyle = stone; g.fillRect(0, 0, W, H);
+      const L = t, hx = Math.sqrt(3) * L, k = Math.max(0.15, 1 - b / (L * Math.sin(Math.PI / 3)));
+      for (let r = -1; (r - 1) * 1.5 * L < H; r++) for (let q = -1; (q - 1) * hx < W; q++) {
+        const cx = q * hx + (r & 1 ? hx / 2 : 0), cy = r * 1.5 * L, v = [];
+        for (let a = 0; a < 6; a++) v.push([cx + L * Math.cos((a * 60 - 90) * Math.PI / 180), cy + L * Math.sin((a * 60 - 90) * Math.PI / 180)]);
+        [[0, 1, 2], [2, 3, 4], [4, 5, 0]].forEach(([i1, i2, i3]) => {
+          const R = [[cx, cy], v[i1], v[i2], v[i3]], mx = R.reduce((s2, p) => s2 + p[0], 0) / 4, my = R.reduce((s2, p) => s2 + p[1], 0) / 4;
+          g.strokeStyle = JOINT_COL[sp.joint]; g.lineWidth = Math.max(1, 0.012 * ppm); poly(R); g.stroke();
+          poly(R.map(([x, y]) => [mx + (x - mx) * k, my + (y - my) * k])); g.fillStyle = "#3f6b2c"; g.fill();
+          if (led) { g.strokeStyle = led; g.lineWidth = lw; g.stroke(); }
+        });
+      }
+    } else {
+      g.save(); const step2 = t + b;
+      if (sp.motif === "diagonale") { g.translate(W / 2, H / 2); g.rotate(Math.PI / 4); } else g.translate(b / 2, b / 2);
+      const n = Math.ceil(Math.hypot(W, H) / step2) + 1, from = sp.motif === "diagonale" ? -n : -1;
+      for (let i = from; i <= n; i++) for (let j = from; j <= n; j++) {
+        const x = i * step2 - (sp.motif === "diagonale" ? t / 2 : 0), y = j * step2 - (sp.motif === "diagonale" ? t / 2 : 0);
+        poly([[x, y], [x + t, y], [x + t, y + t], [x, y + t]]); g.fillStyle = stone; g.fill();
+        if (led) { g.strokeStyle = led; g.lineWidth = lw; g.stroke(); }
+      }
+      g.restore();
+    }
+  }
+  function buildDG(sp) {
+    const ppm = Math.min(90, 2048 / Math.max(sp.w, sp.d)), cv = document.createElement("canvas");
+    cv.width = Math.max(8, Math.round(sp.w * ppm)); cv.height = Math.max(8, Math.round(sp.d * ppm));
+    drawDG(cv, sp, null);
+    const tex = new T.CanvasTexture(cv); tex.encoding = T.sRGBEncoding; tex.anisotropy = maxAniso;
+    loadImg("img/dalles/dalle-" + sp.couleur + ".jpg").then(img => { drawDG(cv, sp, img); tex.needsUpdate = true; requestRender(); }).catch(() => {});
+    const g = new T.Group(); g.add(flatMesh(sp.w, sp.d, lambert({ map: tex }), 0.022));
+    return g;
+  }
   const PALETTES = [
     { name: "Piscine & olivier", items: [["10", -6.3, 8, 0], ["17", 4, 3.65, 0], ["04", 4.2, 9.9, 0]] },
     { name: "Palmier & golf", items: [["07", -6.2, 6.8, 0], ["12", 5.6, 9.6, 0], ["13", 0.8, 9.5, 0]] },
@@ -868,8 +962,8 @@
   // ---------------------------------------------------------------- placed elements
   const items = [];
   let uidSeq = 1, selected = null, step = 1;
-  function aabb(no, x, z, rot) {
-    const [a, b, c, d] = TYPES[no].fp, cs = Math.cos(rot), sn = Math.sin(rot);
+  function aabb(no, x, z, rot, fp) {
+    const [a, b, c, d] = fp || TYPES[no].fp, cs = Math.cos(rot), sn = Math.sin(rot);
     let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
     for (const [px, pz] of [[a, c], [b, c], [a, d], [b, d]]) {
       const wx = x + px * cs + pz * sn, wz = z - px * sn + pz * cs;
@@ -878,15 +972,15 @@
     return [x0, x1, z0, z1];
   }
   const overlaps = (p, q, m) => p[0] < q[1] - m && p[1] > q[0] + m && p[2] < q[3] - m && p[3] > q[2] + m;
-  function fits(no, x, z, rot) {
-    const [a, b, c, d] = TYPES[no].fp, m = 0.03, P = rectPts(x, z, a + m, b - m, c + m, d - m, rot);
+  function fits(no, x, z, rot, fp) {
+    const [a, b, c, d] = fp || TYPES[no].fp, m = 0.03, P = rectPts(x, z, a + m, b - m, c + m, d - m, rot);
     const probes = P.concat([[x, z]], P.map(([px, pz], i) => [(px + P[(i + 1) % 4][0]) / 2, (pz + P[(i + 1) % 4][1]) / 2]));
     if (!probes.every(([px, pz]) => inPoly(px, pz, site.poly))) return false;
     return !site.blocks.some(bk => satHit(P, blockPts(bk), 0.02));
   }
   function freeOfOthers(it, no, x, z, rot) {
-    const box4 = aabb(no, x, z, rot);
-    return !items.some(o => o !== it && overlaps(box4, aabb(o.no, o.g.position.x, o.g.position.z, o.g.rotation.y), -0.8));   // keep 0.8 m between new elements
+    const box4 = aabb(no, x, z, rot, it && fpOf(it));
+    return !items.some(o => o !== it && overlaps(box4, aabb(o.no, o.g.position.x, o.g.position.z, o.g.rotation.y, fpOf(o)), -0.8));   // keep 0.8 m between new elements
   }
   // nearest free spot, spiralling out from the middle of the garden in front of the house
   function findSpot(it, no, rot) {
@@ -895,7 +989,7 @@
     for (let r = 0; r <= Math.ceil(Math.max(bb[1] - bb[0], bb[3] - bb[2]) / 2) + 1; r += 1) for (let i = -r; i <= r; i++) for (let j = -r; j <= r; j++) {
       if (Math.max(Math.abs(i), Math.abs(j)) !== r) continue;
       const x = cx + i, z = cz + j;
-      if (!fits(no, x, z, rot) || !inView(x, z)) continue;
+      if (!fits(no, x, z, rot, it && fpOf(it)) || !inView(x, z)) continue;
       if (freeOfOthers(it, no, x, z, rot)) return [x, z];
       if (!fallback) fallback = [x, z];
     }
@@ -909,11 +1003,12 @@
     return Math.abs(probe.x) < 0.75 && probe.y < 0.05 && probe.y > -0.85 && probe.z < 1;
   }
   function placeFree(it) { const [x, z] = findSpot(it, it.no, it.g.rotation.y); it.g.position.set(x, 0, z); }
-  function addItem(no, x, z, rot) {
-    const t = TYPES[no], g = t.build();
+  function addItem(no, x, z, rot, spec) {
+    const t = TYPES[no], it = { uid: uidSeq++, no };
+    if (no === "DG") it.spec = Object.assign(DG_DEFAULT(), spec || {});
+    const g = it.spec ? buildDG(it.spec) : t.build(); it.g = g;
     if (g.userData.area != null) t.area = g.userData.area;
     if (g.userData.turf != null) t.area = g.userData.turf;
-    const it = { uid: uidSeq++, no, g };
     g.userData = { uid: it.uid }; g.rotation.y = rot || 0; g.visible = step !== 1;
     if (x == null) placeFree(it); else g.position.set(x, 0, z);
     scene.add(g); items.push(it); return it;
@@ -925,14 +1020,15 @@
   }
   function moveTo(it, x, z) {
     const o = it.g, r = o.rotation.y;
-    if (fits(it.no, x, z, r)) o.position.set(x, 0, z);
-    else if (fits(it.no, x, o.position.z, r)) o.position.x = x;
-    else if (fits(it.no, o.position.x, z, r)) o.position.z = z;
+    const fp = fpOf(it);
+    if (fits(it.no, x, z, r, fp)) o.position.set(x, 0, z);
+    else if (fits(it.no, x, o.position.z, r, fp)) o.position.x = x;
+    else if (fits(it.no, o.position.x, z, r, fp)) o.position.z = z;
     requestRender();
   }
   function frameFor(it) {
     if (it.frame) return it.frame;
-    const [a, b, c, d] = TYPES[it.no].fp, t = 0.1, mat = new T.MeshBasicMaterial({ color: 0xffd54a }), g = new T.Group();
+    const [a, b, c, d] = fpOf(it), t = 0.1, mat = new T.MeshBasicMaterial({ color: 0xffd54a }), g = new T.Group();
     const bar = (w, dd, x, z) => { const m = new T.Mesh(new T.BoxGeometry(w, 0.03, dd), mat); m.position.set(x, 0.09, z); m.raycast = () => {}; g.add(m); };
     bar(b - a + t, t, (a + b) / 2, c); bar(b - a + t, t, (a + b) / 2, d); bar(t, d - c, a, (c + d) / 2); bar(t, d - c, b, (c + d) / 2);
     return (it.frame = g);
@@ -942,20 +1038,21 @@
     selected = it;
     $("selbar").hidden = !it || (step !== 2 && step !== 3);
     if (it) { it.g.add(frameFor(it)); $("selNo").textContent = it.no; $("selName").textContent = TYPES[it.no].name; }
+    renderDG();
     requestRender();
   }
   function changed() { renderCatalogue(); renderNumbers(); save(); requestRender(); }
   $("selRot").addEventListener("click", () => {
     const it = selected; if (!it) return;
     const r = it.g.rotation.y + Math.PI / 12;
-    if (fits(it.no, it.g.position.x, it.g.position.z, r)) { it.g.rotation.y = r; changed(); }
+    if (fits(it.no, it.g.position.x, it.g.position.z, r, fpOf(it))) { it.g.rotation.y = r; changed(); }
     else toast("Pas assez de place pour tourner ici : déplacez l'élément d'abord.");
   });
-  $("selDup").addEventListener("click", () => { if (!selected) return; const it = addItem(selected.no, null, null, selected.g.rotation.y); select(it); changed(); });
+  $("selDup").addEventListener("click", () => { if (!selected) return; const it = addItem(selected.no, null, null, selected.g.rotation.y, selected.spec && Object.assign({}, selected.spec)); select(it); changed(); });
   $("selDel").addEventListener("click", () => { if (selected) { removeItem(selected); changed(); } });
 
   // ---------------------------------------------------------------- surfaces
-  const hardArea = () => items.reduce((s, it) => s + TYPES[it.no].area, 0);
+  const hardArea = () => items.reduce((a, it) => a + areaOf(it), 0);
   // garden = plot minus the volumes, sampled every 25 cm (works for any shape and overlap)
   function gardenArea() {
     if (gardenCache != null) return gardenCache;
@@ -975,6 +1072,58 @@
     $("cTotal").textContent = fmt.format(turfArea() * rate()) + " € HT";
     $("pTurf").textContent = fmt.format(turfArea()) + " m²";
     $("pTotal").textContent = fmt.format(turfArea() * rate()) + " € HT";
+  }
+
+  // ---------------------------------------------------------------- made-to-measure paving editor (shown while a paving is selected)
+  function chipRow(box2, opts, cur, onPick) {
+    box2.innerHTML = "";
+    Object.keys(opts).forEach(k => { const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = opts[k]; b.setAttribute("aria-pressed", String(k === cur)); b.addEventListener("click", () => onPick(k)); box2.appendChild(b); });
+  }
+  function setDG(patch) {
+    const it = selected; if (!it || !it.spec) return;
+    const old = Object.assign({}, it.spec); Object.assign(it.spec, patch);
+    const pos = it.g.position.clone(), rot = it.g.rotation.y;
+    if ((patch.w || patch.d) && !fits(it.no, pos.x, pos.z, rot, fpOf(it))) {
+      const [x, z] = findSpot(it, it.no, rot);
+      if (!fits(it.no, x, z, rot, fpOf(it))) { Object.assign(it.spec, old); toast("Pas assez de place sur le terrain pour cette taille."); renderDG(); return; }
+      pos.set(x, 0, z);
+    }
+    select(null); scene.remove(it.g); it.g.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material && o.material.map) o.material.map.dispose(); });
+    it.g = buildDG(it.spec); it.g.userData = { uid: it.uid }; it.g.position.copy(pos); it.g.rotation.y = rot; it.g.visible = step !== 1; it.frame = null;
+    scene.add(it.g); select(it); changed();
+  }
+  (() => {
+    const tb = $("dgTaille"), bb2 = $("dgBande");
+    [[0.6, "60 × 60 cm"], [0.8, "80 × 80 cm"], [1, "100 × 100 cm"], [1.2, "120 × 120 cm"]].forEach(([v, l]) => { const o = document.createElement("option"); o.value = v; o.textContent = l; tb.appendChild(o); });
+    [5, 8, 10, 12, 15, 20, 25].forEach(v => { const o = document.createElement("option"); o.value = v / 100; o.textContent = v + " cm"; bb2.appendChild(o); });
+    tb.addEventListener("change", () => setDG({ taille: parseFloat(tb.value) }));
+    bb2.addEventListener("change", () => setDG({ bande: parseFloat(bb2.value) }));
+    $("dgW").addEventListener("change", e => { const v = parseFloat(e.target.value); if (v >= 1 && v <= 40) setDG({ w: v }); else renderDG(); });
+    $("dgD").addEventListener("change", e => { const v = parseFloat(e.target.value); if (v >= 1 && v <= 40) setDG({ d: v }); else renderDG(); });
+  })();
+  function renderDG() {
+    const it = selected, sp = it && it.spec;
+    $("dgBox").hidden = !sp; if (!sp) return;
+    $("dgArea").textContent = fmt1.format(areaOf(it)) + " m² de dalles";
+    const mb = $("dgMotif"); mb.innerHTML = "";
+    Object.keys(MOTIFS).forEach(k => {
+      const b = document.createElement("button"); b.type = "button"; b.setAttribute("aria-pressed", String(k === sp.motif));
+      b.innerHTML = `<img src="${MOTIFS[k][1]}" alt="" loading="lazy"><span>${MOTIFS[k][0]}</span>`; b.addEventListener("click", () => setDG({ motif: k })); mb.appendChild(b);
+    });
+    const cb = $("dgCouleur"); cb.innerHTML = "";
+    Object.keys(DALLES).forEach(k => {
+      const b = document.createElement("button"); b.type = "button"; b.title = DALLES[k]; b.setAttribute("aria-label", DALLES[k]); b.setAttribute("aria-pressed", String(k === sp.couleur));
+      b.style.backgroundImage = `url(img/dalles/dalle-${k}.jpg)`; b.addEventListener("click", () => setDG({ couleur: k })); cb.appendChild(b);
+    });
+    $("dgCouleurName").textContent = "· " + DALLES[sp.couleur];
+    $("dgTaille").value = String(sp.taille); $("dgBande").value = String(sp.bande);
+    $("dgTailleLab").textContent = sp.motif === "cubes" ? "Côté du cube" : "Format de dalle";
+    $("dgBandeLab").textContent = sp.motif === "cubes" ? "Bande minérale" : "Bande de gazon";
+    $("dgJointBox").hidden = sp.motif !== "cubes";
+    chipRow($("dgJoint"), JOINTS, sp.joint, k => setDG({ joint: k }));
+    chipRow($("dgLed"), LEDS, sp.led, k => setDG({ led: k }));
+    if (document.activeElement !== $("dgW")) $("dgW").value = sp.w;
+    if (document.activeElement !== $("dgD")) $("dgD").value = sp.d;
   }
 
   // ---------------------------------------------------------------- panel: catalogue and palettes
@@ -1022,7 +1171,7 @@
   }
   function save() {
     if (!site) return;
-    site.items = items.map(it => [it.no, +it.g.position.x.toFixed(2), +it.g.position.z.toFixed(2), +it.g.rotation.y.toFixed(3)]);
+    site.items = items.map(it => [it.no, +it.g.position.x.toFixed(2), +it.g.position.z.toFixed(2), +it.g.rotation.y.toFixed(3)].concat(it.spec ? [Object.assign({}, it.spec)] : []));
     site.client = $("client").value; site.name = $("siteName").value.trim() || site.name;
     clearTimeout(saveTimer); saveTimer = setTimeout(() => { saveTimer = 1; flushSave(); }, 300);
   }
@@ -1047,7 +1196,7 @@
     $("siteName").value = s.name || ""; $("client").value = s.client || "";
     decor.visible = !!s.demo; $("siteDel").hidden = !!s.demo;
     buildHouse(); buildPlan(); setPhotos(); layoutPlot();
-    s.items.forEach(([no, x, z, r]) => { if (TYPES[no]) addItem(no, x, z, r); });
+    s.items.forEach(([no, x, z, r, sp]) => { if (TYPES[no]) addItem(no, x, z, r, sp); });
     renders.length = 0; $("gal").innerHTML = ""; $("galBlock").hidden = true; shownRender = null;
     changed(); await refreshSites();
     if (step === 1) goTo("plan", true);
@@ -1587,7 +1736,7 @@
     const out = [], v = new T.Vector3();
     items.forEach(it => {
       it.g.updateMatrixWorld();
-      const [a, b, c, d] = TYPES[it.no].fp, inside = [];
+      const [a, b, c, d] = fpOf(it), inside = [];
       let n = 0;
       for (let i = 0; i <= 6; i++) for (let j = 0; j <= 6; j++) {
         v.set(a + (b - a) * i / 6, 0, c + (d - c) * j / 6).applyMatrix4(it.g.matrixWorld).project(pc); n++;
@@ -1598,7 +1747,7 @@
       const mx = inside.reduce((s, p) => s + p[0], 0) / inside.length, my = inside.reduce((s, p) => s + p[1], 0) / inside.length;
       const side = mx < -0.33 ? "on the left side of the image" : mx > 0.33 ? "on the right side of the image" : "in the centre of the image";
       const depth = my < -0.45 ? "in the foreground" : my < -0.05 ? "in the middle ground" : "in the background, near the house";
-      out.push({ no: it.no, where: `${side}, ${depth}${share < 0.9 ? ", partly cut off by the edge of the frame" : ""}` });
+      out.push(Object.assign({ no: it.no, where: `${side}, ${depth}${share < 0.9 ? ", partly cut off by the edge of the frame" : ""}` }, it.spec ? { spec: it.spec } : {}));
     });
     return out;
   }
@@ -1622,7 +1771,10 @@
     g.drawImage(layer, 0, 0, PHOTO.w, PHOTO.h);
     return { image: c.toDataURL("image/jpeg", 0.92), empty: await emptyZones(itemsOnly) };
   }
-  let rendering = false;
+  let rendering = false, ambiance = "jour";
+  document.querySelectorAll("[data-amb]").forEach(b => b.addEventListener("click", () => {
+    ambiance = b.dataset.amb; document.querySelectorAll("[data-amb]").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  }));
   function progress(title, text) {
     $("busy").hidden = !title; if (!title) return;
     $("busyTitle").textContent = title; $("busyText").textContent = text; $("renderStatus").textContent = title + " · " + text;
@@ -1666,8 +1818,8 @@
       let code = { content: "" };
       try { code.content = localStorage.getItem("studio-code") || ""; } catch (e) { /* no storage */ }
       if (!code.content) { code.content = (window.prompt("Code d'accès du studio (fourni par Luma) :") || "").trim(); try { localStorage.setItem("studio-code", code.content); } catch (e) { /* no storage */ } }
-      const r = await fetch(api, { method: "POST", headers: { "Content-Type": "application/json", "x-studio-code": code ? code.content : "" }, body: JSON.stringify(shot ? { mode: "free", image: shot.image, aspect: shot.aspect, items: vis, site: site.demo ? "demo" : "custom", refs: site.demo ? [] : await houseRefs() }
-        : Object.assign(await collage(), { items: vis, aspect: nearRatio(PHOTO.w / PHOTO.h), lawn: !!PHOTO.custom })) });
+      const r = await fetch(api, { method: "POST", headers: { "Content-Type": "application/json", "x-studio-code": code ? code.content : "" }, body: JSON.stringify(shot ? { mode: "free", image: shot.image, aspect: shot.aspect, items: vis, ambiance, site: site.demo ? "demo" : "custom", refs: site.demo ? [] : await houseRefs() }
+        : Object.assign(await collage(), { items: vis, ambiance, aspect: nearRatio(PHOTO.w / PHOTO.h), lawn: !!PHOTO.custom })) });
       if (r.status === 401) { try { localStorage.removeItem("studio-code"); } catch (e) { /* no storage */ } throw new Error("code d'accès incorrect"); }
       const { taskId, error } = await r.json(); if (!taskId) throw new Error(error || "refus du serveur");
       const t0 = Date.now();
@@ -1697,10 +1849,11 @@
   async function renderRecap() {
     $("rClient").textContent = ($("client").value.trim() || "Client") + " · " + site.name;
     const groups = {};
-    items.forEach(it => { (groups[it.no] = groups[it.no] || { n: 0, a: 0 }); groups[it.no].n++; groups[it.no].a += TYPES[it.no].area; });
+    items.forEach(it => { if (it.spec) return; (groups[it.no] = groups[it.no] || { n: 0, a: 0 }); groups[it.no].n++; groups[it.no].a += areaOf(it); });
     const ul = $("rList"); ul.innerHTML = "";
     const nos = Object.keys(groups);
-    if (!nos.length) ul.innerHTML = '<li class="empty">Aucun élément : gazon synthétique seul.</li>';
+    items.filter(it => it.spec).forEach(it => { const li = document.createElement("li"); li.innerHTML = `<span class="no">DG</span><span class="name"></span><strong>${fmt1.format(areaOf(it))} m²</strong>`; li.querySelector(".name").textContent = "Dalles & gazon · " + dgText(it.spec); ul.appendChild(li); });
+    if (!items.length) ul.innerHTML = '<li class="empty">Aucun élément : gazon synthétique seul.</li>';
     nos.forEach(no => { const li = document.createElement("li"); li.innerHTML = `<span class="no">${no}</span><span class="name">${TYPES[no].name}${groups[no].n > 1 ? " × " + groups[no].n : ""}</span><strong>${fmt1.format(groups[no].a)} m²</strong>`; ul.appendChild(li); });
     $("rPlot").textContent = fmt.format(plotArea()) + " m²";
     $("rTurf").textContent = fmt.format(turfArea()) + " m²";
@@ -1716,7 +1869,8 @@
       "Terrain : " + fmt.format(plotArea()) + " m²",
       "Gazon synthétique : " + fmt.format(turfArea()) + " m²"];
     const seen = {};
-    items.forEach(it => { seen[it.no] = (seen[it.no] || 0) + 1; });
+    items.forEach(it => { if (!it.spec) seen[it.no] = (seen[it.no] || 0) + 1; });
+    items.filter(it => it.spec).forEach(it => lines.push("· Dalles & gazon sur mesure : " + dgText(it.spec) + " (" + fmt1.format(areaOf(it)) + " m² de dalles)"));
     Object.keys(seen).forEach(no => lines.push("· n° " + no + " " + TYPES[no].name + (seen[no] > 1 ? " × " + seen[no] : "")));
     lines.push("Estimation gazon (" + $("rate").selectedOptions[0].textContent + ") : " + fmt.format(turfArea() * rate()) + " € HT");
     lines.push("Options du catalogue chiffrées sur demande. Projection indicative, non contractuelle.");
