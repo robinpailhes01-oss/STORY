@@ -1163,7 +1163,7 @@
     const run = (mode, f) => open().then(db => new Promise((ok, ko) => { const tx = db.transaction("sites", mode), r = f(tx.objectStore("sites")); tx.oncomplete = () => ok(r.result); tx.onerror = () => ko(tx.error); }));
     return { get: k => run("readonly", st => st.get(k)), put: (k, v) => run("readwrite", st => st.put(v, k)), del: k => run("readwrite", st => st.delete(k)), all: () => run("readonly", st => st.getAll()) };
   })();
-  let site = null, selBlock = null, tool = null, saveTimer = null, siteList = [];
+  let site = null, selBlock = null, tool = null, saveTimer = null, siteList = [], freeCount = 0;
   function flushSave() {
     if (!site || !saveTimer) return;
     clearTimeout(saveTimer); saveTimer = null;
@@ -1197,7 +1197,8 @@
     decor.visible = !!s.demo; $("siteDel").hidden = !!s.demo;
     buildHouse(); buildPlan(); setPhotos(); layoutPlot();
     s.items.forEach(([no, x, z, r, sp]) => { if (TYPES[no]) addItem(no, x, z, r, sp); });
-    renders.length = 0; $("gal").innerHTML = ""; $("galBlock").hidden = true; shownRender = null;
+    renders.length = 0; (s.renders || []).forEach(r => renders.push(r)); shownRender = null; drawGallery();
+    freeCount = renders.filter(r => r.view === "libre").length;
     changed(); await refreshSites();
     if (step === 1) goTo("plan", true);
   }
@@ -1721,15 +1722,23 @@
   function addRender(url, test, job) {
     const j = job || { view, w: PHOTO.w, h: PHOTO.h, label: PHOTO.name };
     renders.unshift({ view: j.view, url, test, w: j.w, h: j.h, label: j.label });
-    const gal = $("gal"); gal.innerHTML = ""; $("galBlock").hidden = false;
+    if (!test) { site.renders = renders.filter(r => !r.test).slice(0, 40); save(); }
+    drawGallery();
+    if (j.view === view && step === 3) { if (PHOTO.free) Object.assign(PHOTO, { w: j.w, h: j.h }); shownRender = url; showShot("rendu"); }
+    else toast("Rendu « " + j.label + " » prêt : touchez-le dans la galerie.");
+  }
+  // the project's renders, kept with the site (the image files stay on the render service)
+  function drawGallery() {
+    const gal = $("gal"); gal.innerHTML = ""; $("galBlock").hidden = !renders.length;
     renders.forEach(r => {
       const b = document.createElement("button"); b.type = "button";
       b.innerHTML = `<img src="${r.url}" alt="" loading="lazy"><span></span>`; b.querySelector("span").textContent = r.label + (r.test ? " · test" : ""); b.querySelector("img").alt = "Rendu 4K, " + r.label;
-      b.addEventListener("click", async () => { if (view !== r.view) await setView(r.view); if (PHOTO.free) Object.assign(PHOTO, { w: r.w, h: r.h }); shownRender = r.url; showShot("rendu"); });
+      b.addEventListener("click", async () => {
+        if (!PHOTOS[r.view]) { window.open(r.url, "_blank", "noopener"); return; }
+        if (view !== r.view) await setView(r.view); if (PHOTO.free) Object.assign(PHOTO, { w: r.w, h: r.h }); shownRender = r.url; showShot("rendu");
+      });
       gal.appendChild(b);
     });
-    if (j.view === view && step === 3) { if (PHOTO.free) Object.assign(PHOTO, { w: j.w, h: j.h }); shownRender = url; showShot("rendu"); }
-    else toast("Rendu « " + j.label + " » prêt : touchez-le dans la galerie.");
   }
   // elements actually visible from the current photo, with where they sit in the frame:
   // the render must neither invent hidden elements nor move the visible ones
@@ -1775,15 +1784,47 @@
     g.drawImage(layer, 0, 0, P.w, P.h);
     return { image: c.toDataURL("image/jpeg", 0.92), empty: await emptyZones(itemsOnly) };
   }
-  let ambiance = "jour", freeCount = 0;
+  let ambiance = "jour", jobsTick = 0;
   const jobs = [];   // renders in progress: several views can render at the same time
   function showJobs() {
     if (!jobs.length) { progress(null); return; }
     const now = Date.now();
+    const fmtT = ms => { const t = Math.round(ms / 1000); return t < 60 ? t + " s" : Math.floor(t / 60) + " min " + String(t % 60).padStart(2, "0"); };
+    const queued = jobs.some(j => j.state === "waiting" || j.state === "queuing");
     progress(jobs.length > 1 ? jobs.length + " rendus 4K en cours" : "Rendu 4K en cours",
-      jobs.map(j => j.label + " · " + Math.round((now - j.t0) / 1000) + " s").join("  |  ") + " · environ 2 minutes chacun");
+      jobs.map(j => j.label + " · " + (j.state === "waiting" || j.state === "queuing" ? "en file d'attente · " : "") + fmtT(now - j.t0)).join("  |  ")
+      + (queued && now - Math.min(...jobs.map(j => j.t0)) > 150000 ? " · le service de rendu est chargé, la tablette attend jusqu'à 20 minutes" : " · environ 2 minutes chacun"));
   }
-  setInterval(() => { if (jobs.length) showJobs(); }, 1000);
+  // renders already paid for are never lost: their task ids stay on the tablet until the image is back
+  const PENDING = "studio-renders";
+  const pendingRead = () => { try { return JSON.parse(localStorage.getItem(PENDING) || "[]"); } catch (e) { return []; } };
+  const pendingWrite = a => { try { localStorage.setItem(PENDING, JSON.stringify(a)); } catch (e) { /* no storage */ } };
+  async function pollJob(job, api, code) {
+    for (;;) {
+      await new Promise(ok => setTimeout(ok, 5000));
+      let d = null;
+      try { d = await (await fetch(api + "?task=" + encodeURIComponent(job.taskId), { headers: { "x-studio-code": code } })).json(); } catch (e) { d = null; }   // network hiccup: try again
+      if (d) job.state = d.state;
+      if (d && d.state === "success") { await loadImg(d.url); return d.url; }
+      if (d && d.state === "fail") throw new Error(d.error || "échec du rendu");
+      if (Date.now() - job.t0 > 20 * 60 * 1000) throw new Error("le service de rendu n'a pas répondu en 20 minutes");
+    }
+  }
+  function finishJob(job) {
+    if (jobs.includes(job)) jobs.splice(jobs.indexOf(job), 1);
+    pendingWrite(pendingRead().filter(p => p.taskId !== job.taskId)); showJobs();
+  }
+  async function resumeRenders() {
+    const meta = document.querySelector('meta[name="studio-render-api"]'), api = window.STUDIO_RENDER_API || (meta && meta.content);
+    let code = ""; try { code = localStorage.getItem("studio-code") || ""; } catch (e) { /* no storage */ }
+    if (!api || !code) return;
+    pendingRead().filter(p => p.site === site.id && Date.now() - p.t0 < 30 * 60 * 1000 && !jobs.some(j => j.taskId === p.taskId)).forEach(async p => {
+      const job = Object.assign({}, p); jobs.push(job); showJobs();
+      try { const url = await pollJob(job, api, code); finishJob(job); if (PHOTOS[job.view]) addRender(url, false, job); }
+      catch (e) { finishJob(job); toast("Le rendu « " + job.label + " » n'a pas abouti : " + e.message); }
+    });
+    pendingWrite(pendingRead().filter(p => Date.now() - p.t0 < 30 * 60 * 1000));
+  }
   document.querySelectorAll("[data-amb]").forEach(b => b.addEventListener("click", () => {
     ambiance = b.dataset.amb; document.querySelectorAll("[data-amb]").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
   }));
@@ -1834,16 +1875,13 @@
       const r = await fetch(api, { method: "POST", headers: { "Content-Type": "application/json", "x-studio-code": code }, body: JSON.stringify(payload) });
       if (r.status === 401) { try { localStorage.removeItem("studio-code"); } catch (e) { /* no storage */ } throw new Error("code d'accès incorrect"); }
       const { taskId, error } = await r.json(); if (!taskId) throw new Error(error || "refus du serveur");
-      for (;;) {
-        await new Promise(ok => setTimeout(ok, 5000));
-        const d = await (await fetch(api + "?task=" + encodeURIComponent(taskId), { headers: { "x-studio-code": code } })).json();
-        if (d.state === "success") { await loadImg(d.url); jobs.splice(jobs.indexOf(job), 1); showJobs(); addRender(d.url, false, job); break; }
-        if (d.state === "fail") throw new Error(d.error || "échec du rendu");
-        if (Date.now() - job.t0 > 5 * 60 * 1000) throw new Error("délai dépassé");
-      }
+      job.taskId = taskId;
+      pendingWrite(pendingRead().concat([{ taskId, site: site.id, view: job.view, w: job.w, h: job.h, label: job.label, t0: job.t0 }]));
+      const url = await pollJob(job, api, code);
+      finishJob(job); addRender(url, false, job);
       status.textContent = "Rendu « " + job.label + " » prêt : il est dans la galerie. Changez de prise de vue ou d'angle pour en lancer d'autres, même pendant un rendu.";
     } catch (e) {
-      if (jobs.includes(job)) jobs.splice(jobs.indexOf(job), 1); showJobs();
+      finishJob(job);
       status.textContent = "Le rendu « " + job.label + " » n'a pas abouti (" + e.message + "). Réessayez dans un instant."; toast("Le rendu « " + job.label + " » n'a pas abouti : " + e.message);
     }
   }
@@ -2123,6 +2161,7 @@
   new ResizeObserver(resize).observe(stage); resize();
   function loop(now) {
     requestAnimationFrame(loop);
+    if (jobs.length && now - jobsTick > 1000) { jobsTick = now; showJobs(); }   // elapsed time of the renders in progress
     if (anim) stepAnim(now);
     if (!needsRender) return;
     needsRender = false; updateCamera(); renderer.render(scene, camera);
@@ -2130,7 +2169,7 @@
 
   window.studio = { visibleItems: () => visibleItems(), visibleNos: () => visibleNos(), setView: id => setView(id), items: () => items.map(it => [it.no, +it.g.position.x.toFixed(2), +it.g.position.z.toFixed(2)]), addItem: (no, x, z, rot, spec) => { const it = addItem(no, x, z, rot, spec); changed(); return it.uid; }, go, exportLayer, recapText,
     toScreen: (x, y, z) => { const v = new THREE.Vector3(x, y, z).project(camera), r = renderer.domElement.getBoundingClientRect(); return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height]; },
-    site: () => site, solvePose: (pts, W, H) => solvePose(pts, W, H), projector, garden: () => gardenArea(), loadSite: s2 => loadSite(s2), photos: () => Object.keys(PHOTOS) };
+    jobs: () => jobs.map(j => ({ label: j.label, t0: j.t0, state: j.state, now: Date.now() })), site: () => site, solvePose: (pts, W, H) => solvePose(pts, W, H), projector, garden: () => gardenArea(), loadSite: s2 => loadSite(s2), photos: () => Object.keys(PHOTOS) };
   (async () => {
     let cur = null, id = null;
     try { id = localStorage.getItem("studio-site"); } catch (e) { id = null; }
@@ -2140,6 +2179,7 @@
       try { const old = JSON.parse(localStorage.getItem("studio-jardin") || "null"); if (old && old.items) { cur.items = old.items; if (old.client) cur.client = old.client; } } catch (e) { /* first visit */ }
     }
     renderCatalogue(); await loadSite(cur); go(1); goTo("plan", true); requestAnimationFrame(loop);
+    resumeRenders();
   })();
   setTimeout(() => { loadingEl.hidden = true; }, 6000);
 })();
