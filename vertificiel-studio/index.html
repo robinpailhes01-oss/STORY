@@ -1,0 +1,1200 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="studio-render-api" content="/api/render">
+<title>Studio jardin Vertificiel</title>
+
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&display=swap">
+<style>
+  /* Layout: tablet-landscape studio. Top bar with the four steps; the 3D stage takes the left, the step panel the right. Stacks to one column on phones. */
+  :root {
+    --bg: #ffffff;
+    --fg: #1c2a24;
+    --accent: #16392c;        /* Vertificiel deep green */
+    --accent-strong: #22503f;
+    --on-accent: #ffffff;
+    --soft: #e8efeb;
+    --panel: #f6f8f7;
+    --muted: #5f6f67;
+    --line: #d9cfbd;          /* the beige rule from the catalogue */
+    --track: #cfd8d3;
+    --chip: rgba(22, 57, 44, .82);
+    --gold: #b98d3f;
+    --on-photo: #ffffff;
+    --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1814; --fg: #e4ece8; --accent: #8cc3a6; --accent-strong: #a9d6bd; --on-accent: #0f1814;
+      --soft: #1a2a23; --panel: #131f1a; --muted: #9aaca3; --line: #34453c; --track: #3a4a42; --chip: rgba(15, 24, 20, .82); --gold: #d4ab5f;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1814; --fg: #e4ece8; --accent: #8cc3a6; --accent-strong: #a9d6bd; --on-accent: #0f1814;
+    --soft: #1a2a23; --panel: #131f1a; --muted: #9aaca3; --line: #34453c; --track: #3a4a42; --chip: rgba(15, 24, 20, .82); --gold: #d4ab5f;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font-body); -webkit-font-smoothing: antialiased; }
+  [hidden] { display: none !important; }
+  button { font: inherit; }
+  button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--accent-strong); outline-offset: 2px; }
+
+  .top {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    padding-block: 10px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    border-bottom: 1px solid var(--line);
+  }
+  .brand { display: grid; gap: 1px; min-width: 0; }
+  .brand b { font-family: var(--font-display); font-size: 17px; font-weight: 800; color: var(--accent); letter-spacing: -.01em; }
+  .brand span { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .steps { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
+  .step { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 6px 12px 6px 6px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); cursor: pointer; font-size: 14px; font-weight: 600; }
+  .step i { font-style: normal; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--soft); color: var(--accent); font-family: var(--font-display); font-size: 13px; font-weight: 800; }
+  .step[aria-current="step"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+  .step[aria-current="step"] i { background: var(--on-accent); color: var(--accent); }
+  .step.done i { background: var(--gold); color: #ffffff; }
+
+  .main {
+    display: grid; grid-template-columns: minmax(0, 1fr) 380px;
+    height: calc(100dvh - 63px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); min-height: 540px;
+  }
+  .stage { position: relative; min-width: 0; overflow: hidden; background: #a9c3df; user-select: none; -webkit-user-select: none; }
+  .stage canvas.gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; z-index: 1; }
+  .photo-base { position: absolute; z-index: 0; display: block; max-width: none; pointer-events: none; }
+  .stage.live { background: #0d1512; }
+  .ov, .legal { z-index: 2; }
+  .ov.tc { top: 12px; left: 50%; transform: translateX(-50%); z-index: 4; }
+  .ov { position: absolute; display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--chip); }
+  .ov.tr { top: 12px; right: 12px; }
+  .ov button { font-family: var(--font-display); font-size: 13px; font-weight: 700; min-height: 36px; padding: 6px 13px; border: 0; border-radius: 999px; background: transparent; color: var(--on-photo); cursor: pointer; }
+  .ov button[aria-pressed="true"] { background: var(--on-photo); color: #16392c; }
+  .legal { position: absolute; right: 12px; bottom: 10px; font-size: 11px; color: var(--on-photo); text-shadow: 0 1px 3px rgba(0,0,0,.65); pointer-events: none; }
+  .loading { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; font-size: 15px; font-weight: 600; color: #16392c; background: #c9dcef; z-index: 5; }
+  .selbar {
+    position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 4;
+    display: flex; align-items: center; gap: 8px; max-width: calc(100% - 24px);
+    padding: 6px 6px 6px 8px; border-radius: 16px; background: var(--bg); color: var(--fg); box-shadow: 0 6px 24px rgba(0,0,0,.22);
+  }
+  .selbar .no { flex: none; }
+  .selbar .name { min-width: 0; font-size: 14px; font-weight: 600; padding-right: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .selbar button { min-height: 40px; padding: 6px 12px; border-radius: 10px; border: 1.5px solid var(--accent); background: var(--bg); color: var(--accent); font-size: 13px; font-weight: 700; cursor: pointer; }
+  .selbar button.danger { border-color: #b4483c; color: #b4483c; }
+  .photo-view { position: absolute; inset: 0; background: #0d1512; display: flex; align-items: center; justify-content: center; z-index: 3; }
+  .photo-view img, .photo-view canvas { max-width: 100%; max-height: 100%; width: auto; height: auto; display: block; }
+  .photo-view .ov { top: 12px; left: 50%; transform: translateX(-50%); }
+
+  .panel { min-width: 0; overflow-y: auto; background: var(--panel); border-left: 1px solid var(--line); padding-block: 18px 28px; padding-left: 18px; padding-right: max(18px, env(safe-area-inset-right, 0px)); display: grid; align-content: start; gap: 18px; }
+  .panel h2 { margin: 0; font-family: var(--font-display); font-size: 22px; line-height: 1.15; color: var(--accent); font-weight: 800; text-wrap: balance; }
+  .panel p.lead { margin: -10px 0 0; font-size: 14px; color: var(--muted); line-height: 1.45; }
+  .label { font-family: var(--font-display); font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+  .block { display: grid; gap: 8px; }
+  .field { display: grid; gap: 4px; font-size: 13px; color: var(--muted); font-weight: 600; }
+  .field input, .field select { font: inherit; font-size: 16px; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; min-height: 46px; padding: 8px 12px; width: 100%; }
+  .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .stepper-num { display: flex; align-items: stretch; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); overflow: hidden; }
+  .stepper-num input { border: 0; border-radius: 0; text-align: center; min-width: 0; font-variant-numeric: tabular-nums; }
+  .stepper-num button { flex: none; width: 44px; border: 0; background: var(--soft); color: var(--accent); font-size: 20px; font-weight: 700; cursor: pointer; }
+  .kpi { display: grid; gap: 6px; padding: 12px 14px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); }
+  .row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 14px; }
+  .row span { min-width: 0; }
+  .row strong { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .row.total { padding-top: 8px; border-top: 1px solid var(--line); font-size: 15px; }
+  .row.total strong { font-family: var(--font-display); font-size: 20px; color: var(--accent); }
+  .note { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.45; }
+
+  .cat { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .card { display: grid; gap: 0; padding: 0; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); cursor: pointer; overflow: hidden; text-align: left; position: relative; }
+  .card img { width: 100%; height: auto; aspect-ratio: 240 / 110; object-fit: cover; display: block; }
+  .card .txt { display: flex; gap: 8px; align-items: center; padding: 8px 10px 10px; min-height: 52px; }
+  .card .name { font-size: 13px; line-height: 1.25; font-weight: 600; min-width: 0; }
+  .card .count { position: absolute; top: 6px; right: 6px; min-width: 24px; height: 24px; padding: 0 7px; border-radius: 12px; display: grid; place-items: center; background: var(--gold); color: #ffffff; font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .card:active { transform: scale(.98); }
+  .no { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--soft); color: var(--accent); font-family: var(--font-display); font-weight: 800; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { min-height: 38px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); font-size: 13px; font-weight: 600; cursor: pointer; }
+  .chip[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+  .chip.ghost { color: #b4483c; border-color: transparent; background: transparent; }
+  .btn { min-height: 50px; padding: 10px 16px; border-radius: 12px; border: 0; background: var(--accent); color: var(--on-accent); font-family: var(--font-display); font-size: 15px; font-weight: 700; cursor: pointer; }
+  .btn.secondary { background: var(--bg); color: var(--accent); border: 1.5px solid var(--accent); }
+  .actions { display: grid; gap: 8px; }
+  .list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+  .list li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); font-size: 14px; }
+  .list li .name { flex: 1; min-width: 0; }
+  .list li strong { font-variant-numeric: tabular-nums; white-space: nowrap; font-size: 13px; }
+  .empty { padding: 12px; border-radius: 10px; border: 1px dashed var(--line); font-size: 13px; color: var(--muted); }
+  .recap-img { width: 100%; max-width: 100%; height: auto; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 12px; display: block; }
+  .gal { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .gal button { padding: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--bg); cursor: pointer; display: grid; text-align: left; color: var(--fg); }
+  .gal img { width: 100%; height: auto; aspect-ratio: 3 / 4; object-fit: cover; display: block; }
+  .gal span { font-size: 11px; padding: 4px 6px; color: var(--muted); }
+  .views { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+  .views li { display: flex; align-items: center; gap: 10px; padding: 6px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); font-size: 13px; }
+  .views img { width: 44px; height: 58px; object-fit: cover; border-radius: 6px; flex: none; }
+  .views .t { flex: 1; min-width: 0; display: grid; gap: 2px; }
+  .views b { font-size: 14px; }
+  .views .ok { color: var(--accent); font-weight: 700; white-space: nowrap; }
+  .views .todo { color: var(--gold); font-weight: 700; white-space: nowrap; }
+  .toast { position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); padding: 10px 16px; border-radius: 12px; background: var(--accent); color: var(--on-accent); font-size: 14px; font-weight: 600; z-index: 20; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+
+  @media (max-width: 860px) {
+    .main { grid-template-columns: 1fr; height: auto; min-height: 0; }
+    .stage { height: 62vh; min-height: 380px; }
+    .panel { border-left: 0; border-top: 1px solid var(--line); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); overflow: visible; }
+    .steps { margin-left: 0; }
+    .step { padding-right: 10px; font-size: 13px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+</head>
+<body>
+<div class="top">
+  <div class="brand"><span>Démo Luma · prototype</span><b>Studio jardin Vertificiel</b></div>
+  <nav class="steps" aria-label="Étapes du projet">
+    <button type="button" class="step" data-step="1"><i>1</i>Terrain</button>
+    <button type="button" class="step" data-step="2"><i>2</i>Composer</button>
+    <button type="button" class="step" data-step="3"><i>3</i>Aperçu photo</button>
+    <button type="button" class="step" data-step="4"><i>4</i>Récap client</button>
+  </nav>
+</div>
+
+<div class="main">
+  <div class="stage" id="stage">
+    <div class="ov tr" role="group" aria-label="Point de vue" id="camBar">
+      <button type="button" id="cam-jardin" data-cam="jardin" aria-pressed="true">3D</button>
+      <button type="button" id="cam-plan" data-cam="plan" aria-pressed="false">Plan</button>
+      <button type="button" id="cam-photo" data-cam="photo" aria-pressed="false">Angle photo</button>
+    </div>
+    <span class="legal">Maquette indicative, non contractuelle</span>
+    <div class="selbar" id="selbar" hidden>
+      <span class="no" id="selNo"></span>
+      <span class="name" id="selName"></span>
+      <button type="button" id="selRot">Tourner</button>
+      <button type="button" id="selDup">Dupliquer</button>
+      <button type="button" id="selDel" class="danger">Retirer</button>
+    </div>
+    <img class="photo-base" id="photoBase" alt="Photo du terrain" hidden>
+    <div class="ov tc" role="group" aria-label="Image affichée" id="shotBar" hidden>
+      <button type="button" data-shot="avant" aria-pressed="false">Avant</button>
+      <button type="button" data-shot="apercu" aria-pressed="true">Modifier sur la photo</button>
+      <button type="button" data-shot="rendu" aria-pressed="false">Rendu 4K</button>
+    </div>
+    <div class="photo-view" id="photoView" hidden>
+      <canvas id="shot" width="1194" height="1592" aria-label="Aperçu du projet sur la photo du terrain"></canvas>
+    </div>
+    <div class="loading" id="loading">Chargement du studio…</div>
+  </div>
+
+  <aside class="panel" id="panel">
+    <!-- step 1 -->
+    <section class="block" data-panel="1">
+      <h2>Le terrain</h2>
+      <p class="lead">Les cotes du plan de masse ou du métré. Le terrain se met à l'échelle en direct.</p>
+      <label class="field" for="client">Client<input id="client" type="text" value="Promoteur · programme 14 villas" autocomplete="off"></label>
+      <label class="field" for="lot">Lot<select id="lot"><option>Lot 1 · villa avec photo du terrain</option></select></label>
+      <div class="pair">
+        <div class="field"><span>Largeur (m)</span><div class="stepper-num"><button type="button" data-dim="w" data-d="-0.5" aria-label="Réduire la largeur">−</button><input id="dimW" type="number" inputmode="decimal" min="18" max="40" step="0.5" value="23.5" aria-label="Largeur du terrain en mètres"><button type="button" data-dim="w" data-d="0.5" aria-label="Augmenter la largeur">+</button></div></div>
+        <div class="field"><span>Profondeur (m)</span><div class="stepper-num"><button type="button" data-dim="d" data-d="-0.5" aria-label="Réduire la profondeur">−</button><input id="dimD" type="number" inputmode="decimal" min="14" max="40" step="0.5" value="25.5" aria-label="Profondeur du terrain en mètres"><button type="button" data-dim="d" data-d="0.5" aria-label="Augmenter la profondeur">+</button></div></div>
+      </div>
+      <div class="kpi">
+        <div class="row"><span>Surface du terrain</span><strong id="kPlot">–</strong></div>
+        <div class="row"><span>Emprise maison et terrasse</span><strong id="kHouse">–</strong></div>
+        <div class="row total"><span>Jardin à aménager</span><strong id="kGarden">–</strong></div>
+      </div>
+      <div class="block">
+        <div class="label">Prises de vue calées</div>
+        <ul class="views">
+          <li><img src="img/face-avant-mini.jpg" alt=""><span class="t"><b>Face</b><span>Calée sur 13 coins de la maison · écart 11 px</span></span><span class="ok">Prête</span></li>
+          <li><img src="img/droite-avant-mini.jpg" alt=""><span class="t"><b>Côté droit</b><span>Calée sur 7 coins · écart 3 px</span></span><span class="ok">Prête</span></li>
+          <li><img src="tex/wing-front.jpg" alt=""><span class="t"><b>Côté gauche</b><span>À recaler : la jonction aile / maison diffère du volume simplifié</span></span><span class="todo">À caler</span></li>
+        </ul>
+        <p class="note">Le calage se fait une fois par lot : Armand touche 6 à 8 coins de la maison sur chaque photo, l'outil en déduit l'angle de prise de vue. Le métré définitif se fait sur le chantier.</p>
+      </div>
+      <div class="actions"><button type="button" class="btn" data-go="2">Composer le jardin</button></div>
+    </section>
+
+    <!-- step 2 -->
+    <section class="block" data-panel="2" hidden>
+      <h2>Composer</h2>
+      <p class="lead">Touchez un élément pour l'ajouter, puis faites-le glisser sur le terrain.</p>
+      <div class="block">
+        <div class="label">Partir d'une palette</div>
+        <div class="chips" id="palChips"></div>
+      </div>
+      <div class="block" id="catBlock">
+        <div class="label">Catalogue Vertificiel</div>
+        <div class="cat" id="cat"></div>
+      </div>
+      <div class="kpi" aria-live="polite">
+        <div class="row"><span>Gazon synthétique</span><strong id="cTurf">–</strong></div>
+        <div class="row"><span>Aménagements</span><strong id="cHard">–</strong></div>
+        <div class="row total"><span>Estimation gazon</span><strong id="cTotal">–</strong></div>
+      </div>
+      <div class="actions"><button type="button" class="btn" data-go="3">Voir sur la photo du terrain</button></div>
+    </section>
+
+    <!-- step 3 -->
+    <section class="block" data-panel="3" hidden>
+      <h2>Sur la photo du terrain</h2>
+      <p class="lead">La composition est posée sur la vraie photo, sous le même angle. Touchez un élément pour le déplacer, le tourner ou le retirer.</p>
+      <div class="kpi" aria-live="polite">
+        <div class="row"><span>Gazon synthétique</span><strong id="pTurf">–</strong></div>
+        <div class="row total"><span>Estimation gazon</span><strong id="pTotal">–</strong></div>
+      </div>
+      <div class="block">
+        <div class="label">Prise de vue</div>
+        <div class="chips" id="viewChips" role="group" aria-label="Prise de vue"></div>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn" id="render4k">Générer le rendu 4K de cette vue</button>
+      </div>
+      <p class="note" id="renderStatus">Le rendu 4K transforme la composition en photo réaliste, en une à deux minutes, par le serveur de rendu.</p>
+      <div class="block" id="galBlock" hidden>
+        <div class="label">Rendus 4K du projet</div>
+        <div class="gal" id="gal"></div>
+      </div>
+      <div id="catSlot3"></div>
+      <div class="actions">
+        <button type="button" class="btn secondary" data-go="2">Revenir à la 3D</button>
+        <button type="button" class="btn" data-go="4">Préparer le récap client</button>
+      </div>
+    </section>
+
+    <!-- step 4 -->
+    <section class="block" data-panel="4" hidden>
+      <h2>Récap client</h2>
+      <p class="lead" id="rClient">–</p>
+      <img class="recap-img" id="rImg" alt="Aperçu du projet sur la photo du terrain">
+      <div class="block">
+        <div class="label">Éléments du catalogue</div>
+        <ul class="list" id="rList"></ul>
+      </div>
+      <div class="kpi">
+        <div class="row"><span>Terrain</span><strong id="rPlot">–</strong></div>
+        <div class="row"><span>Gazon synthétique</span><strong id="rTurf">–</strong></div>
+        <label class="field" for="rate">Formule
+          <select id="rate">
+            <option value="14">Sol préparé · gazon 30 mm · 14 €/m²</option>
+            <option value="25">Sol préparé · gazon 50 mm · 25 €/m²</option>
+            <option value="31.2">Préparation + gazon 30 mm · 31,20 €/m²</option>
+            <option value="42.2">Préparation + gazon 50 mm · 42,20 €/m²</option>
+          </select>
+        </label>
+        <div class="row total"><span>Estimation gazon</span><strong id="rTotal">–</strong></div>
+      </div>
+      <p class="note">Options du catalogue chiffrées sur demande. Montants HT. Projection indicative, non contractuelle.</p>
+      <div class="actions">
+        <button type="button" class="btn" id="copyRecap">Copier le récap pour le client</button>
+        <button type="button" class="btn secondary" data-go="2">Modifier</button>
+      </div>
+    </section>
+  </aside>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const loadingEl = $("loading");
+  if (!window.THREE) { loadingEl.textContent = "Le studio 3D n'a pas pu se charger. Rechargez la page."; return; }
+  const T = THREE;
+  const reduceMotion = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+  // deterministic random, so the garden looks the same on every load
+  let seed = 7;
+  const rnd = () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const rr = (a, b) => a + (b - a) * rnd();
+
+  // ---------------------------------------------------------------- renderer
+  const stage = $("stage");
+  let renderer;
+  try { renderer = new T.WebGLRenderer({ antialias: true, alpha: true }); }
+  catch (e) { loadingEl.textContent = "Ce navigateur n'affiche pas la 3D. Essayez avec Safari ou Chrome à jour."; return; }
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.outputEncoding = T.sRGBEncoding;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = T.PCFSoftShadowMap;
+  renderer.domElement.className = "gl";
+  renderer.domElement.setAttribute("aria-label", "Studio 3D du jardin");
+  stage.prepend(renderer.domElement);
+  const maxAniso = renderer.capabilities.getMaxAnisotropy();
+
+  let needsRender = true;
+  const requestRender = () => { needsRender = true; };
+  const scene = new T.Scene();
+  const camera = new T.PerspectiveCamera(62, 1, 0.1, 400);
+
+  T.DefaultLoadingManager.onLoad = () => { loadingEl.hidden = true; requestRender(); };
+  T.DefaultLoadingManager.onError = () => { loadingEl.hidden = true; };
+
+  // ---------------------------------------------------------------- textures
+  const loader = new T.TextureLoader();
+  function photoTex(name, rx, ry, wrap) {
+    const t = loader.load("tex/" + name, requestRender);
+    t.encoding = T.sRGBEncoding; t.wrapS = t.wrapT = wrap || T.RepeatWrapping; t.repeat.set(rx || 1, ry || 1); t.anisotropy = maxAniso;
+    return t;
+  }
+  function canvasTex(w, h, draw, rx, ry) {
+    const c = document.createElement("canvas"); c.width = w; c.height = h;
+    draw(c.getContext("2d"), w, h);
+    const t = new T.CanvasTexture(c);
+    t.encoding = T.sRGBEncoding; t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(rx || 1, ry || 1); t.anisotropy = maxAniso;
+    return t;
+  }
+  // material colours are written in sRGB and converted, since the renderer outputs sRGB
+  const lin = hex => new T.Color(hex).convertSRGBToLinear();
+  const lambert = o => {
+    o = Object.assign({}, o);
+    if (typeof o.color === "number") o.color = lin(o.color);
+    if (o.flatShading) return new T.MeshPhongMaterial(Object.assign(o, { shininess: 0, specular: 0x000000 }));
+    return new T.MeshLambertMaterial(o);
+  };
+
+  const woodTex = (rx, ry) => canvasTex(256, 256, (g, w, h) => {
+    g.fillStyle = "#5a3a24"; g.fillRect(0, 0, w, h);
+    for (let y = 0; y < h; y += 32) {
+      const t = rr(-16, 16);
+      g.fillStyle = `rgb(${150 + t},${100 + t},${62 + t})`; g.fillRect(0, y + 2, w, 29);
+      g.strokeStyle = "rgba(70,40,20,.28)"; g.lineWidth = 1;
+      for (let k = 0; k < 5; k++) { const yy = y + 4 + rnd() * 24; g.beginPath(); g.moveTo(0, yy); g.bezierCurveTo(w * 0.3, yy + rr(-3, 3), w * 0.7, yy + rr(-3, 3), w, yy); g.stroke(); }
+    }
+  }, rx, ry);
+  const slatTex = (rx, ry) => canvasTex(256, 64, (g, w, h) => {
+    g.fillStyle = "#3e2716"; g.fillRect(0, 0, w, h);
+    for (let x = 0; x < w; x += 16) { const t = rr(-14, 14); g.fillStyle = `rgb(${182 + t},${132 + t},${86 + t})`; g.fillRect(x + 1, 0, 13, h); }
+  }, rx, ry);
+  const gravelTex = (rx, ry) => canvasTex(256, 256, (g, w, h) => {
+    g.fillStyle = "#d3cfc6"; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 1100; i++) { const v = rr(180, 248) | 0; g.fillStyle = `rgb(${v},${v - 2},${v - 8})`; g.beginPath(); g.ellipse(rnd() * w, rnd() * h, rr(2, 5), rr(1.5, 3.5), rnd() * 3, 0, 7); g.fill(); }
+  }, rx, ry);
+  function diamondTex(wm, hm) {
+    const ppm = 120, w = Math.round(wm * ppm), h = Math.round(hm * ppm);
+    return canvasTex(w, h, g => {
+      g.fillStyle = "#3f6b2c"; g.fillRect(0, 0, w, h);
+      g.save(); g.beginPath(); g.rect(0.13 * ppm, 0.13 * ppm, w - 0.26 * ppm, h - 0.26 * ppm); g.clip();
+      g.translate(w / 2, h / 2); g.rotate(Math.PI / 4);
+      const cell = 0.62 * ppm, joint = 0.07 * ppm, n = Math.ceil(Math.hypot(w, h) / cell) + 2;
+      g.fillStyle = "#efeee8";
+      for (let i = -n; i <= n; i++) for (let j = -n; j <= n; j++) g.fillRect(i * cell + joint / 2, j * cell + joint / 2, cell - joint, cell - joint);
+      g.restore();
+      g.strokeStyle = "#e9e7df"; g.lineWidth = 0.1 * ppm; g.strokeRect(0.06 * ppm, 0.06 * ppm, w - 0.12 * ppm, h - 0.12 * ppm);
+    });
+  }
+  const latticeTex = canvasTex(512, 512, (g, w, h) => {
+    const ppm = w / 2.6;
+    g.fillStyle = "#3f6b2c"; g.fillRect(0, 0, w, h);
+    g.save(); g.beginPath(); g.arc(w / 2, h / 2, w / 2 - 0.17 * ppm, 0, 7); g.clip();
+    g.translate(w / 2, h / 2); g.rotate(Math.PI / 4);
+    const cell = 0.36 * ppm, joint = 0.06 * ppm; g.fillStyle = "#efeee8";
+    for (let i = -6; i <= 6; i++) for (let j = -6; j <= 6; j++) g.fillRect(i * cell + joint / 2, j * cell + joint / 2, cell - joint, cell - joint);
+    g.restore();
+    g.fillStyle = "#7a6a52"; g.beginPath(); g.arc(w / 2, h / 2, 0.36 * ppm, 0, 7); g.fill();
+    g.strokeStyle = "#efeee8"; g.lineWidth = 0.12 * ppm; g.beginPath(); g.arc(w / 2, h / 2, w / 2 - 0.07 * ppm, 0, 7); g.stroke();
+  });
+  const frondTex = canvasTex(512, 128, (g, w, h) => {
+    g.clearRect(0, 0, w, h);
+    g.strokeStyle = "#6f7d3c"; g.lineWidth = 5; g.beginPath(); g.moveTo(0, h / 2); g.lineTo(w, h / 2); g.stroke();
+    for (let x = 18; x < w - 6; x += 7) {
+      const t = x / w, L = (h / 2 - 4) * Math.pow(Math.sin(Math.PI * Math.min(1, t * 1.12)), 0.6);
+      for (const s of [-1, 1]) { const c = rr(-16, 16); g.strokeStyle = `rgb(${62 + c},${118 + c},${40 + c})`; g.lineWidth = 3.2; g.beginPath(); g.moveTo(x, h / 2); g.lineTo(x + L * 0.55, h / 2 + s * L); g.stroke(); }
+    }
+  });
+  frondTex.wrapS = frondTex.wrapT = T.ClampToEdgeWrapping;
+  const trunkTex = canvasTex(128, 128, (g, w, h) => {
+    g.fillStyle = "#77634a"; g.fillRect(0, 0, w, h); g.strokeStyle = "#4d3e2c"; g.lineWidth = 5;
+    for (let i = -4; i < 8; i++) { g.beginPath(); g.moveTo(i * 24, 0); g.lineTo(i * 24 + 64, h); g.stroke(); g.beginPath(); g.moveTo(i * 24 + 64, 0); g.lineTo(i * 24, h); g.stroke(); }
+  }, 2, 9);
+
+  const M = {
+    grass: lambert({ map: photoTex("grass.jpg", 9, 10) }),
+    dirt: lambert({ map: photoTex("dirt.jpg", 8, 9) }),
+    render: lambert({ map: photoTex("render.jpg", 2, 2, T.MirroredRepeatWrapping) }),
+    roof: lambert({ color: 0x4b4d4c }),
+    concrete: lambert({ color: 0xa9a69f }),
+    strip: lambert({ color: 0xc4c2ba }),
+    road: lambert({ color: 0x8c8f90 }),
+    outside: lambert({ color: 0xb7ae98 }),
+    slab: lambert({ color: 0xe5ddcc }),
+    white: lambert({ color: 0xf0efe9 }),
+    grey: lambert({ color: 0xb6b9b9 }),
+    timber: lambert({ color: 0xb4875a }),
+    darkWood: lambert({ color: 0x7d5538 }),
+    stone: lambert({ color: 0xdad4c6 }),
+    metal: lambert({ color: 0x9aa0a4 }),
+    soil: lambert({ color: 0x6a5238 }),
+    water: new T.MeshBasicMaterial({ map: photoTex("water.jpg", 2, 2, T.MirroredRepeatWrapping), color: 0xe8e8e8 }),
+    sand: lambert({ map: photoTex("sand.jpg", 2, 8, T.MirroredRepeatWrapping) }),
+    deck: lambert({ map: woodTex(2, 2) }),
+    hedge: lambert({ color: 0x3f5c35, flatShading: true }),
+    tree: lambert({ color: 0x3b5532, flatShading: true }),
+  };
+
+  // ---------------------------------------------------------------- helpers
+  function mesh(geo, mat, opts) { const m = new T.Mesh(geo, mat); m.castShadow = !(opts && opts.cast === false); m.receiveShadow = !(opts && opts.receive === false); return m; }
+  function flatMesh(w, d, mat, y) { const m = mesh(new T.PlaneGeometry(w, d), mat, { cast: false }); m.rotation.x = -Math.PI / 2; m.position.y = y; return m; }
+  function box(w, h, d, mat, x, y, z) { const m = mesh(new T.BoxGeometry(w, h, d), mat); m.position.set(x || 0, (y || 0) + h / 2, z || 0); return m; }
+  function blob(r, mat, x, y, z) { const m = mesh(new T.IcosahedronGeometry(r, 1), mat); m.position.set(x, y, z); return m; }
+  function onSphere(r) { const u = rnd() * 2 - 1, a = rnd() * Math.PI * 2, s = Math.sqrt(1 - u * u); return new T.Vector3(s * Math.cos(a) * r, u * r, s * Math.sin(a) * r); }
+  function blades(clumps, colors) {
+    const total = clumps.reduce((s, c) => s + c.n, 0);
+    const geo = new T.ConeGeometry(0.018, 1, 3); geo.translate(0, 0.5, 0);
+    const im = new T.InstancedMesh(geo, lambert({ color: 0xffffff }), total); im.castShadow = true;
+    const o = new T.Object3D(), col = new T.Color(); let k = 0;
+    for (const c of clumps) for (let i = 0; i < c.n; i++) {
+      o.position.set(c.x + rr(-0.06, 0.06), c.y, c.z + rr(-0.06, 0.06)); o.rotation.set(rr(-0.6, 0.6), rnd() * 6.3, rr(-0.6, 0.6));
+      o.scale.set(1, c.h * rr(0.6, 1.1), 1); o.updateMatrix(); im.setMatrixAt(k, o.matrix); im.setColorAt(k, col.setHex(colors[(rnd() * colors.length) | 0]).convertSRGBToLinear()); k++;
+    }
+    return im;
+  }
+
+  // ---------------------------------------------------------------- lights and sky
+  scene.background = canvasTex(4, 256, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, "#2c5aa8"); gr.addColorStop(0.6, "#6f9bd6"); gr.addColorStop(1, "#cadcef"); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
+  scene.fog = new T.Fog(lin(0xcadcef), 60, 140);
+  scene.add(new T.HemisphereLight(0xdbe8ff, 0x8a8068, 0.8));
+  const sun = new T.DirectionalLight(0xfff2dc, 0.95);
+  sun.position.set(-18, 26, 14); sun.target.position.set(0, 0, 4);
+  sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0006;
+  Object.assign(sun.shadow.camera, { left: -24, right: 24, top: 24, bottom: -24, near: 1, far: 90 });
+  scene.add(sun, sun.target);
+
+  // ---------------------------------------------------------------- site (estimated from the photos)
+  scene.add(flatMesh(320, 320, M.outside, -0.03));
+  const placeFlat = (w, d, mat, x, z, y) => { const m = flatMesh(w, d, mat, y); m.position.x = x; m.position.z = z; scene.add(m); };
+  placeFlat(14, 70, M.road, 21.3, 0, -0.01);
+  function bigTree(x, z, h) { const g = new T.Group(); g.add(box(0.5, h * 0.45, 0.5, M.darkWood, 0, 0, 0)); for (let i = 0; i < 6; i++) g.add(blob(rr(1.6, 2.4), M.tree, rr(-1.4, 1.4), h * rr(0.55, 0.85), rr(-1.4, 1.4))); g.position.set(x, 0, z); scene.add(g); }
+  bigTree(-12.8, 1, 8); bigTree(-13.2, 7, 9); bigTree(-12.6, 13, 7.5); bigTree(-6, -14, 9); bigTree(3, -15, 8);
+  scene.add(box(9.5, 1.8, 0.8, M.hedge, -5.2, 0, -8.2));
+  function neighbour(x, z, w, d, h, roof) { scene.add(box(w, h, d, M.white, x, 0, z)); scene.add(box(w + 0.4, 0.5, d + 0.4, roof ? lambert({ color: 0xb4614a }) : M.roof, x, h, z)); }
+  neighbour(-17, -12, 9, 7, 5.5, true); neighbour(-5, -19, 8, 6, 5, true); neighbour(26, -8, 9, 8, 6.2, false); neighbour(28, 8, 8, 7, 3.4, false);
+
+  // house: simple volumes, the faces seen in the photo carry the photo itself
+  const house = new T.Group(); scene.add(house);
+  // proportions calibrated on the photo's house corners (main cube 6.4 m high taken as reference)
+  house.add(box(6.6, 6.4, 9.7, M.render, 3.3, 0, -4.85));      // main cube: x 0..6.6, z -9.7..0
+  house.add(box(6.72, 0.12, 9.82, M.roof, 3.3, 6.4, -4.85));
+  house.add(box(7.6, 3.55, 7.24, M.render, -3.8, 0, -0.38));   // wing: x -7.6..0, z -4..3.24
+  house.add(box(7.7, 0.1, 7.34, M.roof, -3.8, 3.55, -0.38));
+  house.add(box(4, 6.1, 6, M.render, -5.6, 0, -3));            // upper wing: x -7.6..-3.6, z -6..0
+  house.add(box(4.1, 0.1, 6.1, M.roof, -5.6, 6.1, -3));
+  house.add(box(8, 0.14, 2.2, M.concrete, 3.8, 0, 1.1));       // terrace slab: x -0.2..7.8, z 0..2.2
+  function photoWall(name, w, h, x, y, z, rotY) {
+    const m = mesh(new T.PlaneGeometry(w, h), new T.MeshBasicMaterial({ map: photoTex(name, 1, 1, T.ClampToEdgeWrapping), color: 0xf2f2f2 }), { cast: false, receive: false });
+    m.position.set(x, y, z); m.rotation.y = rotY; house.add(m);
+  }
+  photoWall("main-front.jpg", 6.6, 6.4, 3.3, 3.2, 0.012, 0);
+  photoWall("main-side.jpg", 9.7, 6.4, 6.612, 3.2, -4.85, Math.PI / 2);
+  photoWall("wing-front.jpg", 7.6, 3.55, -3.8, 1.775, 3.252, 0);
+  photoWall("wing-door.jpg", 3.24, 3.55, 0.012, 1.775, 1.62, Math.PI / 2);
+  photoWall("upper-front.jpg", 4, 2.55, -5.6, 4.825, 0.012, 0);
+
+  // ---------------------------------------------------------------- catalogue elements (sizes in metres)
+  function buildPool() {
+    const g = new T.Group(), W = 4, L = 5.5, c = 0.3, ring = 1.3, j = 0.08;
+    g.add(flatMesh(W, L, M.water, 0.03));
+    g.add(box(W + 2 * c, 0.06, c, M.stone, 0, 0, -(L / 2 + c / 2))); g.add(box(W + 2 * c, 0.06, c, M.stone, 0, 0, L / 2 + c / 2));
+    g.add(box(c, 0.06, L, M.stone, -(W / 2 + c / 2), 0, 0)); g.add(box(c, 0.06, L, M.stone, W / 2 + c / 2, 0, 0));
+    const ox = W / 2 + c, oz = L / 2 + c;
+    const along = (len, n) => { const s = (len - (n - 1) * j) / n; return Array.from({ length: n }, (_, i) => [-len / 2 + s / 2 + i * (s + j), s]); };
+    for (const sx of [-1, 1]) for (const [p, s] of along(2 * (oz + ring), 7)) g.add(box(ring - j, 0.04, s, M.slab, sx * (ox + ring / 2), 0, p));
+    for (const sz of [-1, 1]) for (const [p, s] of along(2 * ox - j, 4)) g.add(box(s, 0.04, ring - j, M.slab, p, 0, sz * (oz + ring / 2)));
+    return g;
+  }
+  function buildOlive() {
+    const g = new T.Group();
+    const deck = mesh(new T.CylinderGeometry(1.9, 1.9, 0.07, 48), [M.darkWood, M.deck, M.darkWood]); deck.position.y = 0.035; g.add(deck);
+    const ring = mesh(new T.RingGeometry(1.9, 2.25, 48), lambert({ map: gravelTex(3, 3), color: 0xffffff }), { cast: false }); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.03; g.add(ring);
+    const bark = lambert({ color: 0x6d6353 });
+    for (let k = 0; k < 3; k++) { const geo = new T.CylinderGeometry(0.08, 0.17, 1.9, 7); geo.translate(0, 0.95, 0); const t = mesh(geo, bark); t.position.y = 0.07; t.rotation.set(rr(-0.28, 0.28), k * 2.1, rr(-0.28, 0.28)); g.add(t); }
+    const leaves = [0x8e9b6b, 0x7c8a5c, 0x9aa676].map(c => lambert({ color: c, flatShading: true }));
+    for (let i = 0; i < 10; i++) { const a = rnd() * 6.3, d = rr(0, 0.9); g.add(blob(rr(0.55, 0.85), leaves[i % 3], Math.cos(a) * d, rr(1.9, 2.9), Math.sin(a) * d)); }
+    return g;
+  }
+  function buildDallage() { const g = new T.Group(); g.add(flatMesh(7.5, 2.6, lambert({ map: diamondTex(7.5, 2.6) }), 0.025)); return g; }
+  function frondGeo(len, wid, rise, droop) {
+    const geo = new T.PlaneGeometry(len, wid, 10, 1); geo.rotateX(-Math.PI / 2); geo.translate(len / 2, 0, 0);
+    const p = geo.attributes.position;
+    for (let i = 0; i < p.count; i++) { const t = p.getX(i) / len; p.setY(i, len * (rise * t - droop * t * t)); }
+    geo.computeVertexNormals(); return geo;
+  }
+  function buildPalm() {
+    const g = new T.Group();
+    const bed = mesh(new T.CircleGeometry(1.3, 48), lambert({ map: latticeTex }), { cast: false }); bed.rotation.x = -Math.PI / 2; bed.position.y = 0.025; g.add(bed);
+    const tg = new T.CylinderGeometry(0.2, 0.3, 6, 12, 1); tg.translate(0, 3, 0);
+    const trunk = mesh(tg, lambert({ map: trunkTex })); trunk.rotation.z = 0.05; g.add(trunk);
+    const crown = new T.Group(); crown.position.set(-0.3, 6, 0); g.add(crown);
+    const fm = lambert({ map: frondTex, side: T.DoubleSide, alphaTest: 0.35 });
+    for (let i = 0; i < 18; i++) {
+      const young = i % 3 === 0;
+      const f = mesh(young ? frondGeo(2.4, 0.9, 1.0, 0.5) : frondGeo(3.3, 0.95, 0.5, 0.85), fm, { receive: false });
+      f.rotation.y = (i / 18) * Math.PI * 2 + rr(-0.15, 0.15); crown.add(f);
+    }
+    crown.add(mesh(new T.SphereGeometry(0.42, 10, 8), lambert({ color: 0x6b5a3c })));
+    return g;
+  }
+  function buildPutting() {
+    const g = new T.Group(), s = new T.Shape();
+    s.moveTo(-2.6, 0.2); s.bezierCurveTo(-2.9, 1.6, -1.2, 2.0, -0.4, 1.3); s.bezierCurveTo(0.4, 0.7, 1.2, 1.9, 2.3, 1.4);
+    s.bezierCurveTo(3.1, 0.9, 2.9, -1.3, 1.9, -1.6); s.bezierCurveTo(0.9, -1.9, 0.3, -0.9, -0.5, -1.4); s.bezierCurveTo(-1.6, -2.0, -2.4, -1.1, -2.6, 0.2);
+    const geo = new T.ShapeGeometry(s, 24); geo.rotateX(-Math.PI / 2);
+    const fringe = new T.ShapeGeometry(s, 24); fringe.rotateX(-Math.PI / 2); fringe.scale(1.06, 1, 1.08);
+    const fm = mesh(fringe, lambert({ color: 0x5f9440 }), { cast: false }); fm.position.y = 0.015; g.add(fm);
+    const top = mesh(geo, lambert({ color: 0x96cc62 }), { cast: false }); top.position.y = 0.028; g.add(top);
+    const hole = mesh(new T.CircleGeometry(0.07, 16), new T.MeshBasicMaterial({ color: 0x111111 }), { cast: false }); hole.rotation.x = -Math.PI / 2; hole.position.set(1.6, 0.031, 0.6); g.add(hole);
+    g.add(box(0.025, 1.5, 0.025, M.white, 1.6, 0.03, 0.6));
+    const fs = new T.Shape(); fs.moveTo(0, 0); fs.lineTo(0.45, -0.14); fs.lineTo(0, -0.28);
+    const flag = mesh(new T.ShapeGeometry(fs), lambert({ color: 0xd03a2f, side: T.DoubleSide })); flag.position.set(1.61, 1.52, 0.6); g.add(flag);
+    for (const [x, z] of [[-1.2, 0.3], [0.6, -0.7]]) { const b = mesh(new T.SphereGeometry(0.025, 10, 8), M.white); b.position.set(x, 0.055, z); g.add(b); }
+    g.userData.turf = Math.abs(T.ShapeUtils.area(s.getPoints(60)));
+    return g;
+  }
+  function buildStepping() {
+    const g = new T.Group();
+    const curve = new T.CatmullRomCurve3([[-0.3, 6.2], [0.9, 3.9], [-0.5, 1.2], [0.5, -1.6], [1.3, -3.8], [0.4, -5.8]].map(([x, z]) => new T.Vector3(x, 0, z)));
+    const n = Math.floor(curve.getLength() / 0.62);
+    for (let i = 0; i <= n; i++) {
+      const u = i / n, p = curve.getPointAt(u), tg = curve.getTangentAt(u);
+      const sl = box(0.95, 0.04, 0.4, M.white, p.x, 0, p.z); sl.rotation.y = Math.atan2(tg.x, tg.z); g.add(sl);
+    }
+    g.userData.area = (n + 1) * 0.95 * 0.4;
+    return g;
+  }
+  function buildPergola() {
+    const g = new T.Group(), W = 4.2, D = 3.2, H = 2.7, wd = M.timber;
+    g.add(flatMesh(W, D, M.stone, 0.02));
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.add(box(0.14, H, 0.14, wd, sx * (W / 2 - 0.07), 0, sz * (D / 2 - 0.07)));
+    for (const sz of [-1, 1]) g.add(box(W + 0.3, 0.22, 0.12, wd, 0, H - 0.22, sz * (D / 2 - 0.07)));
+    for (let i = 0; i < 15; i++) g.add(box(0.06, 0.12, D + 0.3, wd, -W / 2 + 0.1 + (i * (W - 0.2)) / 14, H, 0));
+    const front = lambert({ map: slatTex(6, 1) });
+    const counter = mesh(new T.BoxGeometry(3.0, 0.9, 0.65), [wd, wd, M.stone, M.stone, front, wd]); counter.position.set(0, 0.45, -D / 2 + 0.55); g.add(counter);
+    g.add(box(3.1, 0.05, 0.72, M.stone, 0, 0.9, -D / 2 + 0.55));
+    for (let i = -1; i <= 1; i++) { g.add(box(0.36, 0.05, 0.36, M.darkWood, i * 0.9, 0.72, -D / 2 + 1.25)); g.add(box(0.05, 0.72, 0.05, M.metal, i * 0.9, 0, -D / 2 + 1.25)); }
+    return g;
+  }
+  function buildHedge() {
+    const g = new T.Group(), leaf = [0x46663a, 0x557a43, 0x3d5a33].map(c => lambert({ color: c, flatShading: true }));
+    const spots = [];
+    for (let z = -5.2; z <= 5.4; z += 0.75) for (let k = 0; k < 2; k++) {
+      const r = rr(0.45, 0.68), b = blob(r, leaf[(rnd() * 3) | 0], rr(-0.25, 0.25), r * 0.9 + k * 0.35, z + rr(-0.25, 0.25)); b.scale.y = 0.9; g.add(b);
+      for (let f = 0; f < 24; f++) { const d = onSphere(r * 0.98); if (d.y > -0.15 * r) spots.push(b.position.clone().add(d)); }
+    }
+    const im = new T.InstancedMesh(new T.SphereGeometry(0.075, 6, 5), lambert({ color: 0xffffff }), spots.length);
+    const o = new T.Object3D(), col = new T.Color(), cols = [0xe78ab1, 0xf6f2ee, 0xd2588c, 0xf2b6cf, 0xf6f2ee];
+    spots.forEach((p, i) => { o.position.copy(p); o.updateMatrix(); im.setMatrixAt(i, o.matrix); im.setColorAt(i, col.setHex(cols[(rnd() * cols.length) | 0]).convertSRGBToLinear()); });
+    g.add(im);
+    return g;
+  }
+  function buildBed() {
+    const g = new T.Group(), W = 1.6, L = 6.5, H = 0.55, sleeper = lambert({ color: 0xb48b5c });
+    const perim = [];
+    for (let x = -W / 2; x <= W / 2 + 1e-6; x += 0.21) { perim.push([x, -L / 2]); perim.push([x, L / 2]); }
+    for (let z = -L / 2 + 0.21; z < L / 2 - 0.1; z += 0.21) { perim.push([-W / 2, z]); perim.push([W / 2, z]); }
+    for (const [x, z] of perim) g.add(box(0.19, H + rr(-0.06, 0.06), 0.19, sleeper, x, 0, z));
+    g.add(box(W - 0.1, H - 0.06, L - 0.1, M.soil, 0, 0, 0));
+    const greens = [0x7a8f6a, 0x5d7a4a, 0x9aa98a, 0x6f8f5f].map(c => lambert({ color: c, flatShading: true }));
+    for (let i = 0; i < 8; i++) { const r = rr(0.28, 0.45); g.add(blob(r, greens[i % 4], rr(-0.35, 0.35), H + r * 0.55, -L / 2 + 0.6 + i * 0.75 + rr(-0.15, 0.15))); }
+    for (let i = 0; i < 3; i++) { const st = mesh(new T.DodecahedronGeometry(rr(0.14, 0.22)), lambert({ color: 0xb9b4aa, flatShading: true })); st.position.set(rr(-0.4, 0.4), H, rr(-2.6, 2.6)); g.add(st); }
+    g.add(blades(Array.from({ length: 6 }, (_, i) => ({ x: rr(-0.4, 0.4), y: H - 0.05, z: -2.7 + i * 1.08, n: 24, h: 0.7 })), [0xc9b87e, 0xa9a066, 0x8f9a5a]));
+    return g;
+  }
+  function buildPetanque() {
+    const g = new T.Group(), W = 3, L = 12, bw = 0.15, bh = 0.12;
+    g.add(flatMesh(W, L, M.sand, 0.035));
+    g.add(box(W + 2 * bw, bh, bw, M.timber, 0, 0, -L / 2 - bw / 2)); g.add(box(W + 2 * bw, bh, bw, M.timber, 0, 0, L / 2 + bw / 2));
+    g.add(box(bw, bh, L, M.timber, -W / 2 - bw / 2, 0, 0)); g.add(box(bw, bh, L, M.timber, W / 2 + bw / 2, 0, 0));
+    for (const [x, z] of [[0.3, 2.1], [-0.4, 2.6], [0.1, 3.0]]) { const b = mesh(new T.SphereGeometry(0.04, 12, 10), M.metal); b.position.set(x, 0.075, z); g.add(b); }
+    const jack = mesh(new T.SphereGeometry(0.016, 8, 6), M.timber); jack.position.set(0, 0.05, 2.5); g.add(jack);
+    return g;
+  }
+  function buildAllee() {
+    const g = new T.Group(), W = 1.7, L = 13.5;
+    g.add(flatMesh(W, L, lambert({ map: gravelTex(1.5, 12) }), 0.025));
+    for (let z = -L / 2 + 0.45; z < L / 2 - 0.3; z += 0.85) g.add(box(1.3, 0.04, 0.45, M.grey, 0, 0, z));
+    const clumps = [];
+    for (let z = -L / 2 + 0.5, i = 0; z < L / 2; z += 1.15, i++) clumps.push({ x: (i % 2 ? 1 : -1) * (W / 2 + 0.05), y: 0.02, z, n: 26, h: 0.75 });
+    g.add(blades(clumps, [0xcdbb83, 0xb9a46d, 0xd8c99a, 0x9a9a5e]));
+    return g;
+  }
+  function buildShower() {
+    const g = new T.Group(), wall = lambert({ map: slatTex(5, 1) });
+    g.add(box(1.5, 0.08, 1.5, M.deck, 0, 0, 0));
+    g.add(box(1.5, 2.1, 0.06, wall, 0, 0.08, -0.72));
+    g.add(box(0.06, 2.1, 1.1, wall, -0.72, 0.08, -0.2)); g.add(box(0.06, 2.1, 1.1, wall, 0.72, 0.08, -0.2));
+    g.add(box(0.04, 2.2, 0.04, M.metal, 0, 0.08, -0.64));
+    const head = mesh(new T.CylinderGeometry(0.12, 0.12, 0.03, 16), M.metal); head.position.set(0, 2.25, -0.5); g.add(head);
+    g.add(box(0.03, 0.03, 0.16, M.metal, 0, 2.26, -0.58));
+    return g;
+  }
+
+
+  // ---------------------------------------------------------------- plot (resized from the panel, house fixed at the back)
+  const HOUSE_AREA = 120;   // house, wing and terrace inside the plot, m²
+  const PLOT = { x0: -10, x1: 13.5, z0: -6, z1: 19.5 };
+  const BLOCKED = [[0, 6.6, -9.7, 0], [-7.6, 0, -4, 3.24], [-7.6, -3.6, -6, 0], [-0.2, 7.8, 0, 2.2]];
+  const fmt = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 });
+  const fmt1 = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 1 });
+  const lawn = flatMesh(1, 1, M.dirt, 0); scene.add(lawn);
+  const stripR = flatMesh(0.8, 1, M.strip, 0.01), stripL = flatMesh(0.5, 1, M.strip, 0.01); scene.add(stripR, stripL);
+  const shadowCatcher = flatMesh(1, 1, new T.ShadowMaterial({ opacity: 0.32 }), 0.005); shadowCatcher.visible = false; scene.add(shadowCatcher);
+
+  // dimension lines and labels drawn on the ground, so the scale is always visible
+  const dimMat = new T.LineBasicMaterial({ color: 0xffffff, depthTest: false, transparent: true });
+  const dimLines = new T.LineSegments(new T.BufferGeometry(), dimMat); dimLines.renderOrder = 9; scene.add(dimLines);
+  function makeLabel() {
+    const c = document.createElement("canvas"); c.width = 256; c.height = 80;
+    const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding;
+    const s = new T.Sprite(new T.SpriteMaterial({ map: t, depthTest: false, transparent: true }));
+    s.scale.set(3.4, 1.06, 1); s.renderOrder = 10; s.userData.c = c; scene.add(s); return s;
+  }
+  function setLabel(s, text) {
+    const c = s.userData.c, g = c.getContext("2d"), r = 30;
+    g.clearRect(0, 0, 256, 80); g.fillStyle = "rgba(22,57,44,.9)";
+    g.beginPath(); g.moveTo(r, 4); g.lineTo(256 - r, 4); g.arc(256 - r, 40, 36, -Math.PI / 2, Math.PI / 2); g.lineTo(r, 76); g.arc(r, 40, 36, Math.PI / 2, Math.PI * 1.5); g.fill();
+    g.fillStyle = "#ffffff"; g.font = "800 38px Archivo, Arial, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(text, 128, 42);
+    s.material.map.needsUpdate = true;
+  }
+  const labW = makeLabel(), labD = makeLabel();
+  const plotW = () => PLOT.x1 - PLOT.x0, plotD = () => PLOT.z1 - PLOT.z0;
+  function layoutPlot() {
+    const W = plotW(), D = plotD(), cx = (PLOT.x0 + PLOT.x1) / 2, cz = (PLOT.z0 + PLOT.z1) / 2;
+    for (const m of [lawn, shadowCatcher]) { m.scale.set(W, D, 1); m.position.x = cx; m.position.z = cz; }
+    [M.grass.map, M.dirt.map].forEach(t => t.repeat.set(W / 2.6, D / 2.6));
+    stripR.scale.y = D; stripR.position.set(PLOT.x1 + 0.4, 0.01, cz);
+    stripL.scale.y = D; stripL.position.set(PLOT.x0 - 0.25, 0.01, cz);
+    const zf = PLOT.z1 + 0.7, xr = PLOT.x1 + 1.3, y = 0.06, k = 0.35;
+    dimLines.geometry.setFromPoints([
+      [PLOT.x0, zf], [PLOT.x1, zf], [PLOT.x0, zf - k], [PLOT.x0, zf + k], [PLOT.x1, zf - k], [PLOT.x1, zf + k],
+      [xr, PLOT.z0], [xr, PLOT.z1], [xr - k, PLOT.z0], [xr + k, PLOT.z0], [xr - k, PLOT.z1], [xr + k, PLOT.z1],
+    ].map(([x, z]) => new T.Vector3(x, y, z)));
+    setLabel(labW, fmt1.format(W) + " m"); labW.position.set(cx, 0.5, zf + 1.0);
+    setLabel(labD, fmt1.format(D) + " m"); labD.position.set(xr + 1.9, 0.5, cz);
+    items.forEach(it => { if (!fits(it.no, it.g.position.x, it.g.position.z, it.g.rotation.y)) placeFree(it); });
+    renderNumbers(); requestRender();
+  }
+
+  // ---------------------------------------------------------------- catalogue (fp = footprint in the element's frame; area = hard surface taken from the lawn, m²)
+  const TYPES = {
+    "04": { name: "Piscine et plage en dalles", build: buildPool, fp: [-3.6, 3.6, -4.35, 4.35], area: 62.6 },
+    "10": { name: "Olivier et terrasse bois", build: buildOlive, fp: [-2.25, 2.25, -2.25, 2.25], area: 15.9 },
+    "17": { name: "Dallage géométrique", build: buildDallage, fp: [-3.75, 3.75, -1.3, 1.3], area: 19.5 },
+    "07": { name: "Palmier dattier", build: buildPalm, fp: [-1.3, 1.3, -1.3, 1.3], area: 5.3 },
+    "12": { name: "Putting-green paysager", build: buildPutting, fp: [-2.9, 3.0, -2.0, 2.0], area: 15 },
+    "13": { name: "Pas japonais courbes", build: buildStepping, fp: [-1.0, 1.8, -6.0, 6.4], area: 8 },
+    "05": { name: "Pergola et cuisine extérieure", build: buildPergola, fp: [-2.25, 2.25, -1.7, 1.7], area: 13.4 },
+    "02": { name: "Haies fleuries", build: buildHedge, fp: [-1, 1, -6, 6], area: 11 },
+    "01": { name: "Massifs et bordures bois", build: buildBed, fp: [-0.9, 0.9, -3.35, 3.35], area: 10.4 },
+    "15": { name: "Terrain de pétanque", build: buildPetanque, fp: [-1.65, 1.65, -6.15, 6.15], area: 37.3 },
+    "14": { name: "Allée minérale et graminées", build: buildAllee, fp: [-1.15, 1.15, -6.75, 6.75], area: 23 },
+    "23": { name: "Douche extérieure bois", build: buildShower, fp: [-0.8, 0.8, -0.8, 0.8], area: 2.3 },
+  };
+  const PALETTES = [
+    { name: "Piscine & olivier", items: [["10", -6.3, 8, 0], ["17", 4, 3.65, 0], ["04", 4.2, 9.9, 0]] },
+    { name: "Palmier & golf", items: [["07", -6.2, 6.8, 0], ["12", 5.6, 9.6, 0], ["13", 0.8, 9.5, 0]] },
+    { name: "Pergola & fleurs", items: [["05", -5.7, 5.9, 0], ["02", -9.0, 10, 0], ["01", 9.0, 11.5, 0]] },
+    { name: "Pétanque & détente", items: [["15", -7.9, 9.6, 0], ["14", 1.4, 9.05, 0], ["23", 8.6, 4.8, -Math.PI / 2]] },
+  ];
+
+  // ---------------------------------------------------------------- placed elements
+  const items = [];
+  let uidSeq = 1, selected = null, step = 1;
+  function aabb(no, x, z, rot) {
+    const [a, b, c, d] = TYPES[no].fp, cs = Math.cos(rot), sn = Math.sin(rot);
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    for (const [px, pz] of [[a, c], [b, c], [a, d], [b, d]]) {
+      const wx = x + px * cs + pz * sn, wz = z - px * sn + pz * cs;
+      x0 = Math.min(x0, wx); x1 = Math.max(x1, wx); z0 = Math.min(z0, wz); z1 = Math.max(z1, wz);
+    }
+    return [x0, x1, z0, z1];
+  }
+  const overlaps = (p, q, m) => p[0] < q[1] - m && p[1] > q[0] + m && p[2] < q[3] - m && p[3] > q[2] + m;
+  function fits(no, x, z, rot) {
+    const box4 = aabb(no, x, z, rot), m = 0.02;
+    if (box4[0] < PLOT.x0 - m || box4[1] > PLOT.x1 + m || box4[2] < PLOT.z0 - m || box4[3] > PLOT.z1 + m) return false;
+    return !BLOCKED.some(b => overlaps(box4, b, m));
+  }
+  function freeOfOthers(it, no, x, z, rot) {
+    const box4 = aabb(no, x, z, rot);
+    return !items.some(o => o !== it && overlaps(box4, aabb(o.no, o.g.position.x, o.g.position.z, o.g.rotation.y), -0.8));   // keep 0.8 m between new elements
+  }
+  // nearest free spot, spiralling out from the middle of the garden in front of the house
+  function findSpot(it, no, rot) {
+    const cx = (PLOT.x0 + PLOT.x1) / 2, cz = (Math.max(PLOT.z0, 3) + PLOT.z1) / 2;
+    let fallback = null;
+    for (let r = 0; r <= 16; r += 1) for (let i = -r; i <= r; i++) for (let j = -r; j <= r; j++) {
+      if (Math.max(Math.abs(i), Math.abs(j)) !== r) continue;
+      const x = cx + i, z = cz + j;
+      if (!fits(no, x, z, rot) || !inView(x, z)) continue;
+      if (freeOfOthers(it, no, x, z, rot)) return [x, z];
+      if (!fallback) fallback = [x, z];
+    }
+    return fallback || [cx, cz];
+  }
+  // on the photo, new elements land where the photo actually shows the garden
+  const probe = new T.Vector3();
+  function inView(x, z) {
+    if (!photoLive) return true;
+    probe.set(x, 0, z).project(camera);
+    return Math.abs(probe.x) < 0.75 && probe.y < 0.05 && probe.y > -0.85 && probe.z < 1;
+  }
+  function placeFree(it) { const [x, z] = findSpot(it, it.no, it.g.rotation.y); it.g.position.set(x, 0, z); }
+  function addItem(no, x, z, rot) {
+    const t = TYPES[no], g = t.build();
+    if (g.userData.area != null) t.area = g.userData.area;
+    if (g.userData.turf != null) t.area = g.userData.turf;
+    const it = { uid: uidSeq++, no, g };
+    g.userData = { uid: it.uid }; g.rotation.y = rot || 0; g.visible = step !== 1;
+    if (x == null) placeFree(it); else g.position.set(x, 0, z);
+    scene.add(g); items.push(it); return it;
+  }
+  function removeItem(it) {
+    if (selected === it) select(null);
+    scene.remove(it.g); it.g.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+    items.splice(items.indexOf(it), 1);
+  }
+  function moveTo(it, x, z) {
+    const o = it.g, r = o.rotation.y;
+    if (fits(it.no, x, z, r)) o.position.set(x, 0, z);
+    else if (fits(it.no, x, o.position.z, r)) o.position.x = x;
+    else if (fits(it.no, o.position.x, z, r)) o.position.z = z;
+    requestRender();
+  }
+  function frameFor(it) {
+    if (it.frame) return it.frame;
+    const [a, b, c, d] = TYPES[it.no].fp, t = 0.1, mat = new T.MeshBasicMaterial({ color: 0xffd54a }), g = new T.Group();
+    const bar = (w, dd, x, z) => { const m = new T.Mesh(new T.BoxGeometry(w, 0.03, dd), mat); m.position.set(x, 0.09, z); m.raycast = () => {}; g.add(m); };
+    bar(b - a + t, t, (a + b) / 2, c); bar(b - a + t, t, (a + b) / 2, d); bar(t, d - c, a, (c + d) / 2); bar(t, d - c, b, (c + d) / 2);
+    return (it.frame = g);
+  }
+  function select(it) {
+    if (selected && selected.frame) selected.g.remove(selected.frame);
+    selected = it;
+    $("selbar").hidden = !it || (step !== 2 && step !== 3);
+    if (it) { it.g.add(frameFor(it)); $("selNo").textContent = it.no; $("selName").textContent = TYPES[it.no].name; }
+    requestRender();
+  }
+  function changed() { renderCatalogue(); renderNumbers(); save(); requestRender(); }
+  $("selRot").addEventListener("click", () => {
+    const it = selected; if (!it) return;
+    const r = it.g.rotation.y + Math.PI / 12;
+    if (fits(it.no, it.g.position.x, it.g.position.z, r)) { it.g.rotation.y = r; changed(); }
+    else toast("Pas assez de place pour tourner ici : déplacez l'élément d'abord.");
+  });
+  $("selDup").addEventListener("click", () => { if (!selected) return; const it = addItem(selected.no, null, null, selected.g.rotation.y); select(it); changed(); });
+  $("selDel").addEventListener("click", () => { if (selected) { removeItem(selected); changed(); } });
+
+  // ---------------------------------------------------------------- surfaces
+  const hardArea = () => items.reduce((s, it) => s + TYPES[it.no].area, 0);
+  const gardenArea = () => Math.max(0, plotW() * plotD() - HOUSE_AREA);
+  const turfArea = () => Math.max(0, gardenArea() - hardArea());
+  const rate = () => parseFloat($("rate").value);
+  function renderNumbers() {
+    $("kPlot").textContent = fmt.format(plotW() * plotD()) + " m²";
+    $("kHouse").textContent = fmt.format(HOUSE_AREA) + " m²";
+    $("kGarden").textContent = fmt.format(gardenArea()) + " m²";
+    $("cTurf").textContent = fmt.format(turfArea()) + " m²";
+    $("cHard").textContent = items.length ? fmt.format(hardArea()) + " m²" : "aucun";
+    $("cTotal").textContent = fmt.format(turfArea() * rate()) + " € HT";
+    $("pTurf").textContent = fmt.format(turfArea()) + " m²";
+    $("pTotal").textContent = fmt.format(turfArea() * rate()) + " € HT";
+  }
+
+  // ---------------------------------------------------------------- panel: catalogue and palettes
+  function renderCatalogue() {
+    const box4 = $("cat");
+    if (!box4.children.length) {
+      Object.keys(TYPES).forEach(no => {
+        const b = document.createElement("button"); b.type = "button"; b.className = "card"; b.dataset.no = no;
+        b.setAttribute("aria-label", "Ajouter n° " + no + " " + TYPES[no].name);
+        b.innerHTML = `<img src="img/cat-${no}.jpg" alt="" width="240" height="110" loading="lazy"><span class="txt"><span class="no">${no}</span><span class="name">${TYPES[no].name}</span></span><span class="count" hidden></span>`;
+        b.addEventListener("click", () => { const it = addItem(no); select(it); changed(); });
+        box4.appendChild(b);
+      });
+    }
+    box4.querySelectorAll(".card").forEach(b => { const n = items.filter(it => it.no === b.dataset.no).length, c = b.querySelector(".count"); c.hidden = !n; c.textContent = "× " + n; });
+  }
+  PALETTES.forEach(p => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = p.name;
+    b.addEventListener("click", () => { [...items].forEach(removeItem); p.items.forEach(([no, x, z, r]) => { const it = addItem(no, x, z, r); if (!fits(no, x, z, r)) placeFree(it); }); select(null); changed(); });
+    $("palChips").appendChild(b);
+  });
+  const clear = document.createElement("button"); clear.type = "button"; clear.className = "chip ghost"; clear.textContent = "Tout effacer";
+  clear.addEventListener("click", () => { [...items].forEach(removeItem); changed(); });
+  $("palChips").appendChild(clear);
+
+  // ---------------------------------------------------------------- terrain inputs
+  function setDims(w, d) {
+    w = clamp(Math.round(w * 2) / 2, 18, 30); d = clamp(Math.round(d * 2) / 2, 14, 34);
+    PLOT.x1 = PLOT.x0 + w; PLOT.z1 = PLOT.z0 + d;
+    $("dimW").value = w; $("dimD").value = d;
+    layoutPlot(); save();
+  }
+  $("dimW").addEventListener("change", e => setDims(parseFloat(e.target.value) || plotW(), plotD()));
+  $("dimD").addEventListener("change", e => setDims(plotW(), parseFloat(e.target.value) || plotD()));
+  document.querySelectorAll("[data-dim]").forEach(b => b.addEventListener("click", () => {
+    const d = parseFloat(b.dataset.d);
+    b.dataset.dim === "w" ? setDims(plotW() + d, plotD()) : setDims(plotW(), plotD() + d);
+  }));
+  $("client").addEventListener("input", save);
+  $("rate").addEventListener("change", () => { renderNumbers(); renderRecap(); });
+
+  // ---------------------------------------------------------------- camera
+  // PHOTO: camera pose solved from the house corners of the real photo (1194 x 1592 frame, ultra-wide lens)
+  const PHOTOS = {
+    face: { name: "Face", pos: [11.718, 1.5, 17.533], target: [3.161, -1.401, 5.559], up: [-0.1275, 0.981, -0.1465], fov: 98.8, w: 1194, h: 1592,
+      base: "img/face-base.jpg", avant: "img/face-avant.jpg", shadow: "img/face-ombre.webp", example: "img/rendu-4k-exemple.jpg" },
+    droite: { name: "Côté droit", pos: [11.59, 0.804, 17.634], target: [11.985, -1.253, 2.781], up: [-0.0343, 0.9898, -0.138], fov: 96.82, w: 1512, h: 2016,
+      base: "img/droite-base.jpg", avant: "img/droite-avant.jpg", shadow: null, example: "img/rendu-4k-droite.jpg" },
+  };
+  let view = "face", PHOTO = PHOTOS.face;
+  const photoSph = (() => { const PHOTO = PHOTOS.face, o = new T.Vector3().fromArray(PHOTO.pos).sub(new T.Vector3().fromArray(PHOTO.target)), r = o.length(); return { t: PHOTO.target, r, theta: Math.atan2(o.x, o.z), phi: Math.acos(o.y / r), fov: PHOTO.fov }; })();
+  const cam = { target: new T.Vector3(), r: 20, theta: 0.5, phi: 1.3, fov: 55 };
+  const R_MIN = 6, R_MAX = 70, PHI_MIN = 0.05, PHI_MAX = 1.75;
+  function preset(name) {
+    const cx = (PLOT.x0 + PLOT.x1) / 2, cz = (PLOT.z0 + PLOT.z1) / 2, span = Math.max(plotW(), plotD());
+    if (name === "photo") return photoSph;
+    if (name === "plan") return { t: [cx + 0.6, 0, cz + 0.6], r: span * 1.35, theta: 0, phi: 0.06, fov: 55 };
+    return { t: [cx - 1, 0.8, cz + 0.5], r: span * 1.15, theta: 0.26, phi: 1.12, fov: 55 };
+  }
+  let anim = null;
+  function goTo(name, instant) {
+    document.querySelectorAll("[data-cam]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.cam === name)));
+    const p = preset(name), from = { t: cam.target.clone(), r: cam.r, theta: cam.theta, phi: cam.phi, fov: cam.fov };
+    const dTh = Math.atan2(Math.sin(p.theta - from.theta), Math.cos(p.theta - from.theta));
+    const to = { t: new T.Vector3(...p.t), r: p.r, theta: from.theta + dTh, phi: p.phi, fov: p.fov };
+    if (instant || reduceMotion) { cam.target.copy(to.t); cam.r = to.r; cam.theta = to.theta; cam.phi = to.phi; cam.fov = to.fov; anim = null; requestRender(); return; }
+    anim = { from, to, start: performance.now(), dur: 750 }; requestRender();
+  }
+  function stepAnim(now) {
+    const k = Math.min(1, (now - anim.start) / anim.dur), e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2, a = anim.from, b = anim.to;
+    cam.target.lerpVectors(a.t, b.t, e); cam.r = a.r + (b.r - a.r) * e; cam.theta = a.theta + (b.theta - a.theta) * e; cam.phi = a.phi + (b.phi - a.phi) * e; cam.fov = a.fov + (b.fov - a.fov) * e;
+    needsRender = true; if (k >= 1) anim = null;
+  }
+  const userMoved = () => { anim = null; document.querySelectorAll("[data-cam]").forEach(b => b.setAttribute("aria-pressed", "false")); requestRender(); };
+  function updateCamera() {
+    if (photoLive) {
+      camera.position.fromArray(PHOTO.pos); camera.up.fromArray(PHOTO.up); camera.lookAt(new T.Vector3().fromArray(PHOTO.target));
+      if (camera.fov !== PHOTO.fov) { camera.fov = PHOTO.fov; camera.updateProjectionMatrix(); }
+      return;
+    }
+    camera.up.set(0, 1, 0);
+    const sp = Math.sin(cam.phi);
+    camera.position.set(cam.target.x + cam.r * sp * Math.sin(cam.theta), cam.target.y + cam.r * Math.cos(cam.phi), cam.target.z + cam.r * sp * Math.cos(cam.theta));
+    camera.lookAt(cam.target);
+    if (camera.fov !== cam.fov) { camera.fov = cam.fov; camera.updateProjectionMatrix(); }
+  }
+  document.querySelectorAll("[data-cam]").forEach(b => b.addEventListener("click", () => goTo(b.dataset.cam)));
+
+  // ---------------------------------------------------------------- gestures: one finger orbits or drags an element, two fingers zoom
+  const canvas = renderer.domElement, pointers = new Map(), ray = new T.Raycaster(), ndc = new T.Vector2();
+  const ground = new T.Plane(new T.Vector3(0, 1, 0), 0), hit = new T.Vector3();
+  let drag = null, rotating = null, pinch = null, down = null;
+  function setRay(e) { const r = canvas.getBoundingClientRect(); ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); ray.setFromCamera(ndc, camera); }
+  function pick(e) {
+    if (step !== 2 && !(step === 3 && photoLive)) return null;
+    setRay(e);
+    for (const h of ray.intersectObjects(items.map(it => it.g), true)) { let o = h.object; while (o && !(o.userData && o.userData.uid)) o = o.parent; if (o) return items.find(it => it.uid === o.userData.uid); }
+    return null;
+  }
+  canvas.addEventListener("pointerdown", e => {
+    canvas.setPointerCapture(e.pointerId); pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size === 2) { if (photoLive) return; const [a, b] = [...pointers.values()]; drag = null; rotating = null; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), r: cam.r }; return; }
+    if (pointers.size > 2) return;
+    down = { x: e.clientX, y: e.clientY, moved: false };
+    const it = pick(e);
+    if (it) { select(it); if (ray.ray.intersectPlane(ground, hit)) drag = { it, dx: it.g.position.x - hit.x, dz: it.g.position.z - hit.z }; }
+    else rotating = { x: e.clientX, y: e.clientY };
+  });
+  canvas.addEventListener("pointermove", e => {
+    if (!pointers.has(e.pointerId)) return;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 6) down.moved = true;
+    if (pinch && pointers.size >= 2) { const [a, b] = [...pointers.values()]; cam.r = clamp((pinch.r * pinch.d) / Math.max(Math.hypot(a.x - b.x, a.y - b.y), 1), R_MIN, R_MAX); userMoved(); return; }
+    if (drag) { setRay(e); if (ray.ray.intersectPlane(ground, hit)) moveTo(drag.it, hit.x + drag.dx, hit.z + drag.dz); return; }
+    if (rotating && !photoLive) {
+      const dx = e.clientX - rotating.x, dy = e.clientY - rotating.y; rotating.x = e.clientX; rotating.y = e.clientY;
+      cam.theta -= dx * 0.008; cam.phi = clamp(cam.phi - dy * 0.006, PHI_MIN, PHI_MAX); userMoved();
+    }
+  });
+  function endPointer(e) {
+    pointers.delete(e.pointerId);
+    if (pointers.size < 2) pinch = null;
+    if (pointers.size === 0) { if (drag) save(); if (rotating && down && !down.moved) select(null); drag = null; rotating = null; down = null; }
+  }
+  canvas.addEventListener("pointerup", endPointer);
+  canvas.addEventListener("pointercancel", endPointer);
+  canvas.addEventListener("wheel", e => { e.preventDefault(); if (photoLive) return; cam.r = clamp(cam.r * (1 + e.deltaY * 0.0012), R_MIN, R_MAX); userMoved(); }, { passive: false });
+
+  // ---------------------------------------------------------------- photo preview: the composition rendered from the photo's own camera
+  const depthOnly = new T.MeshBasicMaterial({ colorWrite: false });
+  function exportLayer() {
+    const groups = items.map(it => it.g), hidden = [], swapped = [], sel = selected;
+    select(null);
+    scene.children.forEach(c => { if (c.isLight || c === sun.target || c === house || c === shadowCatcher || groups.includes(c)) return; hidden.push([c, c.visible]); c.visible = false; });
+    house.traverse(o => { if (o.isMesh) { swapped.push([o, o.material, o.castShadow]); o.material = depthOnly; o.castShadow = false; } });
+    const bg = scene.background, fog = scene.fog, scVis = shadowCatcher.visible; scene.background = null; scene.fog = null; shadowCatcher.visible = true;
+    const size = renderer.getSize(new T.Vector2()), ratio = renderer.getPixelRatio();
+    renderer.setPixelRatio(1); renderer.setSize(PHOTO.w, PHOTO.h, false);
+    const pc = new T.PerspectiveCamera(PHOTO.fov, PHOTO.w / PHOTO.h, 0.1, 400);
+    pc.position.fromArray(PHOTO.pos); pc.up.fromArray(PHOTO.up); pc.lookAt(new T.Vector3().fromArray(PHOTO.target));
+    renderer.setClearColor(0x000000, 0); renderer.render(scene, pc);
+    const url = renderer.domElement.toDataURL("image/png");
+    hidden.forEach(([c, v]) => { c.visible = v; }); swapped.forEach(([o, m, cs]) => { o.material = m; o.castShadow = cs; });
+    scene.background = bg; scene.fog = fog; shadowCatcher.visible = scVis;
+    renderer.setPixelRatio(ratio); renderer.setSize(size.x, size.y, false); if (sel) select(sel); requestRender();
+    return url;
+  }
+  const imgCache = {};
+  const loadImg = src => imgCache[src] || (imgCache[src] = new Promise((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = src; }));
+  const OMBRE = { x: 924, y: 983, w: 270, h: 609 };   // the photographer's real shadow, kept as on the photo
+  let layerUrl = null, shotMode = "apercu";
+  async function paintShot(ctx, mode) {
+    const W = PHOTO.w, H = PHOTO.h;
+    if (mode === "avant") { ctx.drawImage(await loadImg(PHOTO.avant), 0, 0, W, H); return; }
+    if (mode === "rendu") { ctx.drawImage(await loadImg(shownRender || PHOTO.example), 0, 0, W, H); return; }
+    ctx.drawImage(await loadImg(PHOTO.base), 0, 0, W, H);
+    if (layerUrl) ctx.drawImage(await loadImg(layerUrl), 0, 0, W, H);
+    if (PHOTO.shadow) ctx.drawImage(await loadImg(PHOTO.shadow), OMBRE.x, OMBRE.y, OMBRE.w, OMBRE.h);
+    ctx.font = "500 26px Inter, Arial, sans-serif"; ctx.textAlign = "right"; ctx.shadowColor = "rgba(0,0,0,.6)"; ctx.shadowBlur = 6;
+    ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.fillText("Aperçu · projection indicative, non contractuelle", W - 26, H - 28); ctx.shadowBlur = 0;
+  }
+  async function showShot(mode) {
+    shotMode = mode;
+    document.querySelectorAll("[data-shot]").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.shot === mode)));
+    $("photoView").hidden = mode === "apercu";
+    const cv = $("shot"); if (cv.width !== PHOTO.w) { cv.width = PHOTO.w; cv.height = PHOTO.h; }
+    if (mode !== "apercu") await paintShot(cv.getContext("2d"), mode);
+  }
+  document.querySelectorAll("[data-shot]").forEach(b => b.addEventListener("click", () => showShot(b.dataset.shot)));
+
+  // live photo mode: the real photo underneath, the 3D elements drawn from the photo's own camera on top
+  const photoBase = $("photoBase");
+  let photoLive = false, liveHidden = [], liveMats = [], liveBg = null;
+  const baseCache = {};
+  async function baseWithShadow() {
+    if (baseCache[view]) return baseCache[view];
+    const c = document.createElement("canvas"); c.width = PHOTO.w; c.height = PHOTO.h; const g = c.getContext("2d");
+    g.drawImage(await loadImg(PHOTO.base), 0, 0, PHOTO.w, PHOTO.h);
+    if (PHOTO.shadow) g.drawImage(await loadImg(PHOTO.shadow), OMBRE.x, OMBRE.y, OMBRE.w, OMBRE.h);
+    return (baseCache[view] = c.toDataURL("image/jpeg", 0.9));
+  }
+  async function setView(id) {
+    view = id; PHOTO = PHOTOS[id]; shownRender = null;
+    document.querySelectorAll("#viewChips .chip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.view === id)));
+    if (photoLive) photoBase.src = await baseWithShadow();
+    resize(); await showShot(shotMode === "rendu" ? "rendu" : shotMode);
+  }
+  Object.keys(PHOTOS).forEach(id => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.dataset.view = id; b.textContent = PHOTOS[id].name;
+    b.setAttribute("aria-pressed", String(id === view)); b.addEventListener("click", () => setView(id)); $("viewChips").appendChild(b);
+  });
+  async function setPhotoLive(on) {
+    if (on === photoLive) return;
+    if (on) photoBase.src = await baseWithShadow();
+    photoLive = on;
+    if (on) {
+      const groups = items.map(it => it.g);
+      scene.children.forEach(c => { if (c.isLight || c === sun.target || c === house || c === shadowCatcher || groups.includes(c)) return; liveHidden.push([c, c.visible]); c.visible = false; });
+      house.traverse(o => { if (o.isMesh) { liveMats.push([o, o.material, o.castShadow]); o.material = depthOnly; o.castShadow = false; } });
+      liveBg = [scene.background, scene.fog]; scene.background = null; scene.fog = null; shadowCatcher.visible = true; renderer.setClearColor(0x000000, 0);
+    } else {
+      liveHidden.forEach(([c, v]) => { c.visible = v; }); liveMats.forEach(([o, m, cs]) => { o.material = m; o.castShadow = cs; });
+      liveHidden = []; liveMats = []; if (liveBg) { scene.background = liveBg[0]; scene.fog = liveBg[1]; } shadowCatcher.visible = false;
+    }
+    photoBase.hidden = !on; stage.classList.toggle("live", on);
+    resize();
+  }
+
+  // 4K render: the hosted version sets window.STUDIO_RENDER_API (server keeps the kie.ai key)
+  let shownRender = null;
+  const renders = [];      // { view, url, test }
+  function addRender(url, test) {
+    renders.unshift({ view, url, test });
+    const gal = $("gal"); gal.innerHTML = ""; $("galBlock").hidden = false;
+    renders.forEach(r => {
+      const b = document.createElement("button"); b.type = "button";
+      b.innerHTML = `<img src="${r.url}" alt="Rendu 4K, ${PHOTOS[r.view].name}" loading="lazy"><span>${PHOTOS[r.view].name}${r.test ? " · test" : ""}</span>`;
+      b.addEventListener("click", async () => { if (view !== r.view) await setView(r.view); shownRender = r.url; showShot("rendu"); });
+      gal.appendChild(b);
+    });
+    shownRender = url; showShot("rendu");
+  }
+  // elements actually visible from the current photo, with where they sit in the frame:
+  // the render must neither invent hidden elements nor move the visible ones
+  function visibleItems() {
+    const pc = new T.PerspectiveCamera(PHOTO.fov, PHOTO.w / PHOTO.h, 0.1, 400);
+    pc.position.fromArray(PHOTO.pos); pc.up.fromArray(PHOTO.up); pc.lookAt(new T.Vector3().fromArray(PHOTO.target)); pc.updateMatrixWorld(); pc.updateProjectionMatrix();
+    const out = [], v = new T.Vector3();
+    items.forEach(it => {
+      it.g.updateMatrixWorld();
+      const [a, b, c, d] = TYPES[it.no].fp, inside = [];
+      let n = 0;
+      for (let i = 0; i <= 6; i++) for (let j = 0; j <= 6; j++) {
+        v.set(a + (b - a) * i / 6, 0, c + (d - c) * j / 6).applyMatrix4(it.g.matrixWorld).project(pc); n++;
+        if (Math.abs(v.x) < 1 && Math.abs(v.y) < 1 && v.z < 1) inside.push([v.x, v.y]);
+      }
+      const share = inside.length / n;
+      if (share < 0.2) return;
+      const mx = inside.reduce((s, p) => s + p[0], 0) / inside.length, my = inside.reduce((s, p) => s + p[1], 0) / inside.length;
+      const side = mx < -0.33 ? "on the left side of the image" : mx > 0.33 ? "on the right side of the image" : "in the centre of the image";
+      const depth = my < -0.45 ? "in the foreground" : my < -0.05 ? "in the middle ground" : "in the background, near the house";
+      out.push({ no: it.no, where: `${side}, ${depth}${share < 0.9 ? ", partly cut off by the edge of the frame" : ""}` });
+    });
+    return out;
+  }
+  const visibleNos = () => [...new Set(visibleItems().map(x => x.no))];
+  // ground zones of the frame left empty by the composition: the render must keep them as plain lawn
+  async function emptyZones(layer) {
+    const c = document.createElement("canvas"); c.width = 30; c.height = 40; const g = c.getContext("2d");
+    g.drawImage(layer, 0, 0, 30, 40);
+    const a = g.getImageData(0, 0, 30, 40).data, names = [["middle-left", "middle-centre", "middle-right"], ["bottom-left", "bottom-centre", "bottom-right"]], out = [];
+    for (let r = 0; r < 2; r++) for (let k = 0; k < 3; k++) {
+      let hit = 0;
+      for (let y = 20 + r * 10; y < 30 + r * 10; y++) for (let x = k * 10; x < k * 10 + 10; x++) if (a[(y * 30 + x) * 4 + 3] > 40) hit++;
+      if (hit === 0) out.push(names[r][k]);
+    }
+    return out;
+  }
+  async function collage() {
+    const c = document.createElement("canvas"); c.width = PHOTO.w; c.height = PHOTO.h; const g = c.getContext("2d");
+    const layer = await loadImg(exportLayer());
+    g.drawImage(await loadImg(PHOTO.base), 0, 0, PHOTO.w, PHOTO.h);
+    g.drawImage(layer, 0, 0, PHOTO.w, PHOTO.h);
+    return { image: c.toDataURL("image/jpeg", 0.92), empty: await emptyZones(layer) };
+  }
+  $("render4k").addEventListener("click", async () => {
+    const meta = document.querySelector('meta[name="studio-render-api"]'), api = window.STUDIO_RENDER_API || (meta && meta.content), status = $("renderStatus");
+    if (!api) { status.textContent = "Prototype non relié au serveur de rendu : la galerie reçoit le rendu 4K obtenu en test sur cette vue (piscine, palmier, pas japonais, massif bois). En ligne, ce bouton génère la composition en cours."; if (!renders.some(r => r.view === view && r.test)) addRender(PHOTO.example, true); else { shownRender = PHOTO.example; showShot("rendu"); } return; }
+    const vis = visibleItems();
+    if (!vis.length) { toast("Aucun élément n'est visible depuis cette prise de vue."); return; }
+    const btn = $("render4k"); btn.disabled = true; status.textContent = "Envoi de la composition au serveur de rendu…";
+    try {
+      let code = { content: "" };
+      try { code.content = localStorage.getItem("studio-code") || ""; } catch (e) { /* no storage */ }
+      if (!code.content) { code.content = (window.prompt("Code d'accès du studio (fourni par Luma) :") || "").trim(); try { localStorage.setItem("studio-code", code.content); } catch (e) { /* no storage */ } }
+      const r = await fetch(api, { method: "POST", headers: { "Content-Type": "application/json", "x-studio-code": code ? code.content : "" }, body: JSON.stringify(Object.assign(await collage(), { items: vis })) });
+      if (r.status === 401) { try { localStorage.removeItem("studio-code"); } catch (e) { /* no storage */ } throw new Error("code d'accès incorrect"); }
+      const { taskId, error } = await r.json(); if (!taskId) throw new Error(error || "refus du serveur");
+      const t0 = Date.now();
+      for (;;) {
+        await new Promise(ok => setTimeout(ok, 5000));
+        status.textContent = "Rendu 4K en cours… " + Math.round((Date.now() - t0) / 1000) + " s";
+        const d = await (await fetch(api + "?task=" + encodeURIComponent(taskId), { headers: { "x-studio-code": code ? code.content : "" } })).json();
+        if (d.state === "success") { status.textContent = "Rendu terminé : téléchargement de l'image 4K…"; await loadImg(d.url); addRender(d.url, false); break; }
+        if (d.state === "fail") throw new Error(d.error || "échec du rendu");
+        if (Date.now() - t0 > 5 * 60 * 1000) throw new Error("délai dépassé");
+      }
+      status.textContent = "Rendu 4K prêt : il est dans la galerie du projet.";
+    } catch (e) { status.textContent = "Le rendu n'a pas abouti (" + e.message + "). Réessayez dans un instant."; }
+    btn.disabled = false;
+  });
+
+  // ---------------------------------------------------------------- recap
+  async function renderRecap() {
+    $("rClient").textContent = ($("client").value.trim() || "Client") + " · " + $("lot").value;
+    const groups = {};
+    items.forEach(it => { (groups[it.no] = groups[it.no] || { n: 0, a: 0 }); groups[it.no].n++; groups[it.no].a += TYPES[it.no].area; });
+    const ul = $("rList"); ul.innerHTML = "";
+    const nos = Object.keys(groups);
+    if (!nos.length) ul.innerHTML = '<li class="empty">Aucun élément : gazon synthétique seul.</li>';
+    nos.forEach(no => { const li = document.createElement("li"); li.innerHTML = `<span class="no">${no}</span><span class="name">${TYPES[no].name}${groups[no].n > 1 ? " × " + groups[no].n : ""}</span><strong>${fmt1.format(groups[no].a)} m²</strong>`; ul.appendChild(li); });
+    $("rPlot").textContent = fmt1.format(plotW()) + " × " + fmt1.format(plotD()) + " m";
+    $("rTurf").textContent = fmt.format(turfArea()) + " m²";
+    $("rTotal").textContent = fmt.format(turfArea() * rate()) + " € HT";
+    layerUrl = exportLayer();
+    const c = document.createElement("canvas"); c.width = PHOTO.w; c.height = PHOTO.h;
+    await paintShot(c.getContext("2d"), "apercu");
+    $("rImg").src = c.toDataURL("image/jpeg", 0.82);
+  }
+  function recapText() {
+    const lines = ["Projet jardin · " + ($("client").value.trim() || "Client"), $("lot").value,
+      "Terrain : " + fmt1.format(plotW()) + " × " + fmt1.format(plotD()) + " m",
+      "Gazon synthétique : " + fmt.format(turfArea()) + " m²"];
+    const seen = {};
+    items.forEach(it => { seen[it.no] = (seen[it.no] || 0) + 1; });
+    Object.keys(seen).forEach(no => lines.push("· n° " + no + " " + TYPES[no].name + (seen[no] > 1 ? " × " + seen[no] : "")));
+    lines.push("Estimation gazon (" + $("rate").selectedOptions[0].textContent + ") : " + fmt.format(turfArea() * rate()) + " € HT");
+    lines.push("Options du catalogue chiffrées sur demande. Projection indicative, non contractuelle.");
+    return lines.join("\n");
+  }
+  let toastTimer = null;
+  function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 2600); }
+  $("copyRecap").addEventListener("click", () => {
+    const text = recapText();
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => toast("Récap copié : collez-le dans un message au client."), () => toast("Copie impossible sur cet appareil."));
+    else toast("Copie impossible sur cet appareil.");
+  });
+
+  // ---------------------------------------------------------------- steps
+  const catHome = { parent: $("catBlock").parentNode, next: $("catBlock").nextElementSibling };
+  function go(n) {
+    step = n;
+    document.querySelectorAll("[data-panel]").forEach(p => { p.hidden = p.dataset.panel !== String(n); });
+    document.querySelectorAll(".step").forEach(b => {
+      const s = +b.dataset.step;
+      if (s === n) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current");
+      b.classList.toggle("done", s < n);
+    });
+    lawn.material = n === 1 ? M.dirt : M.grass;
+    items.forEach(it => { it.g.visible = n !== 1; });
+    dimLines.visible = labW.visible = labD.visible = n <= 2;
+    $("camBar").hidden = n === 3; $("shotBar").hidden = n !== 3;
+    if (n === 3) { setPhotoLive(true); showShot("apercu"); $("catSlot3").appendChild($("catBlock")); }
+    else { setPhotoLive(false); $("photoView").hidden = true; catHome.parent.insertBefore($("catBlock"), catHome.next); }
+    if (n !== 2 && n !== 3) select(null);
+    if (n === 1) goTo("plan"); else if (n === 2) goTo("jardin"); else if (n === 4) goTo("plan");
+    if (n === 4) renderRecap();
+    $("panel").scrollTop = 0;
+    requestRender();
+  }
+  document.querySelectorAll(".step").forEach(b => b.addEventListener("click", () => go(+b.dataset.step)));
+  document.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => go(+b.dataset.go)));
+
+  // ---------------------------------------------------------------- local save (this tablet only)
+  function save() {
+    try { localStorage.setItem("studio-jardin", JSON.stringify({ client: $("client").value, w: plotW(), d: plotD(), items: items.map(it => [it.no, +it.g.position.x.toFixed(2), +it.g.position.z.toFixed(2), +it.g.rotation.y.toFixed(3)]) })); } catch (e) { /* storage unavailable: the session still works */ }
+  }
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem("studio-jardin") || "null"); } catch (e) { saved = null; }
+
+  // ---------------------------------------------------------------- render loop
+  function resize() {
+    const W = stage.clientWidth, H = stage.clientHeight; if (!W || !H) return;
+    let x = 0, y = 0, w = W, h = H;
+    if (photoLive) { const a = PHOTO.w / PHOTO.h; w = W; h = W / a; if (h > H) { h = H; w = H * a; } x = (W - w) / 2; y = (H - h) / 2; }
+    for (const el of [renderer.domElement, photoBase]) Object.assign(el.style, { left: x + "px", top: y + "px", width: w + "px", height: h + "px" });
+    renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); requestRender();
+  }
+  new ResizeObserver(resize).observe(stage); resize();
+  function loop(now) {
+    requestAnimationFrame(loop);
+    if (anim) stepAnim(now);
+    if (!needsRender) return;
+    needsRender = false; updateCamera(); renderer.render(scene, camera);
+  }
+
+  window.studio = { visibleItems: () => visibleItems(), visibleNos: () => visibleNos(), setView: id => setView(id), items: () => items.map(it => [it.no, +it.g.position.x.toFixed(2), +it.g.position.z.toFixed(2)]), addItem: (no, x, z, rot) => { const it = addItem(no, x, z, rot); changed(); return it.uid; }, go, exportLayer, recapText };
+  if (saved && saved.items) {
+    $("client").value = saved.client || $("client").value;
+    PLOT.x1 = PLOT.x0 + clamp(saved.w || 23.5, 18, 30); PLOT.z1 = PLOT.z0 + clamp(saved.d || 25.5, 14, 34);
+    $("dimW").value = plotW(); $("dimD").value = plotD();
+    saved.items.forEach(([no, x, z, r]) => { if (TYPES[no]) addItem(no, x, z, r); });
+  }
+  layoutPlot(); renderCatalogue(); go(1); goTo("plan", true); requestAnimationFrame(loop);
+  setTimeout(() => { loadingEl.hidden = true; }, 6000);
+})();
+</script>
+
+</body>
+</html>
