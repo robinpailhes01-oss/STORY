@@ -833,7 +833,7 @@
       const lab = sideLabels[i] || (sideLabels[i] = makeLabel(dims));
       lab.visible = true; setLabel(lab, fmt1.format(len) + " m"); lab.position.set((x + x2) / 2 + nx * 1.5, 0.5, (z + z2) / 2 + nz * 1.5);
       const h = new T.Mesh(handleGeo, handleMat); h.position.set(x, 0.1, z); h.renderOrder = 11; h.userData.vertex = i; handles.add(h);
-      const pn = cornerLabels[i] || (cornerLabels[i] = makeLabel(handles)); handles.add(pn); setLabel(pn, L(i), true); pn.scale.set(1.5, 0.47, 1);
+      const pn = cornerLabels[i] || (cornerLabels[i] = makeLabel(handles)); handles.add(pn); setLabel(pn, L(i), true); pn.scale.set(2.6, 0.81, 1);
       const [xp, zp] = q[(i + q.length - 1) % q.length], bx = (x - xp) / (Math.hypot(x - xp, z - zp) || 1) - (x2 - x) / len, bz = (z - zp) / (Math.hypot(x - xp, z - zp) || 1) - (z2 - z) / len, bl = Math.hypot(bx, bz) || 1;
       pn.position.set(x + bx / bl * 1.1, 0.4, z + bz / bl * 1.1);
     });
