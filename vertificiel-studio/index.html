@@ -147,7 +147,7 @@
   .views b { font-size: 14px; }
   .views .ok { color: var(--accent); font-weight: 700; white-space: nowrap; }
   .views .todo { color: var(--gold); font-weight: 700; white-space: nowrap; }
-  .busy { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 6; display: flex; align-items: center; gap: 14px; max-width: calc(100% - 32px);
+  .busy { position: absolute; left: 50%; bottom: 80px; transform: translateX(-50%); z-index: 6; display: flex; align-items: center; gap: 14px; max-width: calc(100% - 32px);
     padding: 14px 18px; border-radius: 16px; background: rgba(13, 21, 18, .88); color: #ffffff; box-shadow: 0 8px 28px rgba(0,0,0,.35); }
   .busy b { display: block; font-family: var(--font-display); font-size: 16px; }
   .busy span { font-size: 13px; opacity: .85; font-variant-numeric: tabular-nums; }
@@ -179,6 +179,7 @@
   .cpts button[aria-pressed="true"] { background: var(--gold); border-color: var(--gold); color: #ffffff; }
   .tip { position: absolute; left: 50%; top: 60px; transform: translateX(-50%); z-index: 6; max-width: calc(100% - 32px); padding: 8px 14px; border-radius: 12px; background: rgba(13, 21, 18, .86); color: #ffffff; font-size: 13px; font-weight: 600; text-align: center; pointer-events: none; }
   .views .acts { display: flex; gap: 2px; }
+  .close-shot { position: absolute; top: 12px; left: 12px; z-index: 4; min-height: 40px; padding: 8px 14px; border: 0; border-radius: 999px; background: var(--chip); color: var(--on-photo); font-family: var(--font-display); font-weight: 700; font-size: 13px; cursor: pointer; }
   .dg { border-color: var(--gold); }
   .dg .row b { font-family: var(--font-display); color: var(--accent); }
   .dg .label .cn { text-transform: none; letter-spacing: 0; font-family: var(--font-body); font-weight: 600; color: var(--muted); }
@@ -237,6 +238,7 @@
       <button type="button" data-shot="rendu" aria-pressed="false">Rendu 4K</button>
     </div>
     <div class="photo-view" id="photoView" hidden>
+      <button type="button" class="close-shot" id="closeShot" hidden>← Revenir à la 3D</button>
       <canvas id="shot" width="1194" height="1592" aria-label="Aperçu du projet sur la photo du terrain"></canvas>
     </div>
     <div class="busy" id="busy" role="status" aria-live="polite" hidden><div class="spin" aria-hidden="true"></div><div><b id="busyTitle">Rendu 4K en cours</b><span id="busyText">Envoi de la composition…</span></div></div>
@@ -366,9 +368,15 @@
         <div class="row"><span>Aménagements</span><strong id="cHard">–</strong></div>
         <div class="row total"><span>Estimation gazon</span><strong id="cTotal">–</strong></div>
       </div>
+      <div class="block" id="galBlock2" hidden>
+        <div class="label">Rendus 4K du projet</div>
+        <div class="gal" id="gal2"></div>
+      </div>
       <div class="actions sticky">
-        <button type="button" class="btn" id="render4kNow">Générer le rendu 4K</button>
-        <button type="button" class="btn secondary" data-go="3">Voir et modifier sur la photo</button>
+        <div class="chips" role="group" aria-label="Ambiance du rendu"><button type="button" class="chip" data-amb="jour" aria-pressed="true">Jour</button><button type="button" class="chip" data-amb="soir" aria-pressed="false">Soirée, lumières allumées</button></div>
+        <button type="button" class="btn" id="render4kNow">Générer le rendu 4K de cette vue</button>
+        <p class="note">Cadrez la 3D comme la photo voulue (un doigt pour tourner, deux pour zoomer) : chaque angle donne un rendu. Vous pouvez en lancer plusieurs.</p>
+        <button type="button" class="btn secondary" data-go="3">Voir sur la photo du terrain</button>
       </div>
     </section>
 
@@ -1664,7 +1672,7 @@
     if (PHOTO.free && mode === "rendu" && !shownRender) { toast("Pas encore de rendu pour cette vue : réglez l'angle puis lancez le rendu 4K."); mode = "apercu"; }
     shotMode = mode;
     document.querySelectorAll("[data-shot]").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.shot === mode)));
-    $("photoView").hidden = mode === "apercu";
+    $("photoView").hidden = mode === "apercu"; $("closeShot").hidden = step === 3;
     const cv = $("shot"); if (cv.width !== PHOTO.w) { cv.width = PHOTO.w; cv.height = PHOTO.h; }
     if (mode !== "apercu") await paintShot(cv.getContext("2d"), mode);
   }
@@ -1724,17 +1732,20 @@
     renders.unshift({ view: j.view, url, test, w: j.w, h: j.h, label: j.label });
     if (!test) { site.renders = renders.filter(r => !r.test).slice(0, 40); save(); }
     drawGallery();
-    if (j.view === view && step === 3) { if (PHOTO.free) Object.assign(PHOTO, { w: j.w, h: j.h }); shownRender = url; showShot("rendu"); }
+    if (j.view === view && (step === 3 || (step === 2 && PHOTO.free))) { if (PHOTO.free) Object.assign(PHOTO, { w: j.w, h: j.h }); shownRender = url; showShot("rendu"); }
     else toast("Rendu « " + j.label + " » prêt : touchez-le dans la galerie.");
   }
   // the project's renders, kept with the site (the image files stay on the render service)
   function drawGallery() {
-    const gal = $("gal"); gal.innerHTML = ""; $("galBlock").hidden = !renders.length;
-    renders.forEach(r => {
+    ["gal", "gal2"].forEach(id => { $(id).innerHTML = ""; });
+    $("galBlock").hidden = $("galBlock2").hidden = !renders.length;
+    for (const gal of [$("gal"), $("gal2")]) renders.forEach(r => {
       const b = document.createElement("button"); b.type = "button";
       b.innerHTML = `<img src="${r.url}" alt="" loading="lazy"><span></span>`; b.querySelector("span").textContent = r.label + (r.test ? " · test" : ""); b.querySelector("img").alt = "Rendu 4K, " + r.label;
       b.addEventListener("click", async () => {
         if (!PHOTOS[r.view]) { window.open(r.url, "_blank", "noopener"); return; }
+        if (step !== 3 && !PHOTOS[r.view].free) go(3);
+        if (step !== 3 && step !== 2) go(2);
         if (view !== r.view) await setView(r.view); if (PHOTO.free) Object.assign(PHOTO, { w: r.w, h: r.h }); shownRender = r.url; showShot("rendu");
       });
       gal.appendChild(b);
@@ -1826,7 +1837,7 @@
     pendingWrite(pendingRead().filter(p => Date.now() - p.t0 < 30 * 60 * 1000));
   }
   document.querySelectorAll("[data-amb]").forEach(b => b.addEventListener("click", () => {
-    ambiance = b.dataset.amb; document.querySelectorAll("[data-amb]").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    ambiance = b.dataset.amb; document.querySelectorAll("[data-amb]").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.amb === ambiance)));
   }));
   function progress(title, text) {
     $("busy").hidden = !title; if (!title) return;
@@ -1887,12 +1898,13 @@
   }
   $("render4k").addEventListener("click", render4k);
   // one tap from the 3D: pick the best view, show it on the photo, render
+  // step 2: the render is made from the 3D exactly as it is framed on screen
   $("render4kNow").addEventListener("click", async () => {
     if (!items.length) { toast("Ajoutez au moins un élément du catalogue."); return; }
-    const best = bestView();
-    go(3); await setView(best); await new Promise(ok => setTimeout(ok, 300));
+    shotMode = "apercu"; await setView("libre");
     render4k();
   });
+  $("closeShot").addEventListener("click", () => showShot("apercu"));
 
   // ---------------------------------------------------------------- recap
   async function renderRecap() {
@@ -2126,7 +2138,7 @@
   const catHome = { parent: $("catBlock").parentNode, next: $("catBlock").nextElementSibling };
   function go(n) {
     if (cal) closeCalib();
-    step = n; setTool(null);
+    const prevStep = step; step = n; setTool(null);
     document.querySelectorAll("[data-panel]").forEach(p => { p.hidden = p.dataset.panel !== String(n); });
     document.querySelectorAll(".step").forEach(b => {
       const s = +b.dataset.step;
@@ -2136,9 +2148,10 @@
     lawn.material = n === 1 ? M.dirt : M.grass;
     items.forEach(it => { it.g.visible = n !== 1; });
     dims.visible = n <= 2; handles.visible = n === 1; planMesh.visible = n === 1 && !!site.plan; showBlockSel();
-    $("camBar").hidden = n === 3 && !PHOTO.free; $("shotBar").hidden = n !== 3;
     const firstPhoto = Object.keys(PHOTOS).find(k => !PHOTOS[k].free);
+    if (n === 3 && prevStep === 2 && PHOTO.free && firstPhoto) { view = bestView(); PHOTO = PHOTOS[view]; document.querySelectorAll("#viewChips .chip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.view === view))); document.querySelector('[data-shot="avant"]').hidden = !!PHOTO.free; $("viewHint").hidden = !PHOTO.free; }
     if (n === 4 && PHOTO.free && firstPhoto) { view = firstPhoto; PHOTO = PHOTOS[firstPhoto]; document.querySelectorAll("#viewChips .chip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.view === firstPhoto))); document.querySelector('[data-shot="avant"]').hidden = false; $("viewHint").hidden = true; }
+    $("camBar").hidden = n === 3 && !PHOTO.free; $("shotBar").hidden = n !== 3;
     if (n === 3) { setPhotoLive(!PHOTO.free); showShot("apercu"); $("catSlot3").appendChild($("catBlock")); }
     else { setPhotoLive(false); $("photoView").hidden = true; catHome.parent.insertBefore($("catBlock"), catHome.next); }
     if (n !== 2 && n !== 3) select(null);
