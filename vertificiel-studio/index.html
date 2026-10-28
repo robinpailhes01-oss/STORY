@@ -191,6 +191,23 @@
   .swatches { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
   .swatches button { aspect-ratio: 1; min-height: 36px; border-radius: 8px; border: 2px solid var(--line); background-size: cover; background-position: center; cursor: pointer; padding: 0; }
   .swatches button[aria-pressed="true"] { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold); }
+  /* rendez-vous client: readable at arm's length, big targets */
+  .panel p.lead { font-size: 15.5px; }
+  .note { font-size: 13.5px; }
+  .label { font-size: 12.5px; }
+  .chip { min-height: 44px; font-size: 14.5px; padding: 8px 14px; }
+  .btn { min-height: 56px; font-size: 16.5px; }
+  .ov button { font-size: 14px; min-height: 40px; }
+  .field { font-size: 14px; }
+  .sites { display: grid; gap: 8px; }
+  .sites button { display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: 14px; border: 2px solid var(--line); background: var(--bg); color: var(--fg); cursor: pointer; text-align: left; min-height: 72px; }
+  .sites button[aria-pressed="true"] { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold); }
+  .sites img, .sites .ph { width: 64px; height: 56px; border-radius: 10px; object-fit: cover; flex: none; background: var(--soft); display: grid; place-items: center; color: var(--accent); font-weight: 800; font-size: 22px; }
+  .sites b { display: block; font-size: 16px; }
+  .sites span { font-size: 13.5px; color: var(--muted); }
+  .sites .new b { color: var(--accent); }
+  .prep-toggle { border: 1.5px dashed var(--line); background: transparent; color: var(--accent); border-radius: 12px; min-height: 48px; padding: 10px 14px; font-size: 14.5px; font-weight: 700; cursor: pointer; text-align: center; }
+  .prep { padding-top: 6px; border-top: 1px solid var(--line); }
   .toast { position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); padding: 10px 16px; border-radius: 12px; background: var(--accent); color: var(--on-accent); font-size: 14px; font-weight: 600; z-index: 20; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
 
   @media (max-width: 860px) {
@@ -209,17 +226,17 @@
   <div class="brand"><span>Démo Luma · prototype</span><b>Studio jardin Vertificiel</b></div>
   <nav class="steps" aria-label="Étapes du projet">
     <button type="button" class="step" data-step="1"><i>1</i>Terrain</button>
-    <button type="button" class="step" data-step="2"><i>2</i>Composer</button>
-    <button type="button" class="step" data-step="3"><i>3</i>Aperçu photo</button>
-    <button type="button" class="step" data-step="4"><i>4</i>Récap client</button>
+    <button type="button" class="step" data-step="2"><i>2</i>Le jardin</button>
+    <button type="button" class="step" data-step="3"><i>3</i>Photos 4K</button>
+    <button type="button" class="step" data-step="4"><i>4</i>Récap</button>
   </nav>
 </div>
 
 <div class="main">
   <div class="stage" id="stage">
     <div class="ov tr" role="group" aria-label="Point de vue" id="camBar">
-      <button type="button" id="cam-jardin" data-cam="jardin" aria-pressed="true">3D</button>
-      <button type="button" id="cam-plan" data-cam="plan" aria-pressed="false">Plan</button>
+      <button type="button" id="cam-jardin" data-cam="jardin" aria-pressed="true">Vue 3D</button>
+      <button type="button" id="cam-plan" data-cam="plan" aria-pressed="false">Vue du dessus</button>
       <button type="button" id="cam-photo" data-cam="photo" aria-pressed="false">Angle photo</button>
       <button type="button" id="measureBtn" aria-pressed="false">Mesurer</button>
     </div>
@@ -250,13 +267,16 @@
   <aside class="panel" id="panel">
     <!-- step 1 -->
     <section class="block" data-panel="1">
-      <h2>Le terrain</h2>
-      <p class="lead">Importez le plan de masse ou un fichier de mesures, ou saisissez les cotes. Tout reste modifiable à la main, directement sur le plan.</p>
+      <h2>Le terrain du client</h2>
+      <p class="lead">Touchez le terrain, notez le nom du client, puis commencez le jardin.</p>
+      <div class="sites" id="siteCards" role="group" aria-label="Terrains"></div>
+      <label class="field" for="client">Nom du client<input id="client" type="text" autocomplete="off" placeholder="Ex. : M. et Mme Martin"></label>
+      <div class="actions"><button type="button" class="btn" data-go="2">Commencer le jardin →</button></div>
+      <button type="button" class="prep-toggle" id="prepToggle" aria-expanded="false">Préparer ou modifier ce terrain (cotes, maison, photos)</button>
+      <div class="block prep" id="prepBox" hidden>
+      <p class="note">À faire une fois par terrain, avant le rendez-vous : importez le plan de masse ou un fichier de mesures, ou saisissez les cotes.</p>
       <label class="field" for="siteSel">Terrain<select id="siteSel"></select></label>
-      <div class="pair">
-        <label class="field" for="siteName">Lot<input id="siteName" type="text" autocomplete="off"></label>
-        <label class="field" for="client">Client<input id="client" type="text" autocomplete="off"></label>
-      </div>
+      <label class="field" for="siteName">Nom du lot<input id="siteName" type="text" autocomplete="off"></label>
       <div class="block">
         <div class="label">Importer</div>
         <div class="chips">
@@ -312,8 +332,8 @@
         <div class="row total"><span>Jardin à aménager</span><strong id="kGarden">–</strong></div>
       </div>
       <div class="actions">
-        <button type="button" class="btn" data-go="2">Composer le jardin</button>
         <button type="button" class="chip ghost" id="siteDel">Supprimer ce terrain</button>
+      </div>
       </div>
     </section>
 
@@ -334,10 +354,10 @@
 
     <!-- step 2 -->
     <section class="block" data-panel="2" hidden>
-      <h2>Composer</h2>
-      <p class="lead">Touchez un élément pour l'ajouter, puis faites-le glisser sur le terrain.</p>
+      <h2>Le jardin</h2>
+      <p class="lead">Partez d'une idée prête ou touchez un élément du catalogue, puis faites-le glisser sur le terrain avec le doigt.</p>
       <div class="block">
-        <div class="label">Partir d'une palette</div>
+        <div class="label">Idées prêtes</div>
         <div class="chips" id="palChips"></div>
       </div>
       <div class="block" id="catBlock">
@@ -375,21 +395,22 @@
       <div class="actions sticky">
         <div class="chips" role="group" aria-label="Ambiance du rendu"><button type="button" class="chip" data-amb="jour" aria-pressed="true">Jour</button><button type="button" class="chip" data-amb="soir" aria-pressed="false">Soirée, lumières allumées</button></div>
         <button type="button" class="btn" id="render4kNow">Générer le rendu 4K de cette vue</button>
-        <p class="note">Cadrez la 3D comme la photo voulue (un doigt pour tourner, deux pour zoomer) : chaque angle donne un rendu. Vous pouvez en lancer plusieurs.</p>
-        <button type="button" class="btn secondary" data-go="3">Voir sur la photo du terrain</button>
+        <p class="note">La photo reprend l'angle affiché : tournez la vue avant de lancer. Plusieurs angles possibles.</p>
+        <button type="button" class="btn secondary" data-go="3">Voir les photos 4K</button>
       </div>
     </section>
 
     <!-- step 3 -->
     <section class="block" data-panel="3" hidden>
-      <h2>Sur la photo du terrain</h2>
-      <p class="lead">La composition est posée sur la vraie photo, sous le même angle. Touchez un élément pour le déplacer, le tourner ou le retirer. La vue libre permet de choisir n'importe quel angle.</p>
+      <h2>Photos 4K du projet</h2>
+      <p class="lead">Les photos réalistes du projet, à montrer au client. Pour une photo où la maison est strictement identique, choisissez une photo du terrain ci-dessous et lancez le rendu.</p>
+      <div id="galSlot3"></div>
       <div class="kpi" aria-live="polite">
         <div class="row"><span>Gazon synthétique</span><strong id="pTurf">–</strong></div>
         <div class="row total"><span>Estimation gazon</span><strong id="pTotal">–</strong></div>
       </div>
       <div class="block">
-        <div class="label">Prise de vue</div>
+        <div class="label">Photo du terrain</div>
         <div class="chips" id="viewChips" role="group" aria-label="Prise de vue"></div>
         <div class="label">Ambiance</div>
         <div class="chips" id="ambChips" role="group" aria-label="Ambiance du rendu"><button type="button" class="chip" data-amb="jour" aria-pressed="true">Jour</button><button type="button" class="chip" data-amb="soir" aria-pressed="false">Soirée, lumières allumées</button></div>
@@ -433,9 +454,11 @@
         <div class="row total"><span>Estimation gazon</span><strong id="rTotal">–</strong></div>
       </div>
       <p class="note">Options du catalogue chiffrées sur demande. Montants HT. Projection indicative, non contractuelle.</p>
-      <div class="actions">
-        <button type="button" class="btn" id="copyRecap">Copier le récap pour le client</button>
-        <button type="button" class="btn secondary" data-go="2">Modifier</button>
+      <div class="actions sticky">
+        <button type="button" class="btn" id="shareRecap">Envoyer au client</button>
+        <button type="button" class="btn secondary" id="copyRecap">Copier le récap</button>
+        <button type="button" class="btn secondary" data-go="2">Modifier le jardin</button>
+        <button type="button" class="prep-toggle" id="newClient">Nouveau client sur ce terrain</button>
       </div>
     </section>
   </aside>
@@ -878,7 +901,7 @@
       pn.position.set(x + bx / bl * 1.1, 0.4, z + bz / bl * 1.1);
     });
     for (let i = q.length; i < sideLabels.length; i++) sideLabels[i].visible = false;
-    handles.visible = step === 1 && !tool;
+    handles.visible = step === 1 && !tool && prepOpen;
     items.forEach(it => { if (!fits(it.no, it.g.position.x, it.g.position.z, it.g.rotation.y, fpOf(it))) placeFree(it); });
     renderNumbers(); renderSiteUI(); requestRender();
   }
@@ -1154,7 +1177,7 @@
     $("palChips").appendChild(b);
   });
   const clear = document.createElement("button"); clear.type = "button"; clear.className = "chip ghost"; clear.textContent = "Tout effacer";
-  clear.addEventListener("click", () => { [...items].forEach(removeItem); changed(); });
+  clear.addEventListener("click", () => { if (items.length && !window.confirm("Retirer tous les éléments du jardin ?")) return; [...items].forEach(removeItem); changed(); });
   $("palChips").appendChild(clear);
 
   // ---------------------------------------------------------------- sites: each plot keeps its outline, volumes, photos, plan and composition (stored on this tablet)
@@ -1195,6 +1218,18 @@
     siteList.forEach(x => { const o = document.createElement("option"); o.value = x.id; o.textContent = x.name + (x.demo ? " (démo)" : ""); sel.appendChild(o); });
     const o = document.createElement("option"); o.value = "+"; o.textContent = "+ Nouveau terrain"; sel.appendChild(o);
     sel.value = site.id;
+    const cards = $("siteCards"); cards.innerHTML = "";
+    siteList.forEach(x => {
+      const b = document.createElement("button"); b.type = "button"; b.setAttribute("aria-pressed", String(x.id === site.id));
+      const thumb = x.demo ? "img/face-avant-mini.jpg" : x.photos && x.photos[0] ? x.photos[0].thumb : null;
+      b.innerHTML = (thumb ? `<img src="${thumb}" alt="">` : '<span class="ph">' + ((x.name || "?").trim()[0] || "?").toUpperCase() + "</span>") + "<span><b></b><span></span></span>";
+      b.querySelector("b").textContent = x.id === site.id ? site.name : x.name;
+      b.querySelector("span span").textContent = fmt.format(polyArea(x.poly || [[0, 0], [1, 0], [1, 1]])) + " m²" + ((x.id === site.id ? $("client").value : x.client) ? " · " + (x.id === site.id ? $("client").value : x.client) : "");
+      b.addEventListener("click", () => { if (x.id !== site.id) switchSite(x.id); });
+      cards.appendChild(b);
+    });
+    const nb = document.createElement("button"); nb.type = "button"; nb.className = "new"; nb.innerHTML = '<span class="ph">+</span><span><b>Nouveau terrain</b><span>À préparer avec le plan et les photos</span></span>';
+    nb.addEventListener("click", async () => { await switchSite("+"); setPrep(true); }); cards.appendChild(nb);
   }
   async function loadSite(s) {
     flushSave();
@@ -1210,12 +1245,23 @@
     changed(); await refreshSites();
     if (step === 1) goTo("plan", true);
   }
-  $("siteSel").addEventListener("change", async e => {
-    const v = e.target.value; save(); flushSave();
+  $("siteSel").addEventListener("change", e => switchSite(e.target.value));
+  async function switchSite(v) {
+    save(); flushSave();
     if (v === "+") { await loadSite(NEW_SITE()); save(); toast("Nouveau terrain : importez le plan de masse ou saisissez les cotes."); return; }
     let s2 = null; try { s2 = await DB.get(v); } catch (err) { s2 = null; }
     await loadSite(s2 || siteList.find(x => x.id === v) || DEMO());
-  });
+  }
+  // the preparation (outline, house, photos) is hidden during a meeting, so nothing moves by mistake
+  let prepOpen = false;
+  function setPrep(on) {
+    prepOpen = on; $("prepBox").hidden = !on; $("prepToggle").setAttribute("aria-expanded", String(on));
+    $("prepToggle").textContent = on ? "Fermer la préparation du terrain" : "Préparer ou modifier ce terrain (cotes, maison, photos)";
+    if (!on) { selBlock = null; setTool(null); }
+    handles.visible = step === 1 && on && !tool; showBlockSel(); requestRender();
+  }
+  $("prepToggle").addEventListener("click", () => setPrep(!prepOpen));
+  $("client").addEventListener("change", () => refreshSites());
   $("siteName").addEventListener("change", () => { save(); refreshSites(); });
   $("client").addEventListener("input", save);
   $("siteDel").addEventListener("click", async () => {
@@ -1319,7 +1365,7 @@
   const selLine = new T.LineLoop(new T.BufferGeometry(), new T.LineBasicMaterial({ color: 0xffd54a, depthTest: false })); selLine.renderOrder = 11; blockSel.add(selLine);
   const resizeH = new T.Mesh(handleGeo, new T.MeshBasicMaterial({ color: 0xffd54a, depthTest: false })); resizeH.renderOrder = 12; blockSel.add(resizeH);
   function showBlockSel() {
-    blockSel.visible = !!selBlock && step === 1 && !tool;
+    blockSel.visible = !!selBlock && step === 1 && !tool && prepOpen;
     if (selBlock) {
       const P = blockPts(selBlock);
       selLine.geometry.dispose(); selLine.geometry = new T.BufferGeometry().setFromPoints(P.map(([x, z]) => new T.Vector3(x, 0.1, z)));
@@ -1431,7 +1477,7 @@
     $("measureBtn").setAttribute("aria-pressed", String(t === "measure"));
     $("traceBox").hidden = t !== "trace"; $("traceCount").textContent = "0 angle";
     tip(t ? TIPS[t] : null);
-    handles.visible = step === 1 && !t; showBlockSel(); requestRender();
+    handles.visible = step === 1 && !t && prepOpen; showBlockSel(); requestRender();
   }
   $("measureBtn").addEventListener("click", () => setTool(tool === "measure" ? null : "measure"));
   function mark(p, g) { const m = new T.Mesh(markGeo, markMat); m.position.copy(p); m.renderOrder = 12; g.add(m); }
@@ -1580,12 +1626,13 @@
     return null;
   }
   canvas.addEventListener("pointerdown", e => {
+    if (!tool && !$("tip").hidden) tip(null);
     canvas.setPointerCapture(e.pointerId); pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (pointers.size === 2) { if (photoLive) return; const [a, b] = [...pointers.values()]; drag = null; rotating = null; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), r: cam.r }; return; }
     if (pointers.size > 2) return;
     down = { x: e.clientX, y: e.clientY, moved: false };
     if (tool) { rotating = { x: e.clientX, y: e.clientY }; return; }
-    if (step === 1) { const ed = pickEdit(e); if (ed) { drag = ed; return; } }
+    if (step === 1 && prepOpen) { const ed = pickEdit(e); if (ed) { drag = ed; return; } }
     const it = pick(e);
     if (it) { select(it); if (ray.ray.intersectPlane(ground, hit)) drag = { it, dx: it.g.position.x - hit.x, dz: it.g.position.z - hit.z }; }
     else rotating = { x: e.clientX, y: e.clientY };
@@ -1880,7 +1927,7 @@
     try {
       let code = "";
       try { code = localStorage.getItem("studio-code") || ""; } catch (e) { /* no storage */ }
-      if (!code) { code = (window.prompt("Code d'accès du studio (fourni par Luma) :") || "").trim(); try { localStorage.setItem("studio-code", code); } catch (e) { /* no storage */ } }
+      if (!code) { code = (window.prompt("Code d'accès du studio (une seule fois sur cette tablette) :") || "").trim(); try { localStorage.setItem("studio-code", code); } catch (e) { /* no storage */ } }
       const payload = shot ? { mode: "free", image: shot.image, aspect: job.aspect, items: vis, ambiance: job.amb, site: site.demo ? "demo" : "custom", refs: site.demo ? [] : await houseRefs() }
         : Object.assign(await comp, { items: vis, ambiance: job.amb, aspect: job.aspect, lawn: job.custom });
       const r = await fetch(api, { method: "POST", headers: { "Content-Type": "application/json", "x-studio-code": code }, body: JSON.stringify(payload) });
@@ -1919,6 +1966,8 @@
     $("rPlot").textContent = fmt.format(plotArea()) + " m²";
     $("rTurf").textContent = fmt.format(turfArea()) + " m²";
     $("rTotal").textContent = fmt.format(turfArea() * rate()) + " € HT";
+    const best = renders.find(r => !r.test);
+    if (best) { $("rImg").src = best.url; return; }      // the latest 4K photo is what the client remembers
     if (PHOTO.free) { goTo("jardin", true); $("rImg").src = freeShot().image; goTo("plan"); return; }
     layerUrl = exportLayer();
     const c = document.createElement("canvas"); c.width = PHOTO.w; c.height = PHOTO.h;
@@ -2134,6 +2183,20 @@
     } catch (err) { toast("Photo illisible : " + err.message); }
   });
 
+  $("galSlot3").appendChild($("galBlock"));
+  // ---------------------------------------------------------------- recap: send to the client, start a new client
+  $("shareRecap").addEventListener("click", async () => {
+    const photos = renders.filter(r => !r.test).map(r => "· " + r.label + " : " + r.url);
+    const text = recapText() + (photos.length ? "\n\nPhotos du projet :\n" + photos.join("\n") : "");
+    if (navigator.share) { try { await navigator.share({ title: "Projet jardin · " + ($("client").value.trim() || site.name), text }); return; } catch (e) { if (e && e.name === "AbortError") return; } }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => toast("Récap et photos copiés : collez-les dans un message au client."), () => toast("Envoi impossible sur cet appareil."));
+    else toast("Envoi impossible sur cet appareil.");
+  });
+  $("newClient").addEventListener("click", () => {
+    if (!window.confirm("Commencer un nouveau client sur ce terrain ? Le jardin et les photos en cours seront effacés.")) return;
+    [...items].forEach(removeItem); renders.length = 0; site.renders = []; drawGallery(); $("client").value = ""; changed(); refreshSites(); go(1);
+  });
+
   // ---------------------------------------------------------------- steps
   const catHome = { parent: $("catBlock").parentNode, next: $("catBlock").nextElementSibling };
   function go(n) {
@@ -2147,7 +2210,10 @@
     });
     lawn.material = n === 1 ? M.dirt : M.grass;
     items.forEach(it => { it.g.visible = n !== 1; });
-    dims.visible = n <= 2; handles.visible = n === 1; planMesh.visible = n === 1 && !!site.plan; showBlockSel();
+    dims.visible = n <= 2; handles.visible = n === 1 && prepOpen;
+    $("cam-photo").hidden = n !== 3;
+    if (n === 2 && prevStep !== 2) { tip("Un doigt : tourner la vue  ·  Deux doigts : zoomer  ·  Touchez un élément pour le déplacer"); clearTimeout(go.tipT); go.tipT = setTimeout(() => { if (!tool) tip(null); }, 7000); }
+    else if (!tool) tip(null); planMesh.visible = n === 1 && !!site.plan; showBlockSel();
     const firstPhoto = Object.keys(PHOTOS).find(k => !PHOTOS[k].free);
     if (n === 3 && prevStep === 2 && PHOTO.free && firstPhoto) { view = bestView(); PHOTO = PHOTOS[view]; document.querySelectorAll("#viewChips .chip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.view === view))); document.querySelector('[data-shot="avant"]').hidden = !!PHOTO.free; $("viewHint").hidden = !PHOTO.free; }
     if (n === 4 && PHOTO.free && firstPhoto) { view = firstPhoto; PHOTO = PHOTOS[firstPhoto]; document.querySelectorAll("#viewChips .chip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.view === firstPhoto))); document.querySelector('[data-shot="avant"]').hidden = false; $("viewHint").hidden = true; }
@@ -2183,6 +2249,10 @@
   window.studio = { visibleItems: () => visibleItems(), visibleNos: () => visibleNos(), setView: id => setView(id), items: () => items.map(it => [it.no, +it.g.position.x.toFixed(2), +it.g.position.z.toFixed(2)]), addItem: (no, x, z, rot, spec) => { const it = addItem(no, x, z, rot, spec); changed(); return it.uid; }, go, exportLayer, recapText,
     toScreen: (x, y, z) => { const v = new THREE.Vector3(x, y, z).project(camera), r = renderer.domElement.getBoundingClientRect(); return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height]; },
     jobs: () => jobs.map(j => ({ label: j.label, t0: j.t0, state: j.state, now: Date.now() })), site: () => site, solvePose: (pts, W, H) => solvePose(pts, W, H), projector, garden: () => gardenArea(), loadSite: s2 => loadSite(s2), photos: () => Object.keys(PHOTOS) };
+  try {
+    const q = new URLSearchParams(location.search), c = q.get("code");
+    if (c) { localStorage.setItem("studio-code", c.trim()); q.delete("code"); history.replaceState(null, "", location.pathname + (q.toString() ? "?" + q : "") + location.hash); }
+  } catch (e) { /* no storage */ }
   (async () => {
     let cur = null, id = null;
     try { id = localStorage.getItem("studio-site"); } catch (e) { id = null; }
