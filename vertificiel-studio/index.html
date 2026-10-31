@@ -321,7 +321,7 @@
       <div class="sites" id="siteCards" role="group" aria-label="Terrains"></div>
       <div class="sub spots">
         <div class="label">Sur place : photos du jardin</div>
-        <p class="note">Allez à chaque point 📷 du plan et touchez-le : l'appareil photo s'ouvre. Visez la maison. Les éléments existants (kiosque, spa, abri, arbres…) s'ajoutent à la 3D, à vérifier.</p>
+        <p class="note">Placez-vous à chaque point 📷, aux angles de la maison, et touchez-le : l'appareil photo s'ouvre. Photographiez le jardin dans le sens de la flèche, en gardant si possible un bout de maison ou de clôture dans l'image. Ce qui est au sol (terrasse, allées, massifs, kiosque, spa, abri, arbres) s'ajoute à la 3D, à vérifier.</p>
         <div class="chips"><button type="button" class="chip" id="spotAdd">+ Point photo sur le plan</button></div>
         <p class="note" id="spotMsg" hidden></p>
         <input type="file" id="fileCam" accept="image/*" capture="environment" hidden>
@@ -713,6 +713,8 @@
     abri: { name: "Abri, garage", add: "Abri, garage", w: 3, d: 2.5, h: 2.4, hh: true },
     arbre: { name: "Arbre existant", add: "Arbre", w: 4, d: 4, h: 7, hh: true },
     haie: { name: "Haie", add: "Haie", w: 6, d: 0.9, h: 1.8, hh: true },
+    mineral: { name: "Allée, gravier, dallage", add: "Allée, gravier", w: 4, d: 1.5, h: 0 },
+    massif: { name: "Massif, plantations", add: "Massif", w: 3, d: 1.5, h: 0 },
     zone: { name: "Zone non aménageable", add: "Zone non aménageable", w: 4, d: 3, h: 0 },
   };
   const zoneMat = new T.MeshLambertMaterial({ color: lin(0xc9a46a), transparent: true, opacity: 0.6 });
@@ -735,7 +737,9 @@
     } else if (k === "arbre") {
       const r = Math.min(b.w, b.d) / 2; g.add(box(0.35, b.h * 0.45, 0.35, M.darkWood));
       [[0, 0.72, 0], [0.35, 0.62, 0.2], [-0.3, 0.6, -0.25], [0.1, 0.85, -0.3], [-0.25, 0.8, 0.3]].forEach(([x, y, z]) => g.add(blob(r * 0.62, M.tree, x * r, b.h * y, z * r)));
-    } else g.add(flatMesh(b.w, b.d, zoneMat, 0.02));
+    } else if (k === "mineral") g.add(flatMesh(b.w, b.d, lambert({ map: gravelTex(b.w / 2, b.d / 2) }), 0.02));
+    else if (k === "massif") { g.add(flatMesh(b.w, b.d, M.soil, 0.02)); for (let i = 0; i < Math.min(12, Math.round(b.w * b.d)); i++) g.add(blob(0.35, M.hedge, (rnd() - 0.5) * b.w * 0.8, 0.3, (rnd() - 0.5) * b.d * 0.8)); }
+    else g.add(flatMesh(b.w, b.d, zoneMat, 0.02));
     g.position.set(b.x, 0, b.z); g.rotation.y = b.rot || 0; g.userData.block = b;
     return g;
   }
@@ -1817,36 +1821,36 @@
     return [hs.reduce((a2, b) => a2 + b.x, 0) / hs.length, hs.reduce((a2, b) => a2 + b.z, 0) / hs.length];
   }
   // default points: the corners of the garden, 2 m inside, and the middle of the garden
+  // default points: just outside each corner of the house, looking diagonally over the garden
   function defaultSpots() {
-    const q = site.poly, sg = polySign(q), out = [], houses = site.blocks.filter(b => b.kind === "maison" || b.kind === "piscine").map(blockPts);
-    const nearHouse = (x, z) => site.blocks.some(b => b.kind === "maison" && inPoly(x, z, rectPts(b.x, b.z, -b.w / 2 - 3, b.w / 2 + 3, -b.d / 2 - 3, b.d / 2 + 3, b.rot || 0)));
-    const free = (x, z) => inPoly(x, z, q) && !houses.some(h => inPoly(x, z, h)) && !nearHouse(x, z);
-    const corners = q.map((p, i) => {
-      const a2 = q[(i + q.length - 1) % q.length], b = q[(i + 1) % q.length], u = [p[0] - a2[0], p[1] - a2[1]], v = [b[0] - p[0], b[1] - p[1]];
-      const lu = Math.hypot(...u) || 1, lv = Math.hypot(...v) || 1, n1 = [-u[1] / lu * sg, u[0] / lu * sg], n2 = [-v[1] / lv * sg, v[0] / lv * sg];
-      const bis = [n1[0] + n2[0], n1[1] + n2[1]], lb = Math.hypot(...bis) || 1;
-      return { x: p[0] + bis[0] / lb * 2.6, z: p[1] + bis[1] / lb * 2.6, turn: Math.abs(Math.atan2(u[0] * v[1] - u[1] * v[0], u[0] * v[0] + u[1] * v[1])) };
-    }).filter(c => free(c.x, c.z)).sort((a2, b) => b.turn - a2.turn).slice(0, 4);
-    corners.forEach(c => out.push([c.x, c.z]));
-    // the middle of the garden: the free point farthest from the house, halfway
-    const [hx, hz] = houseCentre(), bb = bbox(q); let best = null;
-    for (let x = bb[0]; x <= bb[1]; x += 1) for (let z = bb[2]; z <= bb[3]; z += 1) if (free(x, z)) { const d = Math.hypot(x - hx, z - hz); if (!best || d > best[2]) best = [x, z, d]; }
-    if (best) out.push([(best[0] + hx) / 2, (best[1] + hz) / 2]);
-    return out.filter(([x, z]) => free(x, z)).map(([x, z], i) => ({ id: "s" + Date.now().toString(36) + i, x: +x.toFixed(2), z: +z.toFixed(2), photo: null }));
+    const q = site.poly, hs = site.blocks.filter(b => b.kind === "maison"), solids = site.blocks.filter(b => b.kind === "maison" || b.kind === "piscine" || b.kind === "abri").map(blockPts);
+    const out = [];
+    hs.forEach(b => blockPts(b).forEach(([x, z]) => {
+      const dx = x - b.x, dz = z - b.z, l = Math.hypot(dx, dz) || 1, px = x + dx / l * 2, pz = z + dz / l * 2;
+      if (!inPoly(px, pz, q) || solids.some(r => inPoly(px, pz, r))) return;
+      if (out.some(o => Math.hypot(o.x - px, o.z - pz) < 4)) return;
+      // aim: away from the house, towards the garden
+      out.push({ x: px, z: pz, ax: dx / l, az: dz / l });
+    }));
+    return out.slice(0, 6).map((o, i) => ({ id: "s" + Date.now().toString(36) + i, x: +o.x.toFixed(2), z: +o.z.toFixed(2), ax: +o.ax.toFixed(3), az: +o.az.toFixed(3), photo: null }));
+  }
+  // where a point looks: its saved direction, else away from the house
+  function spotAim(sp) {
+    if (sp.ax != null) return [sp.ax, sp.az];
+    const [hx, hz] = houseCentre(), dx = sp.x - hx, dz = sp.z - hz, l = Math.hypot(dx, dz) || 1; return [dx / l, dz / l];
   }
   const spotLabels = [];
   function drawSpots() {
     spotGroup.clear();
     if (!site) return;
     if (!site.spots) site.spots = defaultSpots();
-    const [hx, hz] = houseCentre();
     site.spots.forEach((sp, i) => {
       const lab = spotLabels[i] || (spotLabels[i] = makeLabel(spotGroup)); spotGroup.add(lab);
       const done = sp.photo && site.photos.some(p => p.id === sp.photo);
       setLabel(lab, (done ? "✓ " : "📷 ") + (i + 1), !done); const k2 = Math.max(1, Math.max(...(b => [b[1] - b[0], b[3] - b[2]])(bbox(site.poly))) / 25); lab.scale.set(3.6 * k2, 1.12 * k2, 1); lab.position.set(sp.x, 0.6, sp.z);
       lab.userData.spot = sp;
       // the direction to aim: towards the house
-      const ang = Math.atan2(hz - sp.z, hx - sp.x), L = 2.6, tip2 = [sp.x + Math.cos(ang) * L, sp.z + Math.sin(ang) * L];
+      const [ux, uz] = spotAim(sp), L = 2.6, tip2 = [sp.x + ux * L, sp.z + uz * L];
       const ar = new T.Line(new T.BufferGeometry().setFromPoints([new T.Vector3(sp.x, 0.12, sp.z), new T.Vector3(tip2[0], 0.12, tip2[1])]), lineMat); ar.renderOrder = 12; spotGroup.add(ar);
     });
     spotGroup.visible = step === 1; requestRender();
@@ -1866,13 +1870,14 @@
     return c;
   }
   function sketchFor(pose, w, h) {
-    const W = 1024, Hh = Math.round(1024 * h / w), pc = poseCam(pose, w, h);
+    // wide angle (110° across): the tablet may not point exactly along the arrow
+    const W = 1024, Hh = Math.round(1024 * h / w), wide = Object.assign({}, pose, { fov: 2 * Math.atan(Math.tan(55 * Math.PI / 180) * h / w) * 180 / Math.PI }), pc = poseCam(wide, w, h);
     const hide = [items.map(it => it.g), measures, toolGroup, planMesh, handles, blockSel, dims, spotGroup].flat().map(o => [o, o.visible]); hide.forEach(([o]) => { o.visible = false; });
     const size = renderer.getSize(new T.Vector2()), ratio = renderer.getPixelRatio();
     renderer.setPixelRatio(1); renderer.setSize(W, Hh, false); renderer.render(scene, pc);
     const c = document.createElement("canvas"); c.width = W; c.height = Hh; const g = c.getContext("2d"); g.drawImage(renderer.domElement, 0, 0);
     renderer.setPixelRatio(ratio); renderer.setSize(size.x, size.y, false); hide.forEach(([o, v]) => { o.visible = v; }); requestRender();
-    const keys = calibKeys().filter(k => !k.key.startsWith("T")), ids = [], map = {}, v = new T.Vector3();
+    const keys = calibKeys(), ids = [], map = {}, v = new T.Vector3();
     g.font = "bold 26px Arial, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
     const rc = new T.Raycaster(), solid = [];
     house.traverse(o => { if (o.isMesh && o.parent !== demoWalls) solid.push(o); });
@@ -1884,7 +1889,17 @@
       const x = (v.x + 1) / 2 * W, y = (1 - v.y) / 2 * Hh, id = String(ids.length + 1); ids.push(id); map[id] = k;
       g.fillStyle = "#e0222b"; g.beginPath(); g.arc(x, y, 9, 0, 7); g.fill(); g.lineWidth = 4; g.strokeStyle = "#ffffff"; g.strokeText(id, x + 20, y - 14); g.fillStyle = "#e0222b"; g.fillText(id, x + 20, y - 14);
     });
-    return { image: c.toDataURL("image/jpeg", 0.85), ids, map };
+    // the plot sides at ground level, so that fences, hedges and borders seen in the photo can be used too
+    const COLS = ["#e0222b", "#1f6fe0", "#e08a00", "#7a2be0", "#00a37a", "#d6249f", "#444444", "#8a5a00"], sides = [];
+    site.poly.forEach((p, i) => {
+      const p2 = site.poly[(i + 1) % site.poly.length], pts2 = [];
+      for (let t = 0; t <= 1.0001; t += 1 / 40) { v.set(p[0] + (p2[0] - p[0]) * t, 0.02, p[1] + (p2[1] - p[1]) * t).project(pc); if (v.z < 1 && Math.abs(v.x) < 1.2 && Math.abs(v.y) < 1.2) pts2.push([(v.x + 1) / 2 * W, (1 - v.y) / 2 * Hh]); }
+      if (pts2.length < 4) return;
+      const id = "S" + (sides.length + 1), col = COLS[sides.length % COLS.length]; sides.push({ id, i });
+      g.strokeStyle = col; g.lineWidth = 6; g.beginPath(); pts2.forEach(([x, y], k) => (k ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke();
+      const m = pts2[Math.floor(pts2.length / 2)]; g.lineWidth = 4; g.strokeStyle = "#ffffff"; g.strokeText(id, m[0], m[1] - 18); g.fillStyle = col; g.fillText(id, m[0], m[1] - 18);
+    });
+    return { image: c.toDataURL("image/jpeg", 0.85), ids, map, sides };
   }
   // a point of the photo (0..1000) seen from the pose, down to the ground (y = 0)
   function toGround(pc, x, y) {
@@ -1892,42 +1907,97 @@
     const p = new T.Vector3(); if (!ray.ray.intersectPlane(ground, p)) return null;
     return p.distanceTo(pc.position) < 80 ? p : null;
   }
-  const PHOTO_KIND = { kiosque: "kiosque", spa: "spa", piscine: "piscine", abri: "abri", arbre: "arbre", haie: "haie", terrasse: "terrasse", massif: "zone" };
+  const PHOTO_KIND = { kiosque: "kiosque", spa: "spa", piscine: "piscine", abri: "abri", arbre: "arbre", haie: "haie", terrasse: "terrasse", allee: "mineral", massif: "massif" };
+  // the photo is taken from a known point, by someone standing (1.5 m), tablet roughly level, usual lens:
+  // a corner or a few points on the plot sides are enough to find where it looks
+  function solveFromSpot(pts, segs, W, H, pose0) {
+    const x0 = pose0.pos[0], z0 = pose0.pos[2], v = [pose0.target[0] - x0, pose0.target[1] - 1.5, pose0.target[2] - z0], fov0 = pose0.fov;
+    const reproj = q => {
+      const pr = projector(q, W, H); let s2 = 0;
+      for (const t of pts) { const r = pr(t.p); if (!r) return 1e15; s2 += (r[0] - t.u) ** 2 + (r[1] - t.v) ** 2; }
+      for (const e of segs) {      // distance from the point to the side as seen in the photo
+        let best2 = Infinity, prev = null;
+        for (let k = 0; k <= 30; k++) { const r = pr([e.a[0] + (e.b[0] - e.a[0]) * k / 30, 0, e.a[1] + (e.b[1] - e.a[1]) * k / 30]); if (r && prev) { const dx = r[0] - prev[0], dy = r[1] - prev[1], L2 = dx * dx + dy * dy || 1, t2 = clamp(((e.u - prev[0]) * dx + (e.v - prev[1]) * dy) / L2, 0, 1); best2 = Math.min(best2, (prev[0] + t2 * dx - e.u) ** 2 + (prev[1] + t2 * dy - e.v) ** 2); } prev = r; }
+        s2 += best2 === Infinity ? (0.3 * W) ** 2 : best2;
+      }
+      return s2;
+    };
+    const n = pts.length + segs.length, px = (0.02 * W) ** 2;
+    const prior = q => px * ((q[0] - x0) ** 2 + (q[2] - z0) ** 2 + 9 * (q[1] - 1.5) ** 2 + (q[5] / 0.06) ** 2 + ((q[6] - fov0) / (fov0 * 0.12)) ** 2);
+    const cost = q => (q[6] < 30 || q[6] > 120) ? 1e15 : reproj(q) + prior(q);
+    let best = null;
+    for (let k = 0; k < 12; k++) {
+      const q0 = [x0, 1.5, z0, Math.atan2(-v[0], -v[2]) + k * Math.PI / 6, -0.15, 0, fov0];
+      const r = nelderMead(cost, nelderMead(cost, q0, [0.4, 0.1, 0.4, 0.2, 0.1, 0.03, 5], 500).x, [0.1, 0.03, 0.1, 0.03, 0.02, 0.01, 1], 1500);
+      if (!best || r.f < best.f) best = r;
+    }
+    const q = best.x, R = rotM(q[3], q[4], q[5]), fwd = [-R[0][2], -R[1][2], -R[2][2]];
+    return { err: Math.sqrt(reproj(q) / Math.max(1, n)), n, q,
+      pose: { pos: q.slice(0, 3).map(v2 => +v2.toFixed(4)), target: [0, 1, 2].map(i => +(q[i] + fwd[i] * 10).toFixed(4)), up: [R[0][1], R[1][1], R[2][1]].map(v2 => +v2.toFixed(5)), fov: +q[6].toFixed(3) } };
+  }
+  // the lens of the photo, from its EXIF data (focal length in 35 mm equivalent): makes the pose much surer
+  async function exifFocal35(file) {
+    try {
+      const b = new DataView(await file.slice(0, 196608).arrayBuffer());
+      if (b.getUint16(0) !== 0xFFD8) return null;
+      let o = 2;
+      while (o + 4 < b.byteLength) {
+        const m = b.getUint16(o), len = b.getUint16(o + 2);
+        if (m === 0xFFE1 && b.getUint32(o + 4) === 0x45786966) {
+          const t = o + 10, le = b.getUint16(t) === 0x4949, u16 = x => b.getUint16(x, le), u32 = x => b.getUint32(x, le);
+          const find = (ifd, tag) => { const n = u16(t + ifd); for (let i = 0; i < n; i++) { const e = t + ifd + 2 + i * 12; if (u16(e) === tag) return e; } return null; };
+          const ex = find(u32(t + 4), 0x8769); if (!ex) return null;
+          const f = find(u32(ex + 8), 0xA405); return f ? u16(f + 8) : null;
+        }
+        if ((m & 0xFF00) !== 0xFF00) return null;
+        o += 2 + len;
+      }
+    } catch (e) { /* no EXIF */ }
+    return null;
+  }
   async function analysePhoto(file, sp) {
     const { api, code } = apiCode();
     if (!api) { spotMsg("L'analyse des photos se fait depuis la version en ligne du studio."); return; }
     spotMsg("Photo reçue : préparation…");
     const image = await fileToImage(file, 2048, 0.9), img = await loadImg(image), w = img.naturalWidth, h = img.naturalHeight;
-    const [hx, hz] = houseCentre(), hTop = Math.max(3, ...site.blocks.filter(b => b.kind === "maison").map(b => b.h || 3));
-    const hfov = 66 * Math.PI / 180, vfov = 2 * Math.atan(Math.tan(hfov / 2) * h / w) * 180 / Math.PI;
-    let pose = { pos: [sp.x, 1.5, sp.z], target: [hx, hTop * 0.35, hz], up: [0, 1, 0], fov: vfov };
+    const [ux, uz] = spotAim(sp);
+    // field of view across the long side: from the EXIF focal length when the photo carries it, else a usual tablet lens
+    const f35 = await exifFocal35(file), long = 2 * Math.atan(36 / 2 / (f35 && f35 > 8 && f35 < 200 ? f35 : 28)), tl = Math.tan(long / 2);
+    const vfov = 2 * Math.atan(w >= h ? tl * h / w : tl) * 180 / Math.PI;
+    let pose = { pos: [sp.x, 1.5, sp.z], target: [sp.x + ux * 12, 0.6, sp.z + uz * 12], up: [0, 1, 0], fov: vfov };
     const sk = sketchFor(pose, w, h);
-    window.studio.lastSketch = { ids: sk.ids, pts: sk.ids.map(id => sk.map[id].p), pose };
+    window.studio.lastSketch = { ids: sk.ids, pts: sk.ids.map(id => sk.map[id].p), pose, sides: sk.sides.map(x => ({ id: x.id, a: site.poly[x.i], b: site.poly[(x.i + 1) % site.poly.length] })) };
     const small = await fileToImage(file, 1600, 0.85);
     const call = async model => {
-      const r = await fetch(api.replace(/render$/, "analyse"), { method: "POST", headers: { "Content-Type": "application/json", "x-studio-code": code }, body: JSON.stringify({ image: small, sketch: sk.image, corners: sk.ids, model }) });
+      const r = await fetch(api.replace(/render$/, "analyse"), { method: "POST", headers: { "Content-Type": "application/json", "x-studio-code": code }, body: JSON.stringify({ image: small, sketch: sk.image, corners: sk.ids, sides: sk.sides.map(x => x.id), model }) });
       if (r.status === 401) { try { localStorage.removeItem("studio-code"); } catch (e) { /* no storage */ } throw new Error("code d'accès incorrect"); }
       const d = await r.json(); if (d.error) throw new Error(d.error); return d;
     };
     spotMsg("Analyse de la photo par Gemini 3.8 Flash… (20 à 40 secondes)");
     let d = await call("flash"), sol = null;
-    const solve = res => { const pts = res.corners.map(c => ({ p: sk.map[c.id].p, u: c.x / 1000 * w, v: c.y / 1000 * h })); return pts.length >= 4 ? solvePose(pts, w, h) : null; };
+    const solve = res => {
+      const pts = res.corners.map(c => ({ p: sk.map[c.id].p, u: c.x / 1000 * w, v: c.y / 1000 * h }));
+      const segs = (res.edges || []).map(e => { const sd = sk.sides.find(x => x.id === e.side); return sd && { a: site.poly[sd.i], b: site.poly[(sd.i + 1) % site.poly.length], u: e.x / 1000 * w, v: e.y / 1000 * h }; }).filter(Boolean);
+      return pts.length * 2 + segs.length >= 3 ? solveFromSpot(pts, segs, w, h, pose) : null;
+    };
     sol = solve(d);
     if (!sol || sol.err > w * 0.03) {
-      spotMsg("Maison mal repérée : nouvelle analyse avec Gemini 3.1 Pro…");
+      spotMsg("Repères mal trouvés : nouvelle analyse avec Gemini 3.1 Pro…");
       try { const d2 = await call("pro"), s2 = solve(d2); if (s2 && (!sol || s2.err < sol.err)) { sol = s2; d = d2; } else if (!sol) d = d2.objects.length > d.objects.length ? d2 : d; } catch (e) { /* keep the first answer */ }
     }
-    const calibrated = sol && sol.err <= w * 0.03;
+    const calibrated = sol && sol.err <= w * 0.035;
+    if (sol) window.studio.lastSolve = { err: sol.err, n: sol.n, pose: sol.pose };
     if (calibrated) pose = sol.pose;
     // the photo becomes a view of the site (exact if calibrated) and the point turns green
     const c = document.createElement("canvas"); c.width = 120; c.height = Math.round(120 * h / w); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
     const n = site.spots.indexOf(sp) + 1;
     const ph = { id: Date.now().toString(36), name: "Point " + n, image, thumb: c.toDataURL("image/jpeg", 0.7), w, h,
-      pts: calibrated ? d.corners.map(k => ({ key: sk.map[k.id].key, u: k.x / 1000 * w, v: k.y / 1000 * h })) : [], pose: calibrated ? sol.pose : null, err: calibrated ? sol.err : null };
+      pts: calibrated ? d.corners.filter(k => sk.map[k.id]).map(k => ({ key: sk.map[k.id].key, u: k.x / 1000 * w, v: k.y / 1000 * h })) : [], pose: calibrated ? sol.pose : null, err: calibrated ? sol.err : null };
     site.photos.push(ph); sp.photo = ph.id;
     // features: footprint on the ground -> a volume on the plan
     const pc = poseCam(pose, w, h), added = [];
-    d.objects.forEach(o => {
+    // without a reliable pose, positions would be wrong: better nothing than a false plan
+    if (calibrated) d.objects.forEach(o => {
       const kind = PHOTO_KIND[o.type]; if (!kind) return;
       const g2 = o.ground.map(([x, y]) => toGround(pc, x, y)).filter(Boolean).map(p => [p.x, p.z]); if (!g2.length) return;
       let r = g2.length >= 3 ? minRect(hull(g2)) : null;
@@ -1935,12 +2005,7 @@
       if (!r || r.w * r.d < 0.3) r = { x: cx, z: cz, w: kind === "arbre" ? 3 : 1.5, d: kind === "arbre" ? 3 : 1.5, rot: 0 };
       if (!inPoly(r.x, r.z, site.poly) || site.blocks.some(b => b.kind === "maison" && inPoly(r.x, r.z, blockPts(b)))) return;
       if (Math.max(r.w, r.d) > 30) return;
-      let hh = KINDS[kind].h;
-      if (o.top && KINDS[kind].hh) {
-        ray.setFromCamera(new T.Vector2(o.top[0] / 500 - 1, 1 - o.top[1] / 500), pc);
-        const dir = ray.ray.direction, org = ray.ray.origin, hd = Math.hypot(dir.x, dir.z);
-        if (hd > 1e-3) { const t = Math.hypot(r.x - org.x, r.z - org.z) / hd, y = org.y + dir.y * t; if (y > 0.2 && y < 15) hh = +y.toFixed(1); }
-      }
+      const hh = KINDS[kind].h;      // what matters is the ground: heights stay the usual ones
       // already on the plan? a photo is more recent than the IGN survey: it replaces it
       const near = site.blocks.find(b => b.kind !== "maison" && Math.hypot(b.x - r.x, b.z - r.z) < Math.max(1.5, Math.min(r.w, r.d) / 2 + Math.min(b.w, b.d) / 2 * 0.6));
       if (near && near.src !== "lidar") return;
@@ -1951,6 +2016,7 @@
     });
     buildHouse(); setPhotos(); siteChanged(); drawSpots(); goTo("plan");
     const names = added.map(b => (b.note || KINDS[b.kind].name).toLowerCase());
+    if (!calibrated) { spotMsg(`Point ${n} : la photo n'a pas pu être située (maison ou clôture pas assez visible). Reprenez-la en gardant un angle de la maison ou de la clôture dans l'image, ou calez-la à la main dans « Photos ».`); toast("Photo à reprendre : repères pas assez visibles"); return; }
     spotMsg(`Point ${n} : ${added.length ? added.length + (added.length > 1 ? " éléments ajoutés" : " élément ajouté") + " (" + names.join(", ") + "), à vérifier sur le plan" : "aucun nouvel élément trouvé"}. ${calibrated ? "Photo calée : elle sert aussi de vue exacte pour les rendus 4K." : "Photo non calée : touchez-la dans « Photos » pour la caler si vous voulez un rendu 4K exact."}`);
     toast(added.length ? added.length + " élément(s) ajouté(s) depuis la photo" : "Aucun nouvel élément sur cette photo");
   }
@@ -2853,6 +2919,7 @@
   }
 
   window.studio = { visibleItems: () => visibleItems(), visibleNos: () => visibleNos(), setView: id => setView(id), items: () => items.map(it => [it.no, +it.g.position.x.toFixed(2), +it.g.position.z.toFixed(2)]), addItem: (no, x, z, rot, spec) => { const it = addItem(no, x, z, rot, spec); changed(); return it.uid; }, go, exportLayer, recapText,
+    shotFrom: T0 => { const c = new THREE.PerspectiveCamera(T0.fov, 4 / 3, 0.1, 400); c.position.fromArray(T0.pos); c.lookAt(new THREE.Vector3().fromArray(T0.target)); const hide = [dims, spotGroup, handles, blockSel].map(o => [o, o.visible]); hide.forEach(([o]) => { o.visible = false; }); const sz = renderer.getSize(new THREE.Vector2()), pr = renderer.getPixelRatio(); renderer.setPixelRatio(1); renderer.setSize(1600, 1200, false); renderer.render(scene, c); const u = renderer.domElement.toDataURL("image/jpeg", 0.9); renderer.setPixelRatio(pr); renderer.setSize(sz.x, sz.y, false); hide.forEach(([o, v]) => { o.visible = v; }); requestRender(); return u; },
     toScreen: (x, y, z) => { const v = new THREE.Vector3(x, y, z).project(camera), r = renderer.domElement.getBoundingClientRect(); return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height]; },
     jobs: () => jobs.map(j => ({ label: j.label, t0: j.t0, state: j.state, now: Date.now() })), site: () => site, solvePose: (pts, W, H) => solvePose(pts, W, H), projector, garden: () => gardenArea(), loadSite: s2 => loadSite(s2), photos: () => Object.keys(PHOTOS) };
   try {
