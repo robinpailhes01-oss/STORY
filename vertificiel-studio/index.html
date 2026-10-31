@@ -179,6 +179,22 @@
   .cpts button[aria-pressed="true"] { background: var(--gold); border-color: var(--gold); color: #ffffff; }
   .tip { position: absolute; left: 50%; top: 60px; transform: translateX(-50%); z-index: 6; max-width: calc(100% - 32px); padding: 8px 14px; border-radius: 12px; background: rgba(13, 21, 18, .86); color: #ffffff; font-size: 13px; font-weight: 600; text-align: center; pointer-events: none; }
   .views .acts { display: flex; gap: 2px; }
+  .btn.gold { background: var(--gold); color: #ffffff; }
+  .rv { position: relative; flex: none; touch-action: none; cursor: ew-resize; overflow: hidden; }
+  .rv img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; user-select: none; -webkit-user-drag: none; }
+  .rv-night { position: absolute; inset: 0; transition: clip-path .5s ease; }
+  .rv.dragging .rv-night { transition: none; }
+  .rv-handle { position: absolute; top: 0; bottom: 0; width: 3px; margin-left: -1.5px; background: #ffffff; box-shadow: 0 0 10px rgba(0,0,0,.5); transition: left .5s ease; pointer-events: none; }
+  .rv.dragging .rv-handle { transition: none; }
+  .rv-handle span { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 8px 12px; border-radius: 999px; background: rgba(13,21,18,.85); color: #ffffff; font-size: 15px; font-weight: 700; white-space: nowrap; }
+  .rv-bar { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 5; display: flex; align-items: center; gap: 4px; padding: 4px; border-radius: 999px; background: var(--chip); color: #ffffff; max-width: calc(100% - 24px); }
+  .rv-bar button { min-height: 44px; min-width: 44px; padding: 6px 14px; border: 0; border-radius: 999px; background: transparent; color: #ffffff; font-family: var(--font-display); font-size: 14px; font-weight: 700; cursor: pointer; }
+  .rv-bar button[aria-pressed="true"] { background: #ffffff; color: #16392c; }
+  .rv-bar button:disabled { opacity: .55; cursor: default; }
+  .rv-bar #rvLabel { padding: 0 6px; font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rv-bar .sep { width: 1px; height: 26px; background: rgba(255,255,255,.3); margin: 0 4px; }
+  .gal button { position: relative; }
+  .gal .moon { position: absolute; top: 6px; right: 6px; padding: 2px 8px; border-radius: 999px; background: rgba(13,21,18,.85); color: #ffd59a; font-size: 12px; font-weight: 700; }
   .close-shot { position: absolute; top: 12px; left: 12px; z-index: 4; min-height: 40px; padding: 8px 14px; border: 0; border-radius: 999px; background: var(--chip); color: var(--on-photo); font-family: var(--font-display); font-weight: 700; font-size: 13px; cursor: pointer; }
   .dg { border-color: var(--gold); }
   .dg .row b { font-family: var(--font-display); color: var(--accent); }
@@ -257,6 +273,19 @@
     <div class="photo-view" id="photoView" hidden>
       <button type="button" class="close-shot" id="closeShot" hidden>← Revenir à la 3D</button>
       <canvas id="shot" width="1194" height="1592" aria-label="Aperçu du projet sur la photo du terrain"></canvas>
+      <div class="rv" id="rv" hidden>
+        <img id="rvDay" alt="Rendu 4K de jour">
+        <div class="rv-night" id="rvNightWrap" hidden><img id="rvNight" alt="Rendu 4K de nuit"></div>
+        <div class="rv-handle" id="rvHandle" hidden><span>☀︎ ⟷ ☾</span></div>
+      </div>
+      <div class="rv-bar" id="rvBar" hidden>
+        <button type="button" id="rvPrev" aria-label="Angle précédent">◀</button>
+        <span id="rvLabel"></span>
+        <button type="button" id="rvNext" aria-label="Angle suivant">▶</button>
+        <span class="sep"></span>
+        <button type="button" id="rvJour">☀︎ Jour</button>
+        <button type="button" id="rvNuit">☾ Nuit</button>
+      </div>
     </div>
     <div class="busy" id="busy" role="status" aria-live="polite" hidden><div class="spin" aria-hidden="true"></div><div><b id="busyTitle">Rendu 4K en cours</b><span id="busyText">Envoi de la composition…</span></div></div>
     <div class="calib" id="calib" hidden><canvas id="calibCv" aria-label="Photo à caler : touchez les coins de la maison"></canvas></div>
@@ -392,11 +421,12 @@
         <div class="label">Rendus 4K du projet</div>
         <div class="gal" id="gal2"></div>
       </div>
+      <button type="button" class="btn secondary" data-go="3">Voir les photos 4K</button>
       <div class="actions sticky">
-        <div class="chips" role="group" aria-label="Ambiance du rendu"><button type="button" class="chip" data-amb="jour" aria-pressed="true">Jour</button><button type="button" class="chip" data-amb="soir" aria-pressed="false">Soirée, lumières allumées</button></div>
+        <div class="chips" role="group" aria-label="Ambiance du rendu"><button type="button" class="chip" data-amb="journuit" aria-pressed="true">Jour + nuit</button><button type="button" class="chip" data-amb="jour" aria-pressed="false">Jour seulement</button></div>
         <button type="button" class="btn" id="render4kNow">Générer le rendu 4K de cette vue</button>
-        <p class="note">La photo reprend l'angle affiché : tournez la vue avant de lancer. Plusieurs angles possibles.</p>
-        <button type="button" class="btn secondary" data-go="3">Voir les photos 4K</button>
+        <button type="button" class="btn gold" id="tour4k">Visite 4K : 4 angles autour du jardin</button>
+        <p class="note">Le rendu reprend l'angle affiché. La visite fait le tour du jardin toute seule.</p>
       </div>
     </section>
 
@@ -413,7 +443,7 @@
         <div class="label">Photo du terrain</div>
         <div class="chips" id="viewChips" role="group" aria-label="Prise de vue"></div>
         <div class="label">Ambiance</div>
-        <div class="chips" id="ambChips" role="group" aria-label="Ambiance du rendu"><button type="button" class="chip" data-amb="jour" aria-pressed="true">Jour</button><button type="button" class="chip" data-amb="soir" aria-pressed="false">Soirée, lumières allumées</button></div>
+        <div class="chips" id="ambChips" role="group" aria-label="Ambiance du rendu"><button type="button" class="chip" data-amb="journuit" aria-pressed="true">Jour + nuit</button><button type="button" class="chip" data-amb="jour" aria-pressed="false">Jour seulement</button></div>
         <p class="note" id="viewHint" hidden>Vue libre : tournez autour du jardin avec un doigt, zoomez avec deux, puis lancez le rendu. La maison est reconstituée d'après les photos du terrain.</p>
       </div>
       <div class="actions">
@@ -1707,7 +1737,7 @@
   async function paintShot(ctx, mode) {
     const W = PHOTO.w, H = PHOTO.h;
     if (mode === "avant") { ctx.drawImage(await loadImg(PHOTO.avant), 0, 0, W, H); return; }
-    if (mode === "rendu") { const src = shownRender || PHOTO.example; if (src) ctx.drawImage(await loadImg(src), 0, 0, W, H); return; }
+    if (mode === "rendu") { const src = shownRender ? shownRender.url : PHOTO.example; if (src) ctx.drawImage(await loadImg(src), 0, 0, W, H); return; }
     ctx.drawImage(await loadImg(PHOTO.base), 0, 0, W, H);
     if (layerUrl) ctx.drawImage(await loadImg(layerUrl), 0, 0, W, H);
     if (PHOTO.shadow) ctx.drawImage(await loadImg(PHOTO.shadow), OMBRE.x, OMBRE.y, OMBRE.w, OMBRE.h);
@@ -1720,6 +1750,10 @@
     shotMode = mode;
     document.querySelectorAll("[data-shot]").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.shot === mode)));
     $("photoView").hidden = mode === "apercu"; $("closeShot").hidden = step === 3;
+    const rvOn = mode === "rendu" && !!shownRender;
+    $("rv").hidden = $("rvBar").hidden = !rvOn; $("shot").hidden = rvOn;
+    if (mode !== "apercu" && selected) select(null);
+    if (rvOn) { showRv(shownRender); return; }
     const cv = $("shot"); if (cv.width !== PHOTO.w) { cv.width = PHOTO.w; cv.height = PHOTO.h; }
     if (mode !== "apercu") await paintShot(cv.getContext("2d"), mode);
   }
@@ -1774,13 +1808,26 @@
   let shownRender = null;
   const renders = [];      // { view, url, test }
   // job: the view the render was launched from (the user may have moved to another view since)
+  function keepRenders() { site.renders = renders.filter(r => !r.test).slice(0, 60); save(); }
   function addRender(url, test, job) {
     const j = job || { view, w: PHOTO.w, h: PHOTO.h, label: PHOTO.name };
-    renders.unshift({ view: j.view, url, test, w: j.w, h: j.h, label: j.label });
-    if (!test) { site.renders = renders.filter(r => !r.test).slice(0, 40); save(); }
+    const e = { id: j.taskId || "r" + Date.now().toString(36), view: j.view, url, test, w: j.w, h: j.h, label: j.label, tour: j.tour || null, angle: j.angle != null ? j.angle : null, night: null };
+    renders.unshift(e);
+    if (!test) keepRenders();
     drawGallery();
-    if (j.view === view && (step === 3 || (step === 2 && PHOTO.free))) { if (PHOTO.free) Object.assign(PHOTO, { w: j.w, h: j.h }); shownRender = url; showShot("rendu"); }
-    else toast("Rendu « " + j.label + " » prêt : touchez-le dans la galerie.");
+    if (j.withNight && !test) startNight(e);
+    // a tour opens on its first angle, as soon as it is back
+    const tourFirst = e.tour && !renders.some(r => r !== e && r.tour === e.tour);
+    if (e.tour ? tourFirst : j.view === view && (step === 3 || (step === 2 && PHOTO.free))) openRender(e);
+    else if (!e.tour) toast("Rendu « " + j.label + " » prêt : touchez-le dans la galerie.");
+  }
+  async function openRender(e) {
+    if (!PHOTOS[e.view]) { window.open(e.url, "_blank", "noopener"); return; }
+    if (step !== 3 && !PHOTOS[e.view].free) go(3);
+    if (step !== 3 && step !== 2) go(2);
+    if (view !== e.view) await setView(e.view);
+    if (PHOTO.free) Object.assign(PHOTO, { w: e.w, h: e.h });
+    shownRender = e; showShot("rendu");
   }
   // the project's renders, kept with the site (the image files stay on the render service)
   function drawGallery() {
@@ -1788,13 +1835,9 @@
     $("galBlock").hidden = $("galBlock2").hidden = !renders.length;
     for (const gal of [$("gal"), $("gal2")]) renders.forEach(r => {
       const b = document.createElement("button"); b.type = "button";
-      b.innerHTML = `<img src="${r.url}" alt="" loading="lazy"><span></span>`; b.querySelector("span").textContent = r.label + (r.test ? " · test" : ""); b.querySelector("img").alt = "Rendu 4K, " + r.label;
-      b.addEventListener("click", async () => {
-        if (!PHOTOS[r.view]) { window.open(r.url, "_blank", "noopener"); return; }
-        if (step !== 3 && !PHOTOS[r.view].free) go(3);
-        if (step !== 3 && step !== 2) go(2);
-        if (view !== r.view) await setView(r.view); if (PHOTO.free) Object.assign(PHOTO, { w: r.w, h: r.h }); shownRender = r.url; showShot("rendu");
-      });
+      b.innerHTML = `<img src="${r.url}" alt="" loading="lazy"><span></span>` + (r.night ? '<b class="moon">☾ nuit</b>' : nightRunning(r) ? '<b class="moon">☾ …</b>' : "");
+      b.querySelector("span").textContent = r.label + (r.test ? " · test" : ""); b.querySelector("img").alt = "Rendu 4K, " + r.label;
+      b.addEventListener("click", () => openRender(r));
       gal.appendChild(b);
     });
   }
@@ -1842,7 +1885,80 @@
     g.drawImage(layer, 0, 0, P.w, P.h);
     return { image: c.toDataURL("image/jpeg", 0.92), empty: await emptyZones(itemsOnly) };
   }
-  let ambiance = "jour", jobsTick = 0;
+  let ambiance = "journuit", jobsTick = 0, tourCount = 0;
+  const nightRunning = e => jobs.some(j => j.night && j.rid === e.id);
+  const ledList = () => [...new Set(items.filter(it => it.spec && it.spec.led !== "aucune").map(it => it.spec.led))];
+  function apiCode() {
+    const meta = document.querySelector('meta[name="studio-render-api"]'), api = window.STUDIO_RENDER_API || (meta && meta.content);
+    let code = ""; try { code = localStorage.getItem("studio-code") || ""; } catch (e) { /* no storage */ }
+    if (api && !code) { code = (window.prompt("Code d'accès du studio (une seule fois sur cette tablette) :") || "").trim(); try { localStorage.setItem("studio-code", code); } catch (e) { /* no storage */ } }
+    return { api, code };
+  }
+  async function startNight(e, resumeTask) {
+    const { api, code } = apiCode(); if (!api) return;
+    const job = { label: e.label + " · nuit", t0: Date.now(), night: true, rid: e.id, site: site.id };
+    jobs.push(job); showJobs(); drawGallery(); if (shownRender === e) showRv(e);
+    try {
+      if (resumeTask) { job.taskId = resumeTask.taskId; job.t0 = resumeTask.t0; }
+      else {
+        const r = await fetch(api, { method: "POST", headers: { "Content-Type": "application/json", "x-studio-code": code }, body: JSON.stringify({ mode: "night", source: e.url, aspect: nearRatio(e.w / e.h), leds: ledList() }) });
+        if (r.status === 401) { try { localStorage.removeItem("studio-code"); } catch (err) { /* no storage */ } throw new Error("code d'accès incorrect"); }
+        const { taskId, error } = await r.json(); if (!taskId) throw new Error(error || "refus du serveur");
+        job.taskId = taskId;
+        pendingWrite(pendingRead().concat([{ taskId, site: site.id, kind: "night", rid: e.id, label: job.label, t0: job.t0 }]));
+      }
+      const url = await pollJob(job, api, code);
+      finishJob(job); e.night = url; keepRenders(); drawGallery();
+      if (shownRender === e) showRv(e, true); else toast("Version de nuit prête : " + e.label);
+    } catch (err) { finishJob(job); drawGallery(); if (shownRender === e) showRv(e); toast("La version de nuit de « " + e.label + " » n'a pas abouti : " + err.message); }
+  }
+
+  // ---------------------------------------------------------------- render viewer: day / night slider, previous / next angle
+  let rvPos = 100;
+  const navList = e => e.tour ? renders.filter(r => r.tour === e.tour).sort((a, b) => a.angle - b.angle) : renders;
+  function fitRv() {
+    const e = shownRender, pv = $("photoView"); if (!e || $("rv").hidden) return;
+    const W = pv.clientWidth, H = pv.clientHeight, ar = e.w / e.h; let w = W, h = W / ar; if (h > H) { h = H; w = H * ar; }
+    Object.assign($("rv").style, { width: w + "px", height: h + "px" });
+  }
+  function rvSet(p) {
+    rvPos = clamp(p, 0, 100);
+    $("rvNightWrap").style.clipPath = `inset(0 0 0 ${rvPos}%)`; $("rvHandle").style.left = rvPos + "%";
+    $("rvJour").setAttribute("aria-pressed", String(rvPos >= 99)); $("rvNuit").setAttribute("aria-pressed", String(rvPos <= 1));
+  }
+  function showRv(e, nightJustArrived) {
+    $("rvDay").src = e.url;
+    const hasN = !!e.night, pend = !hasN && nightRunning(e);
+    if (hasN && $("rvNight").getAttribute("src") !== e.night) $("rvNight").src = e.night;
+    $("rvNightWrap").hidden = $("rvHandle").hidden = !hasN;
+    $("rvJour").hidden = $("rvNuit").hidden = !hasN && !pend;
+    $("rvNuit").disabled = !hasN; $("rvNuit").textContent = pend ? "☾ Nuit en cours…" : "☾ Nuit";
+    const list = navList(e), i = list.indexOf(e);
+    $("rvPrev").hidden = $("rvNext").hidden = list.length < 2;
+    $("rvLabel").textContent = e.label + (list.length > 1 ? " · " + (i + 1) + "/" + list.length : "");
+    fitRv();
+    if (hasN) { if (nightJustArrived) { rvSet(100); setTimeout(() => rvSet(50), 60); } else rvSet(rvPos >= 99 || rvPos <= 1 ? rvPos : 50); }
+    else rvSet(100);
+  }
+  function rvStep(d) {
+    const e = shownRender; if (!e) return;
+    const list = navList(e); if (list.length < 2) return;
+    const n = list[(list.indexOf(e) + d + list.length) % list.length], keep = rvPos;
+    openRender(n).then(() => { if (n.night) rvSet(keep); });
+  }
+  $("rvPrev").addEventListener("click", () => rvStep(-1));
+  $("rvNext").addEventListener("click", () => rvStep(1));
+  $("rvJour").addEventListener("click", () => rvSet(100));
+  $("rvNuit").addEventListener("click", () => rvSet(0));
+  (() => {
+    const rv = $("rv"); let dragging = false;
+    const at = ev => { const r = rv.getBoundingClientRect(); rvSet((ev.clientX - r.left) / r.width * 100); };
+    rv.addEventListener("pointerdown", ev => { if (!shownRender || !shownRender.night) return; dragging = true; rv.classList.add("dragging"); rv.setPointerCapture(ev.pointerId); at(ev); });
+    rv.addEventListener("pointermove", ev => { if (dragging) at(ev); });
+    const end = () => { dragging = false; rv.classList.remove("dragging"); };
+    rv.addEventListener("pointerup", end); rv.addEventListener("pointercancel", end);
+    document.addEventListener("keydown", ev => { if ($("rv").hidden || $("photoView").hidden) return; if (ev.key === "ArrowLeft") rvStep(-1); if (ev.key === "ArrowRight") rvStep(1); });
+  })();
   const jobs = [];   // renders in progress: several views can render at the same time
   function showJobs() {
     if (!jobs.length) { progress(null); return; }
@@ -1877,6 +1993,7 @@
     let code = ""; try { code = localStorage.getItem("studio-code") || ""; } catch (e) { /* no storage */ }
     if (!api || !code) return;
     pendingRead().filter(p => p.site === site.id && Date.now() - p.t0 < 30 * 60 * 1000 && !jobs.some(j => j.taskId === p.taskId)).forEach(async p => {
+      if (p.kind === "night") { const e = renders.find(r => r.id === p.rid); if (e && !e.night) startNight(e, p); return; }
       const job = Object.assign({}, p); jobs.push(job); showJobs();
       try { const url = await pollJob(job, api, code); finishJob(job); if (PHOTOS[job.view]) addRender(url, false, job); }
       catch (e) { finishJob(job); toast("Le rendu « " + job.label + " » n'a pas abouti : " + e.message); }
@@ -1906,9 +2023,10 @@
     }
     return out;
   }
-  async function render4k() {
+  async function render4k(opts) {
+    opts = opts && !(opts instanceof Event) ? opts : {};
     const meta = document.querySelector('meta[name="studio-render-api"]'), api = window.STUDIO_RENDER_API || (meta && meta.content), status = $("renderStatus");
-    if (jobs.length >= 4) { toast("4 rendus sont déjà en cours : attendez qu'un se termine."); return; }
+    if (jobs.length >= 10) { toast("Plusieurs rendus sont déjà en cours : attendez qu'un se termine."); return; }
     const shot = PHOTO.free && api ? freeShot() : null;     // also fixes the free view's camera, used by visibleItems
     const vis = visibleItems();
     if (!vis.length) { toast("Aucun élément n'est visible depuis cette prise de vue."); return; }
@@ -1922,7 +2040,8 @@
     }
     // everything that depends on the current view is taken now, before any wait
     const comp = shot ? null : collage();
-    const job = { view, w: PHOTO.w, h: PHOTO.h, label: PHOTO.free ? "Vue libre " + (++freeCount) : PHOTO.name, t0: Date.now(), aspect: shot ? shot.aspect : nearRatio(PHOTO.w / PHOTO.h), custom: !!PHOTO.custom, amb: ambiance };
+    const job = { view, w: PHOTO.w, h: PHOTO.h, label: opts.label || (PHOTO.free ? "Vue libre " + (++freeCount) : PHOTO.name), t0: Date.now(), aspect: shot ? shot.aspect : nearRatio(PHOTO.w / PHOTO.h), custom: !!PHOTO.custom,
+      amb: "jour", withNight: ambiance === "journuit", tour: opts.tour || null, angle: opts.angle != null ? opts.angle : null };
     jobs.push(job); showJobs();
     try {
       let code = "";
@@ -1934,7 +2053,7 @@
       if (r.status === 401) { try { localStorage.removeItem("studio-code"); } catch (e) { /* no storage */ } throw new Error("code d'accès incorrect"); }
       const { taskId, error } = await r.json(); if (!taskId) throw new Error(error || "refus du serveur");
       job.taskId = taskId;
-      pendingWrite(pendingRead().concat([{ taskId, site: site.id, view: job.view, w: job.w, h: job.h, label: job.label, t0: job.t0 }]));
+      pendingWrite(pendingRead().concat([{ taskId, site: site.id, view: job.view, w: job.w, h: job.h, label: job.label, t0: job.t0, withNight: job.withNight, tour: job.tour, angle: job.angle }]));
       const url = await pollJob(job, api, code);
       finishJob(job); addRender(url, false, job);
       status.textContent = "Rendu « " + job.label + " » prêt : il est dans la galerie. Changez de prise de vue ou d'angle pour en lancer d'autres, même pendant un rendu.";
@@ -1952,6 +2071,23 @@
     render4k();
   });
   $("closeShot").addEventListener("click", () => showShot("apercu"));
+  $("tour4k").addEventListener("click", async () => {
+    if (!items.length) { toast("Ajoutez au moins un élément du catalogue."); return; }
+    const n = ambiance === "journuit" ? 8 : 4;
+    if (!window.confirm("Visite 4K : 4 angles autour du jardin" + (n === 8 ? ", de jour et de nuit" : "") + ".\n" + n + " photos, prêtes en 3 à 5 minutes. Lancer ?")) return;
+    shotMode = "apercu"; await setView("libre");
+    const keep = { t: cam.target.clone(), r: cam.r, theta: cam.theta, phi: cam.phi, fov: cam.fov }, tid = "v" + Date.now().toString(36), k = ++tourCount;
+    // the tour circles the composition itself, framed with the house behind it
+    const pts = []; items.forEach(it => { const [a, b, c, d] = fpOf(it); pts.push(...rectPts(it.g.position.x, it.g.position.z, a, b, c, d, it.g.rotation.y)); });
+    const bb = bbox(pts), sp = plotSpan(), cx = (bb[0] + bb[1]) / 2, cz = (bb[2] + bb[3]) / 2;
+    const r = clamp(Math.max(bb[1] - bb[0], bb[3] - bb[2]) * 0.8 + 5, 10, Math.max(sp.w, sp.d) * 0.8);
+    [-0.5, -0.17, 0.17, 0.5].forEach((theta, i) => {
+      anim = null; cam.target.set(cx, 1.4, cz - 2); cam.r = r; cam.theta = theta; cam.phi = 1.12; cam.fov = 55;
+      render4k({ tour: tid, angle: i, label: "Visite " + k + " · angle " + (i + 1) });
+    });
+    cam.target.copy(keep.t); Object.assign(cam, { r: keep.r, theta: keep.theta, phi: keep.phi, fov: keep.fov }); requestRender();
+    toast("Visite 4K lancée : les angles arrivent dans la galerie, la nuit suit chaque photo de jour.");
+  });
 
   // ---------------------------------------------------------------- recap
   async function renderRecap() {
@@ -2186,7 +2322,7 @@
   $("galSlot3").appendChild($("galBlock"));
   // ---------------------------------------------------------------- recap: send to the client, start a new client
   $("shareRecap").addEventListener("click", async () => {
-    const photos = renders.filter(r => !r.test).map(r => "· " + r.label + " : " + r.url);
+    const photos = renders.filter(r => !r.test).map(r => "· " + r.label + " : " + r.url + (r.night ? "\n  de nuit : " + r.night : ""));
     const text = recapText() + (photos.length ? "\n\nPhotos du projet :\n" + photos.join("\n") : "");
     if (navigator.share) { try { await navigator.share({ title: "Projet jardin · " + ($("client").value.trim() || site.name), text }); return; } catch (e) { if (e && e.name === "AbortError") return; } }
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => toast("Récap et photos copiés : collez-les dans un message au client."), () => toast("Envoi impossible sur cet appareil."));
@@ -2235,7 +2371,7 @@
     let x = 0, y = 0, w = W, h = H;
     if (photoLive) { const a = PHOTO.w / PHOTO.h; w = W; h = W / a; if (h > H) { h = H; w = H * a; } x = (W - w) / 2; y = (H - h) / 2; }
     for (const el of [renderer.domElement, photoBase]) Object.assign(el.style, { left: x + "px", top: y + "px", width: w + "px", height: h + "px" });
-    renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); requestRender();
+    renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); requestRender(); fitRv();
   }
   new ResizeObserver(resize).observe(stage); resize();
   function loop(now) {

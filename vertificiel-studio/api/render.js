@@ -5,6 +5,7 @@
 //                    options: aspect ("3:4", "4:3", ...), lawn: true when the photo shows bare soil and the 3D lawn is pasted on it,
 //                    ambiance: "jour" | "soir"
 //                    { mode: "free", image, aspect, items, site: "demo" | "custom", refs: [photos of the house] }  (3D view from any angle)  ->  { taskId }
+//                    { mode: "night", source: URL of a day render, aspect, leds: ["chaud", ...] }  (same photo at night)  ->  { taskId }
 // GET  /api/render?task=ID                                                     ->  { state, url, error }
 //
 // Variables d'environnement :
@@ -101,6 +102,21 @@ function buildFreePrompt(lines, nRefs, ambiance) {
   ].join("\n");
 }
 
+// night version of a finished day render: same picture, only the light changes, LED profiles switched on
+const RENDER_HOSTS = /^https:\/\/([a-z0-9-]+\.)*(aiquickdraw\.com|redpandaai\.co|kie\.ai)\//i;
+function buildNightPrompt(leds) {
+  const led = leds.length
+    ? `The paving has slim LED light profiles along the edges of its slabs: they are switched on and glow ${leds.map(l => LED_TXT[l]).join(" and ")}, precisely outlining the slab pattern and softly lighting the slabs and the grass strips; this glowing paving is the highlight of the picture.`
+    : "No new light fittings: the garden is lit only by the house and the night sky.";
+  return [
+    "Image 1 is a photorealistic daytime photograph of a house and its garden. Produce the very same photograph at night, just after blue hour.",
+    "Keep EXACTLY the same framing, lens, perspective, buildings, windows, doors, garden layout, paving pattern, plants, lawn and every object: nothing is added, moved, enlarged or removed. Only the light changes.",
+    "Deep blue night sky with a few stars, warm light glowing inside the house through the windows and French windows, a few discreet warm wall lights on the façade, soft moonlight on the lawn.",
+    led,
+    "Realistic high-end real-estate night photography, natural night colours, crisp detail, low noise. No people, no text, no watermark.",
+  ].join("\n");
+}
+
 // catalogue photos are bundled with the function and uploaded once per warm instance
 const refCache = {};
 async function upload(dataUrl, fileName, H) {
@@ -134,6 +150,17 @@ export default async function handler(req, res) {
     const { image, items, empty, mode, aspect, lawn, site, ambiance, refs: houseRefs } = req.body || {};
     const free = mode === "free";
     const RATIOS = ["1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9"], ratio = RATIOS.includes(aspect) ? aspect : "3:4";
+    if (mode === "night") {
+      const { source, leds } = req.body;
+      if (typeof source !== "string" || !RENDER_HOSTS.test(source) || source.length > 500) return res.status(400).json({ error: "photo de jour invalide" });
+      const ledOk = [...new Set((Array.isArray(leds) ? leds : []).filter(l => LED_TXT[l]))];
+      const t = await (await fetch(`${API}/api/v1/jobs/createTask`, {
+        method: "POST", headers: H,
+        body: JSON.stringify({ model: MODEL, input: { prompt: buildNightPrompt(ledOk), image_input: [source], aspect_ratio: ratio, resolution: "4K", output_format: "png" } }),
+      })).json();
+      if (t.code !== 200) return res.status(502).json({ error: t.msg || "rendu refusé" });
+      return res.json({ taskId: t.data.taskId });
+    }
     const own = (Array.isArray(houseRefs) ? houseRefs : []).filter(r => typeof r === "string" && r.startsWith("data:image/") && r.length < 3e6).slice(0, 2);
     const zones = ["middle-left", "middle-centre", "middle-right", "bottom-left", "bottom-centre", "bottom-right"];
     const emptyZones = (Array.isArray(empty) ? empty : []).filter(z => zones.includes(z)).map(z => "the " + z.replace("-", " ") + " of the image");
