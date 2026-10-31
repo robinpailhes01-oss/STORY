@@ -222,6 +222,11 @@
   .sites b { display: block; font-size: 16px; }
   .sites span { font-size: 13.5px; color: var(--muted); }
   .sites .new b { color: var(--accent); }
+  .geo { border-color: var(--gold); }
+  .geo-row { display: flex; gap: 6px; }
+  .geo-row input { flex: 1; min-width: 0; font: inherit; font-size: 16px; min-height: 46px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--fg); }
+  .geo-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  .geo-list button { width: 100%; text-align: left; min-height: 44px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); font-size: 14.5px; cursor: pointer; }
   .prep-toggle { border: 1.5px dashed var(--line); background: transparent; color: var(--accent); border-radius: 12px; min-height: 48px; padding: 10px 14px; font-size: 14.5px; font-weight: 700; cursor: pointer; text-align: center; }
   .prep { padding-top: 6px; border-top: 1px solid var(--line); }
   .toast { position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); padding: 10px 16px; border-radius: 12px; background: var(--accent); color: var(--on-accent); font-size: 14px; font-weight: 600; z-index: 20; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
@@ -298,6 +303,13 @@
     <section class="block" data-panel="1">
       <h2>Le terrain du client</h2>
       <p class="lead">Touchez le terrain, notez le nom du client, puis commencez le jardin.</p>
+      <div class="sub geo">
+        <div class="label">Nouveau terrain par l'adresse</div>
+        <div class="geo-row"><input id="geoQ" type="search" placeholder="Adresse du terrain" autocomplete="off" aria-label="Adresse du terrain"><button type="button" class="chip" id="geoMe">📍 Je suis sur place</button></div>
+        <ul class="geo-list" id="geoList" hidden></ul>
+        <p class="note" id="geoMsg">Le contour vient du cadastre et la maison des données de l'IGN, avec la photo aérienne en fond.</p>
+      </div>
+      <div class="label">Terrains enregistrés</div>
       <div class="sites" id="siteCards" role="group" aria-label="Terrains"></div>
       <label class="field" for="client">Nom du client<input id="client" type="text" autocomplete="off" placeholder="Ex. : M. et Mme Martin"></label>
       <div class="actions"><button type="button" class="btn" data-go="2">Commencer le jardin →</button></div>
@@ -328,6 +340,7 @@
         <button type="button" class="chip" data-subtab="photos" aria-pressed="false">Photos</button>
       </div>
       <div class="block" data-sub="contour">
+        <button type="button" class="chip" id="parcelPick" hidden>Choisir une autre parcelle sur la photo aérienne</button>
         <div class="pair">
           <label class="field" for="rectW">Largeur (m)<input id="rectW" type="number" inputmode="decimal" min="4" max="200" step="0.1"></label>
           <label class="field" for="rectD">Profondeur (m)<input id="rectD" type="number" inputmode="decimal" min="4" max="200" step="0.1"></label>
@@ -1267,6 +1280,7 @@
     site = s; selBlock = null;
     s.photos = s.photos || []; s.blocks = s.blocks || []; s.items = s.items || [];
     $("siteName").value = s.name || ""; $("client").value = s.client || "";
+    $("parcelPick").hidden = !s.geo;
     decor.visible = !!s.demo; $("siteDel").hidden = !!s.demo;
     buildHouse(); buildPlan(); setPhotos(); layoutPlot();
     s.items.forEach(([no, x, z, r, sp]) => { if (TYPES[no]) addItem(no, x, z, r, sp); });
@@ -1492,13 +1506,156 @@
     } catch (err) { toast("Fichier non reconnu : " + err.message); }
   });
 
+
+  // ---------------------------------------------------------------- new plot from an address or the tablet's GPS: cadastre parcel, IGN buildings, aerial photo
+  // public French data (IGN Géoplateforme): no key, called straight from the tablet
+  const IGN = {
+    geocode: q => `https://data.geopf.fr/geocodage/search?q=${encodeURIComponent(q)}&limit=5&index=address`,
+    reverse: (lon, lat) => `https://data.geopf.fr/geocodage/reverse?lon=${lon}&lat=${lat}&limit=1`,
+    parcel: geom => `https://apicarto.ign.fr/api/cadastre/parcelle?geom=${encodeURIComponent(JSON.stringify(geom))}`,
+    buildings: b => `https://data.geopf.fr/wfs/ows?service=WFS&version=2.0.0&request=GetFeature&typeNames=BDTOPO_V3:batiment&outputFormat=application/json&srsName=EPSG:4326&count=60&bbox=${b[0]},${b[1]},${b[2]},${b[3]},EPSG:4326`,
+    ortho: (b, w, h) => `https://data.geopf.fr/wms-r?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=HR.ORTHOIMAGERY.ORTHOPHOTOS&STYLES=&CRS=EPSG:4326&BBOX=${b[1]},${b[0]},${b[3]},${b[2]}&WIDTH=${w}&HEIGHT=${h}&FORMAT=image/jpeg`,
+  };
+  const getJSON = async u => { const r = await fetch(u); if (!r.ok) throw new Error("service IGN indisponible (" + r.status + ")"); return r.json(); };
+  const geoMsg = t => { $("geoMsg").textContent = t; };
+  // local metres around a reference point (north = -z), exact enough at the scale of a plot
+  function geoFrame(lon0, lat0, a) {
+    const kx = 111320 * Math.cos(lat0 * Math.PI / 180), kz = 110574, ca = Math.cos(a), sa = Math.sin(a);
+    return {
+      to: (lon, lat) => { const x = (lon - lon0) * kx, z = -(lat - lat0) * kz; return [x * ca - z * sa, x * sa + z * ca]; },
+      from: (x, z) => { const ux = x * ca + z * sa, uz = -x * sa + z * ca; return [lon0 + ux / kx, lat0 - uz / kz]; },
+    };
+  }
+  const outerRing = g => g.type === "MultiPolygon" ? g.coordinates.map(p => p[0]).sort((p, q) => polyArea(q) - polyArea(p))[0] : g.coordinates[0];
+  // smallest rectangle around a footprint: becomes a house volume (x, z, w, d, rot)
+  function minRect(pts) {
+    let best = null;
+    pts.forEach((p, i) => {
+      const q = pts[(i + 1) % pts.length], phi = Math.atan2(q[1] - p[1], q[0] - p[0]), ux = Math.cos(phi), uz = Math.sin(phi);
+      let a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity;
+      pts.forEach(([x, z]) => { const a = x * ux + z * uz, b = -x * uz + z * ux; a0 = Math.min(a0, a); a1 = Math.max(a1, a); b0 = Math.min(b0, b); b1 = Math.max(b1, b); });
+      const area = (a1 - a0) * (b1 - b0);
+      if (!best || area < best.area) { const ca = (a0 + a1) / 2, cb = (b0 + b1) / 2; best = { area, x: ca * ux - cb * uz, z: ca * uz + cb * ux, w: a1 - a0, d: b1 - b0, rot: -phi }; }
+    });
+    return best;
+  }
+  async function parcelAt(lon, lat) {
+    const d = await getJSON(IGN.parcel({ type: "Point", coordinates: [lon, lat] }));
+    if (d.features && d.features.length) return d.features[0];
+    // on the street: the nearest parcel within 20 m
+    const e = 20 / 111320, n = await getJSON(IGN.parcel({ type: "Polygon", coordinates: [[[lon - e, lat - e], [lon + e, lat - e], [lon + e, lat + e], [lon - e, lat + e], [lon - e, lat - e]]] }));
+    if (!n.features || !n.features.length) return null;
+    const dist = f => { const r = outerRing(f.geometry), c = r.reduce((s2, p) => [s2[0] + p[0] / r.length, s2[1] + p[1] / r.length], [0, 0]); return Math.hypot(c[0] - lon, c[1] - lat); };
+    return n.features.sort((p, q) => dist(p) - dist(q))[0];
+  }
+  async function siteFromGeo(lon, lat, label, keep) {
+    geoMsg("Recherche de la parcelle au cadastre…");
+    const parcel = await parcelAt(lon, lat);
+    if (!parcel) { geoMsg("Aucune parcelle trouvée à cet endroit. Essayez l'adresse exacte du terrain."); return; }
+    const ring = outerRing(parcel.geometry);
+    const lon0 = ring.reduce((a, p) => a + p[0], 0) / ring.length, lat0 = ring.reduce((a, p) => a + p[1], 0) / ring.length;
+    const lons = ring.map(p => p[0]), lats = ring.map(p => p[1]), m = 12 / 111320;
+    const bb = [Math.min(...lons) - m, Math.min(...lats) - m, Math.max(...lons) + m, Math.max(...lats) + m];
+    geoMsg("Parcelle trouvée : recherche de la maison et de la photo aérienne…");
+    let feats = [];
+    try { feats = (await getJSON(IGN.buildings(bb))).features || []; } catch (e) { feats = []; }
+    const f0 = geoFrame(lon0, lat0, 0), poly0 = ring.slice(0, -1).map(p => f0.to(p[0], p[1]));
+    const blds = feats.map(f => ({ pts: outerRing(f.geometry).slice(0, -1).map(p => f0.to(p[0], p[1])), h: f.properties && f.properties.hauteur }))
+      .filter(b => { const c = b.pts.reduce((s2, p) => [s2[0] + p[0] / b.pts.length, s2[1] + p[1] / b.pts.length], [0, 0]); return inPoly(c[0], c[1], poly0); });
+    // turn the plot so the house stands at the back and the garden in front, as in the studio's views
+    let a = 0;
+    if (blds.length) {
+      const big = blds.slice().sort((p, q) => polyArea(q.pts) - polyArea(p.pts))[0], hc = big.pts.reduce((s2, p) => [s2[0] + p[0] / big.pts.length, s2[1] + p[1] / big.pts.length], [0, 0]);
+      const pc = poly0.reduce((s2, p) => [s2[0] + p[0] / poly0.length, s2[1] + p[1] / poly0.length], [0, 0]);
+      if (Math.hypot(hc[0] - pc[0], hc[1] - pc[1]) > 0.5) a = -Math.PI / 2 - Math.atan2(hc[1] - pc[1], hc[0] - pc[0]);
+    }
+    const F = geoFrame(lon0, lat0, a), rot2 = ([x, z]) => [x * Math.cos(a) - z * Math.sin(a), x * Math.sin(a) + z * Math.cos(a)];
+    const s2 = keep || NEW_SITE();
+    s2.poly = poly0.map(rot2).map(([x, z]) => [+x.toFixed(2), +z.toFixed(2)]);
+    s2.blocks = blds.map(b => { const r = minRect(b.pts.map(rot2)); return { kind: "maison", x: +r.x.toFixed(2), z: +r.z.toFixed(2), w: +r.w.toFixed(2), d: +r.d.toFixed(2), h: +(b.h > 2 && b.h < 20 ? b.h : 6).toFixed(1), rot: +r.rot.toFixed(4) }; });
+    if (!keep) { s2.name = label || "Parcelle " + parcel.properties.section + " " + parcel.properties.numero; s2.items = []; s2.photos = []; }
+    s2.geo = { lon0, lat0, a, parcelle: parcel.properties.idu, section: parcel.properties.section, numero: parcel.properties.numero, contenance: parcel.properties.contenance, commune: parcel.properties.nom_com };
+    // aerial photo of the plot, at its true scale, as the background of the plan
+    try {
+      const wM = (bb[2] - bb[0]) * 111320 * Math.cos(lat0 * Math.PI / 180), hM = (bb[3] - bb[1]) * 110574, px = Math.min(2048, Math.round(Math.max(wM, hM) * 10));
+      const W = Math.round(px * wM / Math.max(wM, hM)), H = Math.round(px * hM / Math.max(wM, hM));
+      const img = await new Promise((ok, ko) => { const i = new Image(); i.crossOrigin = "anonymous"; i.onload = () => ok(i); i.onerror = () => ko(new Error("photo aérienne indisponible")); i.src = IGN.ortho(bb, W, H); });
+      const c = document.createElement("canvas"); c.width = W; c.height = H; c.getContext("2d").drawImage(img, 0, 0);
+      const [cx, cz] = F.to((bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2);
+      s2.plan = { image: c.toDataURL("image/jpeg", 0.85), ar: hM / wM, w: wM, x: +cx.toFixed(2), z: +cz.toFixed(2), rot: -a, op: 0.95, aerial: true };
+      if (!keep || !s2.blocks.some(b => b.kind === "piscine")) findPools(c, bb, F, s2);
+    } catch (e) { s2.plan = null; }
+    await loadSite(s2); save(); setPrep(true); goTo("plan");
+    $("parcelPick").hidden = false;
+    const area = fmt.format(parcel.properties.contenance || polyArea(s2.poly));
+    const pools = s2.blocks.filter(b => b.kind === "piscine").length;
+    geoMsg(`Parcelle ${parcel.properties.section} ${parcel.properties.numero} (${parcel.properties.nom_com}) · ${area} m² au cadastre · ${blds.length ? blds.length + (blds.length > 1 ? " bâtiments trouvés" : " bâtiment trouvé") : "aucun bâtiment au cadastre : ajoutez la maison"}${pools ? " · " + pools + (pools > 1 ? " piscines repérées" : " piscine repérée") : ""}. Vérifiez sur la photo aérienne et ajoutez l'existant manquant.`);
+    toast("Terrain créé depuis le cadastre.");
+  }
+  // pools: the turquoise water seen on the aerial photo, inside the plot
+  function findPools(c, bb, F, s2) {
+    const W = c.width, H = c.height, px = c.getContext("2d").getImageData(0, 0, W, H).data, seen = new Uint8Array(W * H);
+    const water = i => { const r = px[i * 4], g = px[i * 4 + 1], b = px[i * 4 + 2]; return b > 120 && g > 100 && b - r > 45 && g - r > 25 && b >= g - 20; };
+    const toLocal = (x, y) => F.to(bb[0] + (x + 0.5) / W * (bb[2] - bb[0]), bb[3] - (y + 0.5) / H * (bb[3] - bb[1]));
+    const m2 = ((bb[2] - bb[0]) * 111320 * Math.cos(F.from(0, 0)[1] * Math.PI / 180) / W) * ((bb[3] - bb[1]) * 110574 / H);
+    for (let y = 0; y < H; y += 1) for (let x = 0; x < W; x += 1) {
+      const i0 = y * W + x; if (seen[i0] || !water(i0)) continue;
+      const stack = [i0], pts = []; seen[i0] = 1;
+      while (stack.length) {
+        const i = stack.pop(), xx = i % W, yy = (i / W) | 0; pts.push([xx, yy]);
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = xx + dx, ny = yy + dy, j = ny * W + nx; if (nx >= 0 && ny >= 0 && nx < W && ny < H && !seen[j] && water(j)) { seen[j] = 1; stack.push(j); } }
+      }
+      const area = pts.length * m2; if (area < 6 || area > 120) continue;
+      const loc = pts.filter((p, k) => k % 3 === 0).map(([xx, yy]) => toLocal(xx, yy));
+      const cxz = loc.reduce((a2, p) => [a2[0] + p[0] / loc.length, a2[1] + p[1] / loc.length], [0, 0]);
+      if (!inPoly(cxz[0], cxz[1], s2.poly)) continue;
+      // edge pixels only, then the smallest rectangle around them
+      const r = minRect(hull(loc)); if (!r || r.w * r.d > area * 1.8) continue;
+      s2.blocks.push({ kind: "piscine", x: +r.x.toFixed(2), z: +r.z.toFixed(2), w: +r.w.toFixed(2), d: +r.d.toFixed(2), h: 0, rot: +r.rot.toFixed(4) });
+    }
+  }
+  function hull(P) {
+    const p = P.slice().sort((a2, b) => a2[0] - b[0] || a2[1] - b[1]), cr = (o, a2, b) => (a2[0] - o[0]) * (b[1] - o[1]) - (a2[1] - o[1]) * (b[0] - o[0]);
+    const lo = [], up = [];
+    for (const q of p) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+    for (const q of p.slice().reverse()) { while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
+    return lo.slice(0, -1).concat(up.slice(0, -1));
+  }
+  let geoTimer = null;
+  $("geoQ").addEventListener("input", e => {
+    clearTimeout(geoTimer); const q = e.target.value.trim(), ul = $("geoList");
+    if (q.length < 5) { ul.hidden = true; return; }
+    geoTimer = setTimeout(async () => {
+      try {
+        const d = await getJSON(IGN.geocode(q)); ul.innerHTML = "";
+        (d.features || []).forEach(f => {
+          const li = document.createElement("li"), b = document.createElement("button"); b.type = "button"; b.textContent = f.properties.label;
+          b.addEventListener("click", () => { ul.hidden = true; $("geoQ").value = f.properties.label; siteFromGeo(f.geometry.coordinates[0], f.geometry.coordinates[1], f.properties.label).catch(err => geoMsg("Recherche impossible : " + err.message)); });
+          li.appendChild(b); ul.appendChild(li);
+        });
+        ul.hidden = !ul.children.length;
+      } catch (err) { geoMsg("Recherche d'adresse impossible : " + err.message); }
+    }, 300);
+  });
+  $("geoMe").addEventListener("click", () => {
+    if (!navigator.geolocation) { geoMsg("Cette tablette ne donne pas sa position."); return; }
+    geoMsg("Localisation en cours…");
+    navigator.geolocation.getCurrentPosition(async p => {
+      const { longitude: lon, latitude: lat, accuracy } = p.coords;
+      let label = null; try { const r = await getJSON(IGN.reverse(lon, lat)); label = r.features && r.features[0] ? r.features[0].properties.label : null; } catch (e) { label = null; }
+      siteFromGeo(lon, lat, label).then(() => { if (accuracy > 15) toast("Position GPS à " + Math.round(accuracy) + " m près : vérifiez que c'est la bonne parcelle."); }).catch(err => geoMsg("Recherche impossible : " + err.message));
+    }, err => geoMsg(err.code === 1 ? "Autorisez la localisation pour ce site dans les réglages de la tablette." : "Position introuvable : tapez l'adresse."), { enableHighAccuracy: true, timeout: 15000 });
+  });
+  // wrong parcel: tap the right one on the aerial photo
+  $("parcelPick").addEventListener("click", () => { if (!site.geo) return; setTool("parcel"); goTo("plan"); });
+
   // ---------------------------------------------------------------- tools: trace the outline, scale the plan, measure
   const toolGroup = new T.Group(); scene.add(toolGroup);
   const measures = new T.Group(); scene.add(measures);
   const markGeo = new T.SphereGeometry(0.18, 16, 12), markMat = new T.MeshBasicMaterial({ color: 0xffd54a, depthTest: false });
   const lineMat = new T.LineBasicMaterial({ color: 0xffd54a, depthTest: false });
   let toolPts = [];
-  const TIPS = { trace: "Touchez les angles du terrain, dans l'ordre", scale: "Touchez le premier point d'une cote connue du plan", measure: "Touchez deux points pour mesurer" };
+  const TIPS = { parcel: "Touchez la bonne parcelle sur la photo aérienne", trace: "Touchez les angles du terrain, dans l'ordre", scale: "Touchez le premier point d'une cote connue du plan", measure: "Touchez deux points pour mesurer" };
   function tip(text) { $("tip").hidden = !text; if (text) $("tip").textContent = text; }
   function clearGroup(g) { g.traverse(o => { if (o.isSprite) o.material.map.dispose(); if (o.geometry && o.geometry !== markGeo) o.geometry.dispose(); }); g.clear(); }
   function setTool(t) {
@@ -1519,6 +1676,10 @@
     if (!pt) return;
     if (tool !== "measure") pt.set(Math.round(pt.x * 20) / 20, 0.05, Math.round(pt.z * 20) / 20);
     toolPts.push(pt);
+    if (tool === "parcel") {
+      const [lon, lat] = geoFrame(site.geo.lon0, site.geo.lat0, site.geo.a).from(pt.x, pt.z);
+      setTool(null); siteFromGeo(lon, lat, null, site).catch(err => geoMsg("Recherche impossible : " + err.message)); return;
+    }
     if (tool === "measure") {
       mark(pt, measures);
       if (toolPts.length % 2 === 0) {
