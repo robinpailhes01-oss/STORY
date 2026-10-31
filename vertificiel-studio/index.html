@@ -322,7 +322,7 @@
       <div class="sub spots">
         <div class="label">Sur place : photos du jardin</div>
         <p class="note">Placez-vous à chaque point 📷, aux angles de la maison, et touchez-le : l'appareil photo s'ouvre. Tablette à l'horizontale, photographiez le jardin dans le sens de la flèche, avec la clôture ou la haie du fond dans l'image. Ce qui est au sol (terrasse, allées, massifs, kiosque, spa, abri, arbres) s'ajoute à la 3D, à vérifier.</p>
-        <div class="chips"><button type="button" class="chip" id="spotAdd">+ Point photo sur le plan</button></div>
+        <div class="chips"><button type="button" class="chip" id="spotAdd">+ Point photo sur le plan</button><button type="button" class="chip" id="impMoasure">Importer un relevé Moasure (PDF)</button></div>
         <p class="note" id="spotMsg" hidden></p>
         <input type="file" id="fileCam" accept="image/*" capture="environment" hidden>
       </div>
@@ -336,7 +336,7 @@
       <div class="block">
         <div class="label">Importer</div>
         <div class="chips">
-          <button type="button" class="chip" id="impPlan">Plan de masse (image ou PDF)</button>
+          <button type="button" class="chip" id="impPlan">Plan ou relevé (image, PDF, Moasure)</button>
           <button type="button" class="chip" id="impFile">Fichier de mesures</button>
           <button type="button" class="chip" id="expFile">Exporter le fichier</button>
         </div>
@@ -963,17 +963,17 @@
     [lawn, shadowCatcher].forEach(m => { m.geometry.dispose(); m.geometry = new T.ShapeGeometry(shape); });
     dimLines.geometry.dispose(); dimLines.geometry = new T.BufferGeometry().setFromPoints(q.map(([x, z]) => new T.Vector3(x, 0.06, z)));
     disposeGroup(curbs); curbs.clear(); handles.clear();
-    const sg = polySign(q);
+    const sg = polySign(q), ks = clamp(span0 / 25, 0.35, 2), many = q.length > 16, minSide = Math.max(1.5, span0 / (many ? 6 : 14));
     q.forEach(([x, z], i) => {
       const [x2, z2] = q[(i + 1) % q.length], len = Math.hypot(x2 - x, z2 - z); if (len < 0.01) return;
       const nx = -(z2 - z) / len * sg, nz = (x2 - x) / len * sg;      // outward normal
       const cb = flatMesh(len, 0.3, M.strip, 0.008); cb.rotation.z = -Math.atan2(z2 - z, x2 - x); cb.position.set((x + x2) / 2 + nx * 0.15, 0.008, (z + z2) / 2 + nz * 0.15); curbs.add(cb);
       const lab = sideLabels[i] || (sideLabels[i] = makeLabel(dims));
-      lab.visible = len >= 1.5; setLabel(lab, fmt1.format(len) + " m"); lab.position.set((x + x2) / 2 + nx * 1.5, 0.5, (z + z2) / 2 + nz * 1.5);
-      const h = new T.Mesh(handleGeo, handleMat); h.position.set(x, 0.1, z); h.renderOrder = 11; h.userData.vertex = i; handles.add(h);
-      const pn = cornerLabels[i] || (cornerLabels[i] = makeLabel(handles)); handles.add(pn); setLabel(pn, L(i), true); pn.scale.set(2.6, 0.81, 1);
+      lab.visible = len >= minSide; setLabel(lab, fmt1.format(len) + " m"); lab.scale.set(3.4 * ks, 1.06 * ks, 1); lab.position.set((x + x2) / 2 + nx * 1.5 * ks, 0.5, (z + z2) / 2 + nz * 1.5 * ks);
+      const h = new T.Mesh(handleGeo, handleMat); h.position.set(x, 0.1, z); h.scale.set(ks, 1, ks); h.renderOrder = 11; h.userData.vertex = i; handles.add(h);
+      const pn = cornerLabels[i] || (cornerLabels[i] = makeLabel(handles)); handles.add(pn); setLabel(pn, L(i), true); pn.scale.set(2.6 * ks, 0.81 * ks, 1); pn.visible = !many;
       const [xp, zp] = q[(i + q.length - 1) % q.length], bx = (x - xp) / (Math.hypot(x - xp, z - zp) || 1) - (x2 - x) / len, bz = (z - zp) / (Math.hypot(x - xp, z - zp) || 1) - (z2 - z) / len, bl = Math.hypot(bx, bz) || 1;
-      pn.position.set(x + bx / bl * 1.1, 0.4, z + bz / bl * 1.1);
+      pn.position.set(x + bx / bl * 1.1 * ks, 0.4, z + bz / bl * 1.1 * ks);
     });
     for (let i = q.length; i < sideLabels.length; i++) sideLabels[i].visible = false;
     handles.visible = step === 1 && !tool && prepOpen;
@@ -1262,7 +1262,7 @@
       { kind: "maison", x: -5.6, z: -3, w: 4, d: 6, h: 6.1, rot: 0 }, { kind: "terrasse", x: 3.8, z: 1.1, w: 8, d: 2.2, h: 0.14, rot: 0 }],
     photos: [], plan: null, items: [] });
   const NEW_SITE = () => ({ id: "t" + Date.now().toString(36), name: "Nouveau terrain", client: "", poly: [[-10, -8], [10, -8], [10, 17], [-10, 17]],
-    blocks: [{ kind: "maison", x: 0, z: -3, w: 10, d: 8, h: 6, rot: 0 }, { kind: "terrasse", x: 0, z: 2.5, w: 8, d: 3, h: 0.15, rot: 0 }], photos: [], plan: null, items: [] });
+    blocks: [{ kind: "maison", x: 0, z: -3, w: 10, d: 8, h: 6, rot: 0, placeholder: true }, { kind: "terrasse", x: 0, z: 2.5, w: 8, d: 3, h: 0.15, rot: 0, placeholder: true }], photos: [], plan: null, items: [] });
   const DB = (() => {
     let opening = null;
     const open = () => opening || (opening = new Promise((ok, ko) => { const r = indexedDB.open("studio-jardin", 1); r.onupgradeneeded = () => r.result.createObjectStore("sites"); r.onsuccess = () => ok(r.result); r.onerror = () => ko(r.error); }));
@@ -1500,8 +1500,9 @@
     });
   }
   const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
+  pdfToImage.ready = async () => { if (!window.pdfjsLib) { await loadScript(PDFJS + "pdf.min.js"); await loadScript(PDFJS + "pdf.worker.min.js"); window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + "pdf.worker.min.js"; } };
   async function pdfToImage(file) {
-    if (!window.pdfjsLib) { await loadScript(PDFJS + "pdf.min.js"); await loadScript(PDFJS + "pdf.worker.min.js"); window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + "pdf.worker.min.js"; }
+    await pdfToImage.ready();
     const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise, page = await pdf.getPage(1);
     const v0 = page.getViewport({ scale: 1 }), vp = page.getViewport({ scale: Math.min(5, 3000 / Math.max(v0.width, v0.height)) });
     const c = document.createElement("canvas"); c.width = Math.round(vp.width); c.height = Math.round(vp.height);
@@ -1510,9 +1511,71 @@
     return c.toDataURL("image/jpeg", 0.88);
   }
   $("impPlan").addEventListener("click", () => $("filePlan").click());
+  // Moasure (and similar surveying apps) export the measured outline as vector lines, with its perimeter and area in the text:
+  // the outline is read point by point and scaled so that its perimeter matches the stated one
+  async function readSurveyPdf(file) {
+    await pdfToImage.ready();
+    const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise, page = await pdf.getPage(1);
+    const txt = (await page.getTextContent()).items.map(t => t.str).join(" ");
+    const num = x => parseFloat(String(x).replace(/\s/g, "").replace(",", "."));
+    const pm = txt.match(/([\d\s]+[.,]\d+)\s*m\s*\(\s*([\d\s]+[.,]\d+)\s*m²\s*\)/), sc = txt.match(/1\s*:\s*([\d\s]+[.,]?\d*)/);
+    const O = window.pdfjsLib.OPS, ops = await page.getOperatorList();
+    const mul = (a, b) => [a[0] * b[0] + a[1] * b[2], a[0] * b[1] + a[1] * b[3], a[2] * b[0] + a[3] * b[2], a[2] * b[1] + a[3] * b[3], a[4] * b[0] + a[5] * b[2] + b[4], a[4] * b[1] + a[5] * b[3] + b[5]];
+    let ctm = [1, 0, 0, 1, 0, 0]; const stack = [], paths = [];
+    ops.fnArray.forEach((fn, k) => {
+      const a = ops.argsArray[k];
+      if (fn === O.save) stack.push(ctm.slice()); else if (fn === O.restore) ctm = stack.pop() || ctm;
+      else if (fn === O.transform) ctm = mul(a, ctm);
+      else if (fn === O.constructPath) {
+        const [sub, co] = a, T = (x, y) => [x * ctm[0] + y * ctm[2] + ctm[4], x * ctm[1] + y * ctm[3] + ctm[5]], pts = [];
+        let j = 0;
+        sub.forEach(op => {
+          if (op === O.moveTo || op === O.lineTo) { pts.push(T(co[j], co[j + 1])); j += 2; }
+          else if (op === O.curveTo) { pts.push(T(co[j + 4], co[j + 5])); j += 6; }
+          else if (op === O.curveTo2 || op === O.curveTo3) { pts.push(T(co[j + 2], co[j + 3])); j += 4; }
+          else if (op === O.rectangle) j += 4;
+        });
+        if (pts.length > 2) paths.push(pts);
+      }
+    });
+    if (!paths.length) return null;
+    const clean = p => p.filter((q, i, arr) => !i || Math.hypot(q[0] - arr[i - 1][0], q[1] - arr[i - 1][1]) > 1e-6);
+    const perOf = p => p.reduce((s2, q, i) => s2 + (i ? Math.hypot(q[0] - p[i - 1][0], q[1] - p[i - 1][1]) : 0), 0);
+    let pts0 = null, k = null, perim = null, area = null;
+    if (pm) {
+      // the outline is the path whose area, once scaled by its perimeter, gives the stated area (not the grid, nor the scale bar)
+      perim = num(pm[1]); area = num(pm[2]);
+      let best = Infinity;
+      paths.map(clean).filter(p => p.length >= 4).forEach(p => { const kk = perim / perOf(p), A2 = polyArea(p) * kk * kk, e = Math.abs(A2 - area) / area; if (e < best) { best = e; pts0 = p; k = kk; } });
+      if (best > 0.15) pts0 = null;
+    }
+    if (!pts0 && sc) { pts0 = clean(paths.sort((p, q) => q.length - p.length)[0]); k = num(sc[1]) * 0.0254 / 72; }      // drawing scale: metres per PDF point
+    if (!pts0 || !k || !isFinite(k)) return null;
+    const vp = page.getViewport({ scale: 1 });
+    return { pts: pts0.map(([x, y]) => [x * k, -y * k]), k, perim, area, pageW: vp.width, pageH: vp.height };
+  }
   $("filePlan").addEventListener("change", async e => {
     const f = e.target.files[0]; e.target.value = ""; if (!f) return;
     toast("Lecture du plan…");
+    if (/pdf/i.test(f.type) || /\.pdf$/i.test(f.name)) {
+      let sv = null; try { sv = await readSurveyPdf(f); } catch (err) { sv = null; }
+      if (sv && sv.pts.length >= 3) {
+        const poly = simplify(sv.pts.slice(0, polyArea(sv.pts.slice(0, -1)) > 0 && Math.hypot(sv.pts[0][0] - sv.pts[sv.pts.length - 1][0], sv.pts[0][1] - sv.pts[sv.pts.length - 1][1]) < 0.05 ? -1 : undefined), 0.08);
+        const A = polyArea(poly), cx = poly.reduce((a2, p) => a2 + p[0] / poly.length, 0), cz = poly.reduce((a2, p) => a2 + p[1] / poly.length, 0);
+        const info = `Relevé lu : ${fmt1.format(A)} m²${sv.area ? " (relevé : " + fmt1.format(sv.area) + " m²)" : ""}, ${poly.length} angles.`;
+        const asOutline = window.confirm(info + "\n\nOK : en faire le contour du terrain.\nAnnuler : le garder en fond de plan, à l'échelle.");
+        const url = await pdfToImage(f), img = await loadImg(url);
+        let ox = 0, oz = 0;
+        if (asOutline) { site.poly = poly.map(([x, z]) => [+(x - cx).toFixed(3), +(z - cz).toFixed(3)]); site.blocks = site.blocks.filter(b => !b.placeholder); buildHouse(); ox = cx; oz = cz; }
+        else { const sp = plotSpan(); ox = cx - sp.cx; oz = cz - sp.cz; }
+        // the page, at the same scale, under the plan: page point (x, y) -> (x k - ox, -y k - oz)
+        site.plan = { image: url, ar: img.naturalHeight / img.naturalWidth, w: sv.pageW * sv.k, x: +(sv.pageW / 2 * sv.k - ox).toFixed(3), z: +(-sv.pageH / 2 * sv.k - oz).toFixed(3), rot: 0, op: 0.55, survey: true };
+        if (asOutline) site.spots = null;
+        buildPlan(); siteChanged(); drawSpots(); setPrep(true); goTo("plan"); refreshSites();
+        toast(asOutline ? "Contour du terrain créé depuis le relevé" : "Relevé posé en fond de plan, à l'échelle");
+        return;
+      }
+    }
     try {
       const url = /pdf/i.test(f.type) || /\.pdf$/i.test(f.name) ? await pdfToImage(f) : await fileToImage(f, 3000, 0.88);
       const img = await loadImg(url), sp = plotSpan();
@@ -1521,6 +1584,7 @@
       toast("Plan importé : réglez l'échelle avec une cote connue.");
     } catch (err) { toast("Import du plan impossible : " + err.message); }
   });
+  $("impMoasure").addEventListener("click", () => $("filePlan").click());
   $("planDel").addEventListener("click", () => { site.plan = null; buildPlan(); renderSiteUI(); save(); });
   $("planScale").addEventListener("click", () => { setTool("scale"); goTo("plan"); });
   $("planRot").addEventListener("input", e => { site.plan.rot = parseFloat(e.target.value) * Math.PI / 180; buildPlan(); save(); });
@@ -1832,6 +1896,7 @@
       // aim: away from the house, towards the garden
       out.push({ x: px, z: pz, ax: dx / l, az: dz / l });
     }));
+    if (!out.length) { const c = site.poly.reduce((a2, p) => [a2[0] + p[0] / site.poly.length, a2[1] + p[1] / site.poly.length], [0, 0]); if (inPoly(c[0], c[1], q)) out.push({ x: c[0], z: c[1], ax: 0, az: 1 }); }
     return out.slice(0, 6).map((o, i) => ({ id: "s" + Date.now().toString(36) + i, x: +o.x.toFixed(2), z: +o.z.toFixed(2), ax: +o.ax.toFixed(3), az: +o.az.toFixed(3), photo: null }));
   }
   // where a point looks: its saved direction, else away from the house
