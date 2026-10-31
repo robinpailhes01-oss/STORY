@@ -321,7 +321,7 @@
       <div class="sites" id="siteCards" role="group" aria-label="Terrains"></div>
       <div class="sub spots">
         <div class="label">Sur place : photos du jardin</div>
-        <p class="note">Placez-vous à chaque point 📷, aux angles de la maison, et touchez-le : l'appareil photo s'ouvre. Photographiez le jardin dans le sens de la flèche, en gardant si possible un bout de maison ou de clôture dans l'image. Ce qui est au sol (terrasse, allées, massifs, kiosque, spa, abri, arbres) s'ajoute à la 3D, à vérifier.</p>
+        <p class="note">Placez-vous à chaque point 📷, aux angles de la maison, et touchez-le : l'appareil photo s'ouvre. Tablette à l'horizontale, photographiez le jardin dans le sens de la flèche, avec la clôture ou la haie du fond dans l'image. Ce qui est au sol (terrasse, allées, massifs, kiosque, spa, abri, arbres) s'ajoute à la 3D, à vérifier.</p>
         <div class="chips"><button type="button" class="chip" id="spotAdd">+ Point photo sur le plan</button></div>
         <p class="note" id="spotMsg" hidden></p>
         <input type="file" id="fileCam" accept="image/*" capture="environment" hidden>
@@ -1923,11 +1923,13 @@
       return s2;
     };
     const n = pts.length + segs.length, px = (0.02 * W) ** 2;
-    const prior = q => px * ((q[0] - x0) ** 2 + (q[2] - z0) ** 2 + 9 * (q[1] - 1.5) ** 2 + (q[5] / 0.06) ** 2 + ((q[6] - fov0) / (fov0 * 0.12)) ** 2);
+    // the salesperson aims along the arrow of the point (give or take 30°)
+    const yaw0 = Math.atan2(-v[0], -v[2]), dyaw = q => Math.atan2(Math.sin(q[3] - yaw0), Math.cos(q[3] - yaw0));
+    const prior = q => px * ((q[0] - x0) ** 2 + (q[2] - z0) ** 2 + 9 * (q[1] - 1.5) ** 2 + (q[5] / 0.06) ** 2 + ((q[6] - fov0) / (fov0 * 0.12)) ** 2 + (dyaw(q) / 0.5) ** 2);
     const cost = q => (q[6] < 30 || q[6] > 120) ? 1e15 : reproj(q) + prior(q);
     let best = null;
-    for (let k = 0; k < 12; k++) {
-      const q0 = [x0, 1.5, z0, Math.atan2(-v[0], -v[2]) + k * Math.PI / 6, -0.15, 0, fov0];
+    for (let k = -3; k <= 3; k++) {
+      const q0 = [x0, 1.5, z0, yaw0 + k * 0.25, -0.15, 0, fov0];
       const r = nelderMead(cost, nelderMead(cost, q0, [0.4, 0.1, 0.4, 0.2, 0.1, 0.03, 5], 500).x, [0.1, 0.03, 0.1, 0.03, 0.02, 0.01, 1], 1500);
       if (!best || r.f < best.f) best = r;
     }
@@ -1985,7 +1987,7 @@
       spotMsg("Repères mal trouvés : nouvelle analyse avec Gemini 3.1 Pro…");
       try { const d2 = await call("pro"), s2 = solve(d2); if (s2 && (!sol || s2.err < sol.err)) { sol = s2; d = d2; } else if (!sol) d = d2.objects.length > d.objects.length ? d2 : d; } catch (e) { /* keep the first answer */ }
     }
-    const calibrated = sol && sol.err <= w * 0.035;
+    const calibrated = sol && sol.err <= w * 0.035 && Math.abs(Math.atan2(Math.sin(sol.q[3] - Math.atan2(-ux, -uz)), Math.cos(sol.q[3] - Math.atan2(-ux, -uz)))) < 1.1;
     if (sol) window.studio.lastSolve = { err: sol.err, n: sol.n, pose: sol.pose };
     if (calibrated) pose = sol.pose;
     // the photo becomes a view of the site (exact if calibrated) and the point turns green
