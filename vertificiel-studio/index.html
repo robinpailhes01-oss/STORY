@@ -927,6 +927,8 @@
   let gardenCache = null;
   function layoutPlot() {
     gardenCache = null;
+    const span0 = (b => Math.max(b[1] - b[0], b[3] - b[2]))(bbox(site.poly));
+    scene.fog.near = Math.max(60, span0 * 2.5); scene.fog.far = Math.max(140, span0 * 6); camera.far = Math.max(400, span0 * 8); camera.updateProjectionMatrix();
     const q = site.poly, shape = new T.Shape(q.map(([x, z]) => new T.Vector2(x, -z)));
     [lawn, shadowCatcher].forEach(m => { m.geometry.dispose(); m.geometry = new T.ShapeGeometry(shape); });
     dimLines.geometry.dispose(); dimLines.geometry = new T.BufferGeometry().setFromPoints(q.map(([x, z]) => new T.Vector3(x, 0.06, z)));
@@ -937,7 +939,7 @@
       const nx = -(z2 - z) / len * sg, nz = (x2 - x) / len * sg;      // outward normal
       const cb = flatMesh(len, 0.3, M.strip, 0.008); cb.rotation.z = -Math.atan2(z2 - z, x2 - x); cb.position.set((x + x2) / 2 + nx * 0.15, 0.008, (z + z2) / 2 + nz * 0.15); curbs.add(cb);
       const lab = sideLabels[i] || (sideLabels[i] = makeLabel(dims));
-      lab.visible = true; setLabel(lab, fmt1.format(len) + " m"); lab.position.set((x + x2) / 2 + nx * 1.5, 0.5, (z + z2) / 2 + nz * 1.5);
+      lab.visible = len >= 1.5; setLabel(lab, fmt1.format(len) + " m"); lab.position.set((x + x2) / 2 + nx * 1.5, 0.5, (z + z2) / 2 + nz * 1.5);
       const h = new T.Mesh(handleGeo, handleMat); h.position.set(x, 0.1, z); h.renderOrder = 11; h.userData.vertex = i; handles.add(h);
       const pn = cornerLabels[i] || (cornerLabels[i] = makeLabel(handles)); handles.add(pn); setLabel(pn, L(i), true); pn.scale.set(2.6, 0.81, 1);
       const [xp, zp] = q[(i + q.length - 1) % q.length], bx = (x - xp) / (Math.hypot(x - xp, z - zp) || 1) - (x2 - x) / len, bz = (z - zp) / (Math.hypot(x - xp, z - zp) || 1) - (z2 - z) / len, bl = Math.hypot(bx, bz) || 1;
@@ -1526,6 +1528,19 @@
       from: (x, z) => { const ux = x * ca + z * sa, uz = -x * sa + z * ca; return [lon0 + ux / kx, lat0 - uz / kz]; },
     };
   }
+  // cadastre outlines carry many tiny jogs: keep the corners that matter (Douglas-Peucker, closed ring)
+  function simplify(r, tol) {
+    const dp = (pts) => {
+      if (pts.length < 3) return pts;
+      const [a2, b] = [pts[0], pts[pts.length - 1]], dx = b[0] - a2[0], dz = b[1] - a2[1], l = Math.hypot(dx, dz) || 1;
+      let k = 0, dmax = 0;
+      for (let i = 1; i < pts.length - 1; i++) { const d = Math.abs((pts[i][0] - a2[0]) * dz - (pts[i][1] - a2[1]) * dx) / l; if (d > dmax) { dmax = d; k = i; } }
+      return dmax > tol ? dp(pts.slice(0, k + 1)).slice(0, -1).concat(dp(pts.slice(k))) : [a2, b];
+    };
+    let far = 0; r.forEach((p, i) => { if (Math.hypot(p[0] - r[0][0], p[1] - r[0][1]) > Math.hypot(r[far][0] - r[0][0], r[far][1] - r[0][1])) far = i; });
+    const out = dp(r.slice(0, far + 1)).slice(0, -1).concat(dp(r.slice(far).concat([r[0]])).slice(0, -1));
+    return out.length >= 3 ? out : r;
+  }
   const outerRing = g => g.type === "MultiPolygon" ? g.coordinates.map(p => p[0]).sort((p, q) => polyArea(q) - polyArea(p))[0] : g.coordinates[0];
   // smallest rectangle around a footprint: becomes a house volume (x, z, w, d, rot)
   function minRect(pts) {
@@ -1539,18 +1554,27 @@
     });
     return best;
   }
-  async function parcelAt(lon, lat) {
-    const d = await getJSON(IGN.parcel({ type: "Point", coordinates: [lon, lat] }));
-    if (d.features && d.features.length) return d.features[0];
-    // on the street: the nearest parcel within 20 m
-    const e = 20 / 111320, n = await getJSON(IGN.parcel({ type: "Polygon", coordinates: [[[lon - e, lat - e], [lon + e, lat - e], [lon + e, lat + e], [lon - e, lat + e], [lon - e, lat - e]]] }));
+  // the plot of an address: address points often sit on the street, and in a housing estate the street is a parcel too.
+  // so: the parcels around the point, without roads and common areas (long, thin or very large), the closest one wins
+  async function parcelAt(lon, lat, exact) {
+    if (exact) { const d = await getJSON(IGN.parcel({ type: "Point", coordinates: [lon, lat] })); return d.features && d.features[0] || null; }
+    const e = 30 / 111320, n = await getJSON(IGN.parcel({ type: "Polygon", coordinates: [[[lon - e, lat - e], [lon + e, lat - e], [lon + e, lat + e], [lon - e, lat + e], [lon - e, lat - e]]] }));
     if (!n.features || !n.features.length) return null;
-    const dist = f => { const r = outerRing(f.geometry), c = r.reduce((s2, p) => [s2[0] + p[0] / r.length, s2[1] + p[1] / r.length], [0, 0]); return Math.hypot(c[0] - lon, c[1] - lat); };
-    return n.features.sort((p, q) => dist(p) - dist(q))[0];
+    const F = geoFrame(lon, lat, 0);
+    const scored = n.features.map(f => {
+      const r = outerRing(f.geometry).map(p => F.to(p[0], p[1])), A = polyArea(r);
+      const per = r.reduce((a2, p, i) => a2 + Math.hypot(r[(i + 1) % r.length][0] - p[0], r[(i + 1) % r.length][1] - p[1]), 0);
+      const compact = 4 * Math.PI * A / (per * per);
+      let dist = inPoly(0, 0, r) ? 0 : Infinity;
+      if (dist) r.forEach((p, i) => { const q = r[(i + 1) % r.length], dx = q[0] - p[0], dz = q[1] - p[1], t = clamp(-(p[0] * dx + p[1] * dz) / (dx * dx + dz * dz || 1), 0, 1); dist = Math.min(dist, Math.hypot(p[0] + t * dx, p[1] + t * dz)); });
+      return { f, dist, plot: compact > 0.3 && A > 120 && A < 6000 };
+    });
+    const plots = scored.filter(x => x.plot).sort((p, q) => p.dist - q.dist);
+    return (plots[0] || scored.sort((p, q) => p.dist - q.dist)[0]).f;
   }
   async function siteFromGeo(lon, lat, label, keep) {
     geoMsg("Recherche de la parcelle au cadastre…");
-    const parcel = await parcelAt(lon, lat);
+    const parcel = await parcelAt(lon, lat, !!keep);
     if (!parcel) { geoMsg("Aucune parcelle trouvée à cet endroit. Essayez l'adresse exacte du terrain."); return; }
     const ring = outerRing(parcel.geometry);
     const lon0 = ring.reduce((a, p) => a + p[0], 0) / ring.length, lat0 = ring.reduce((a, p) => a + p[1], 0) / ring.length;
@@ -1571,7 +1595,7 @@
     }
     const F = geoFrame(lon0, lat0, a), rot2 = ([x, z]) => [x * Math.cos(a) - z * Math.sin(a), x * Math.sin(a) + z * Math.cos(a)];
     const s2 = keep || NEW_SITE();
-    s2.poly = poly0.map(rot2).map(([x, z]) => [+x.toFixed(2), +z.toFixed(2)]);
+    s2.poly = simplify(poly0.map(rot2), 0.3).map(([x, z]) => [+x.toFixed(2), +z.toFixed(2)]);
     s2.blocks = blds.map(b => { const r = minRect(b.pts.map(rot2)); return { kind: "maison", x: +r.x.toFixed(2), z: +r.z.toFixed(2), w: +r.w.toFixed(2), d: +r.d.toFixed(2), h: +(b.h > 2 && b.h < 20 ? b.h : 6).toFixed(1), rot: +r.rot.toFixed(4) }; });
     if (!keep) { s2.name = label || "Parcelle " + parcel.properties.section + " " + parcel.properties.numero; s2.items = []; s2.photos = []; }
     s2.geo = { lon0, lat0, a, parcelle: parcel.properties.idu, section: parcel.properties.section, numero: parcel.properties.numero, contenance: parcel.properties.contenance, commune: parcel.properties.nom_com };
@@ -1594,23 +1618,34 @@
   }
   // pools: the turquoise water seen on the aerial photo, inside the plot
   function findPools(c, bb, F, s2) {
-    const W = c.width, H = c.height, px = c.getContext("2d").getImageData(0, 0, W, H).data, seen = new Uint8Array(W * H);
-    const water = i => { const r = px[i * 4], g = px[i * 4 + 1], b = px[i * 4 + 2]; return b > 120 && g > 100 && b - r > 45 && g - r > 25 && b >= g - 20; };
-    const toLocal = (x, y) => F.to(bb[0] + (x + 0.5) / W * (bb[2] - bb[0]), bb[3] - (y + 0.5) / H * (bb[3] - bb[1]));
-    const m2 = ((bb[2] - bb[0]) * 111320 * Math.cos(F.from(0, 0)[1] * Math.PI / 180) / W) * ((bb[3] - bb[1]) * 110574 / H);
-    for (let y = 0; y < H; y += 1) for (let x = 0; x < W; x += 1) {
-      const i0 = y * W + x; if (seen[i0] || !water(i0)) continue;
+    const W = c.width, H = c.height, px = c.getContext("2d").getImageData(0, 0, W, H).data;
+    // pool water: cyan to blue, even pale (sun reflections), never grey, green or brown
+    const water = i => {
+      const r = px[i * 4], g = px[i * 4 + 1], b = px[i * 4 + 2], mx = Math.max(r, g, b), mn = Math.min(r, g, b), sat = mx ? (mx - mn) / mx : 0;
+      if (mx < 115 || sat < 0.12 || b < r + 20 || g < r + 12) return false;
+      const hue = mx === b ? 240 + 60 * (r - g) / (mx - mn) : mx === g ? 120 + 60 * (b - r) / (mx - mn) : 0;
+      return hue >= 165 && hue <= 215;
+    };
+    let mask = new Uint8Array(W * H);
+    for (let i = 0; i < W * H; i++) mask[i] = water(i) ? 1 : 0;
+    // close small gaps (reflections, pool edges) so one pool stays one piece
+    for (let pass = 0; pass < 2; pass++) {
+      const m2 = mask.slice();
+      for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) { const i = y * W + x; if (!mask[i] && (mask[i - 1] + mask[i + 1] + mask[i - W] + mask[i + W]) >= 2) m2[i] = 1; }
+      mask = m2;
+    }
+    const seen = new Uint8Array(W * H), toLocal = (x, y) => F.to(bb[0] + (x + 0.5) / W * (bb[2] - bb[0]), bb[3] - (y + 0.5) / H * (bb[3] - bb[1]));
+    for (let i0 = 0; i0 < W * H; i0++) {
+      if (seen[i0] || !mask[i0]) continue;
       const stack = [i0], pts = []; seen[i0] = 1;
       while (stack.length) {
         const i = stack.pop(), xx = i % W, yy = (i / W) | 0; pts.push([xx, yy]);
-        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = xx + dx, ny = yy + dy, j = ny * W + nx; if (nx >= 0 && ny >= 0 && nx < W && ny < H && !seen[j] && water(j)) { seen[j] = 1; stack.push(j); } }
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = xx + dx, ny = yy + dy, j = ny * W + nx; if (nx >= 0 && ny >= 0 && nx < W && ny < H && !seen[j] && mask[j]) { seen[j] = 1; stack.push(j); } }
       }
-      const area = pts.length * m2; if (area < 6 || area > 120) continue;
-      const loc = pts.filter((p, k) => k % 3 === 0).map(([xx, yy]) => toLocal(xx, yy));
-      const cxz = loc.reduce((a2, p) => [a2[0] + p[0] / loc.length, a2[1] + p[1] / loc.length], [0, 0]);
-      if (!inPoly(cxz[0], cxz[1], s2.poly)) continue;
-      // edge pixels only, then the smallest rectangle around them
-      const r = minRect(hull(loc)); if (!r || r.w * r.d > area * 1.8) continue;
+      if (pts.length < 40) continue;
+      const loc = hull(pts).map(([xx, yy]) => toLocal(xx, yy)), r = minRect(loc), A = polyArea(loc);
+      if (!r || A < 6 || A > 120 || r.w * r.d > A * 1.6 || Math.max(r.w, r.d) > 4.5 * Math.min(r.w, r.d)) continue;
+      if (!inPoly(r.x, r.z, s2.poly)) continue;
       s2.blocks.push({ kind: "piscine", x: +r.x.toFixed(2), z: +r.z.toFixed(2), w: +r.w.toFixed(2), d: +r.d.toFixed(2), h: 0, rot: +r.rot.toFixed(4) });
     }
   }
