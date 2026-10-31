@@ -87,6 +87,7 @@
     padding: 6px 6px 6px 8px; border-radius: 16px; background: var(--bg); color: var(--fg); box-shadow: 0 6px 24px rgba(0,0,0,.22);
   }
   .selbar .no { flex: none; }
+  .selbar select { font: inherit; font-size: 15px; font-weight: 700; min-height: 40px; padding: 4px 8px; border-radius: 10px; border: 1.5px solid var(--accent); background: var(--bg); color: var(--accent); max-width: 46vw; }
   .selbar .name { min-width: 0; font-size: 14px; font-weight: 600; padding-right: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .selbar button { min-height: 40px; padding: 6px 12px; border-radius: 10px; border: 1.5px solid var(--accent); background: var(--bg); color: var(--accent); font-size: 13px; font-weight: 700; cursor: pointer; }
   .selbar button.danger { border-color: #b4483c; color: #b4483c; }
@@ -262,6 +263,12 @@
       <button type="button" id="measureBtn" aria-pressed="false">Mesurer</button>
     </div>
     <span class="legal">Maquette indicative, non contractuelle</span>
+    <div class="selbar" id="bselbar" hidden>
+      <select id="bselKind" aria-label="Type d'élément existant"></select>
+      <button type="button" id="bselRot">Tourner</button>
+      <button type="button" id="bselDup">Dupliquer</button>
+      <button type="button" id="bselDel" class="danger">Retirer</button>
+    </div>
     <div class="selbar" id="selbar" hidden>
       <span class="no" id="selNo"></span>
       <span class="name" id="selName"></span>
@@ -692,9 +699,12 @@
   const KINDS = {
     maison: { name: "Volume maison", add: "Volume maison", w: 10, d: 8, h: 6, hh: true },
     terrasse: { name: "Terrasse ou dalle", add: "Terrasse", w: 6, d: 3, h: 0.15, hh: true },
-    piscine: { name: "Piscine existante", add: "Piscine existante", w: 4, d: 8, h: 0 },
-    abri: { name: "Abri ou garage", add: "Abri, garage", w: 3, d: 2.5, h: 2.4, hh: true },
-    arbre: { name: "Arbre existant", add: "Arbre existant", w: 4, d: 4, h: 7, hh: true },
+    piscine: { name: "Piscine existante", add: "Piscine", w: 4, d: 8, h: 0 },
+    spa: { name: "Spa, jacuzzi", add: "Spa, jacuzzi", w: 2.2, d: 2.2, h: 0.9, hh: true },
+    kiosque: { name: "Kiosque, pergola", add: "Kiosque, pergola", w: 3.5, d: 3.5, h: 2.8, hh: true },
+    abri: { name: "Abri, garage", add: "Abri, garage", w: 3, d: 2.5, h: 2.4, hh: true },
+    arbre: { name: "Arbre existant", add: "Arbre", w: 4, d: 4, h: 7, hh: true },
+    haie: { name: "Haie", add: "Haie", w: 6, d: 0.9, h: 1.8, hh: true },
     zone: { name: "Zone non aménageable", add: "Zone non aménageable", w: 4, d: 3, h: 0 },
   };
   const zoneMat = new T.MeshLambertMaterial({ color: lin(0xc9a46a), transparent: true, opacity: 0.6 });
@@ -706,6 +716,14 @@
       const c = 0.35; g.add(flatMesh(b.w, b.d, M.water, 0.03));
       g.add(box(b.w + 2 * c, 0.06, c, M.stone, 0, 0, -(b.d + c) / 2)); g.add(box(b.w + 2 * c, 0.06, c, M.stone, 0, 0, (b.d + c) / 2));
       g.add(box(c, 0.06, b.d, M.stone, -(b.w + c) / 2, 0, 0)); g.add(box(c, 0.06, b.d, M.stone, (b.w + c) / 2, 0, 0));
+    } else if (k === "spa") {
+      g.add(box(b.w, Math.max(b.h, 0.3), b.d, M.timber)); const wtr = flatMesh(b.w * 0.8, b.d * 0.8, M.water, Math.max(b.h, 0.3) + 0.01); g.add(wtr);
+    } else if (k === "kiosque") {
+      const p = 0.14, hw = b.w / 2 - p, hd = b.d / 2 - p;
+      [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].forEach(([x, z]) => g.add(box(p, b.h, p, M.darkWood, x, 0, z)));
+      g.add(box(b.w + 0.3, 0.16, b.d + 0.3, M.timber, 0, b.h, 0)); g.add(box(b.w * 0.55, 0.5, b.d * 0.55, M.timber, 0, b.h + 0.16, 0));
+    } else if (k === "haie") {
+      g.add(box(b.w, Math.max(b.h, 0.3), b.d, M.hedge));
     } else if (k === "arbre") {
       const r = Math.min(b.w, b.d) / 2; g.add(box(0.35, b.h * 0.45, 0.35, M.darkWood));
       [[0, 0.72, 0], [0.35, 0.62, 0.2], [-0.3, 0.6, -0.25], [0.1, 0.85, -0.3], [-0.25, 0.8, 0.3]].forEach(([x, y, z]) => g.add(blob(r * 0.62, M.tree, x * r, b.h * y, z * r)));
@@ -1366,7 +1384,17 @@
     const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = "+ " + KINDS[k].add;
     b.addEventListener("click", () => addBlock(k)); $("addBlock").appendChild(b);
   });
+  // existing features are placed where the salesperson taps on the plan
+  let placeKind = null;
   function addBlock(kind) {
+    placeKind = kind; setTool("place"); goTo("plan");
+    tip("Touchez l'emplacement : " + KINDS[kind].name.toLowerCase());
+  }
+  function placeBlock(kind, x, z) {
+    const K = KINDS[kind], b = { kind, x: +x.toFixed(2), z: +z.toFixed(2), w: K.w, d: K.d, h: K.h, rot: 0 };
+    site.blocks.push(b); touchDemo(b); buildHouse(); selBlock = b; showBlockSel(); siteChanged();
+  }
+  function addBlockFree(kind) {
     const K = KINDS[kind], bb = bbox(site.poly), cx = (bb[0] + bb[1]) / 2, cz = (bb[2] + bb[3]) / 2;
     const b = { kind, x: +cx.toFixed(2), z: +cz.toFixed(2), w: K.w, d: K.d, h: K.h, rot: 0 };
     // first free spot inside the plot, spiralling out from its centre
@@ -1392,7 +1420,7 @@
       const K = KINDS[b.kind], li = document.createElement("li"), tree = b.kind === "arbre";
       if (b === selBlock) li.className = "on";
       const f = (k, label, v, st) => `<label>${label}<input type="number" inputmode="decimal" step="${st}" data-k="${k}" value="${v}"></label>`;
-      li.innerHTML = `<div class="hd"><span>${K.name} ${count[b.kind]}</span><button type="button" class="link danger">Retirer</button></div><div class="grid4">`
+      li.innerHTML = `<div class="hd"><span>${K.name} ${count[b.kind]}${b.src === "lidar" ? ' <small class="k">· relevé IGN, à vérifier</small>' : ""}</span><button type="button" class="link danger">Retirer</button></div><div class="grid4">`
         + f("w", tree ? "Diamètre" : "Largeur", +b.w.toFixed(2), 0.05) + (tree ? "" : f("d", "Profondeur", +b.d.toFixed(2), 0.05))
         + (K.hh ? f("h", "Hauteur", +b.h.toFixed(2), 0.05) : "") + f("rot", "Rotation °", +((b.rot || 0) * 180 / Math.PI).toFixed(1), 1) + "</div>";
       li.querySelector(".hd span").addEventListener("click", () => { selBlock = b; showBlockSel(); renderBlocks(); goTo("plan"); });
@@ -1406,12 +1434,24 @@
       ul.appendChild(li);
     });
   }
+  Object.keys(KINDS).forEach(k => { const o = document.createElement("option"); o.value = k; o.textContent = KINDS[k].name; $("bselKind").appendChild(o); });
+  $("bselKind").addEventListener("change", e => {
+    const b = selBlock; if (!b) return; const K = KINDS[e.target.value]; b.kind = e.target.value;
+    if (!K.hh) b.h = 0; else if (!b.h) b.h = K.h;
+    if (b.kind === "arbre") b.d = b.w;
+    buildHouse(); selBlock = b; showBlockSel(); siteChanged();
+  });
+  $("bselRot").addEventListener("click", () => { const b = selBlock; if (!b) return; b.rot = ((b.rot || 0) + Math.PI / 12) % (2 * Math.PI); rebuildBlock(b); siteChanged(); });
+  $("bselDup").addEventListener("click", () => { const b = selBlock; if (!b) return; const c = Object.assign({}, b, { x: b.x + 1, z: b.z + 1, src: null }); site.blocks.push(c); buildHouse(); selBlock = c; showBlockSel(); siteChanged(); });
+  $("bselDel").addEventListener("click", () => { const b = selBlock; if (!b) return; site.blocks.splice(site.blocks.indexOf(b), 1); touchDemo(b); selBlock = null; buildHouse(); siteChanged(); });
   // selected volume: outline and a resize handle on its corner
   const blockSel = new T.Group(); scene.add(blockSel);
   const selLine = new T.LineLoop(new T.BufferGeometry(), new T.LineBasicMaterial({ color: 0xffd54a, depthTest: false })); selLine.renderOrder = 11; blockSel.add(selLine);
   const resizeH = new T.Mesh(handleGeo, new T.MeshBasicMaterial({ color: 0xffd54a, depthTest: false })); resizeH.renderOrder = 12; blockSel.add(resizeH);
   function showBlockSel() {
     blockSel.visible = !!selBlock && step === 1 && !tool && prepOpen;
+    $("bselbar").hidden = !blockSel.visible;
+    if (blockSel.visible) $("bselKind").value = selBlock.kind;
     if (selBlock) {
       const P = blockPts(selBlock);
       selLine.geometry.dispose(); selLine.geometry = new T.BufferGeometry().setFromPoints(P.map(([x, z]) => new T.Vector3(x, 0.1, z)));
@@ -1421,7 +1461,7 @@
   }
 
   // ---------------------------------------------------------------- plan de masse underneath (step 1), scaled from a known dimension
-  const planMat = new T.MeshBasicMaterial({ transparent: true, opacity: 0.6, depthWrite: false, depthTest: false });
+  const planMat = new T.MeshBasicMaterial({ transparent: true, opacity: 0.6, depthWrite: false });   // depth-tested: the volumes stay visible above the photo
   const planMesh = new T.Mesh(new T.PlaneGeometry(1, 1), planMat); planMesh.rotation.x = -Math.PI / 2; planMesh.renderOrder = 3; planMesh.visible = false; scene.add(planMesh);
   function buildPlan() {
     const pl = site.plan; planMesh.visible = !!pl && step === 1;
@@ -1517,6 +1557,7 @@
     parcel: geom => `https://apicarto.ign.fr/api/cadastre/parcelle?geom=${encodeURIComponent(JSON.stringify(geom))}`,
     buildings: b => `https://data.geopf.fr/wfs/ows?service=WFS&version=2.0.0&request=GetFeature&typeNames=BDTOPO_V3:batiment&outputFormat=application/json&srsName=EPSG:4326&count=60&bbox=${b[0]},${b[1]},${b[2]},${b[3]},EPSG:4326`,
     flight: b => `https://data.geopf.fr/wfs/ows?service=WFS&version=2.0.0&request=GetFeature&typeNames=ORTHOIMAGERY.ORTHOPHOTOS.GRAPHE-MOSAIQUAGE:graphe_bdortho&outputFormat=application/json&srsName=EPSG:4326&count=5&bbox=${b[0]},${b[1]},${b[2]},${b[3]},EPSG:4326`,
+    heights: (b, w, h) => `https://data.geopf.fr/wms-r?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=IGNF_LIDAR-HD_MNH_ELEVATION.ELEVATIONGRIDCOVERAGE.LAMB93&STYLES=&CRS=EPSG:4326&BBOX=${b[1]},${b[0]},${b[3]},${b[2]}&WIDTH=${w}&HEIGHT=${h}&FORMAT=image%2Fx-bil%3Bbits%3D32`,
     ortho: (b, w, h) => `https://data.geopf.fr/wms-r?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=HR.ORTHOIMAGERY.ORTHOPHOTOS&STYLES=&CRS=EPSG:4326&BBOX=${b[1]},${b[0]},${b[3]},${b[2]}&WIDTH=${w}&HEIGHT=${h}&FORMAT=image/jpeg`,
   };
   const getJSON = async u => { const r = await fetch(u); if (!r.ok) throw new Error("service IGN indisponible (" + r.status + ")"); return r.json(); };
@@ -1609,14 +1650,17 @@
       const img = await new Promise((ok, ko) => { const i = new Image(); i.crossOrigin = "anonymous"; i.onload = () => ok(i); i.onerror = () => ko(new Error("photo aérienne indisponible")); i.src = IGN.ortho(bb, W, H); });
       const c = document.createElement("canvas"); c.width = W; c.height = H; c.getContext("2d").drawImage(img, 0, 0);
       const [cx, cz] = F.to((bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2);
-      s2.plan = { image: c.toDataURL("image/jpeg", 0.85), ar: hM / wM, w: wM, x: +cx.toFixed(2), z: +cz.toFixed(2), rot: -a, op: 0.95, aerial: true };
+      s2.plan = { image: c.toDataURL("image/jpeg", 0.85), ar: hM / wM, w: wM, x: +cx.toFixed(2), z: +cz.toFixed(2), rot: -a, op: 0.85, aerial: true };
       if (!keep || !s2.blocks.some(b => b.kind === "piscine")) findPools(c, bb, F, s2);
     } catch (e) { s2.plan = null; }
+    let found = 0;
+    try { if (!keep || !s2.blocks.some(b => b.src === "lidar")) found = await findHeights(bb, F, s2); } catch (e) { found = 0; }
     await loadSite(s2); save(); setPrep(true); goTo("plan");
     $("parcelPick").hidden = false;
     const area = fmt.format(parcel.properties.contenance || polyArea(s2.poly));
-    const pools = s2.blocks.filter(b => b.kind === "piscine").length;
-    geoMsg(`Parcelle ${parcel.properties.section} ${parcel.properties.numero} (${parcel.properties.nom_com}) · ${area} m² au cadastre · ${blds.length ? blds.length + (blds.length > 1 ? " bâtiments trouvés" : " bâtiment trouvé") : "aucun bâtiment au cadastre : ajoutez la maison"}${pools ? " · " + pools + (pools > 1 ? " piscines repérées" : " piscine repérée") : ""}${s2.geo.flight ? " · photo aérienne du " + new Date(s2.geo.flight).toLocaleDateString("fr-FR") : ""}. Vérifiez sur place ce qui a changé depuis et ajoutez l'existant manquant.`);
+    const pools = s2.blocks.filter(b => b.kind === "piscine").length, cnt = k => s2.blocks.filter(b => b.src === "lidar" && b.kind === k).length;
+    const lidarTxt = found ? " · relevé IGN : " + [["arbre", "arbre"], ["haie", "haie"], ["abri", "construction (kiosque, abri…)"]].map(([k, l]) => cnt(k) ? cnt(k) + " " + l + (cnt(k) > 1 && k !== "abri" ? "s" : "") : "").filter(Boolean).join(", ") : "";
+    geoMsg(`Parcelle ${parcel.properties.section} ${parcel.properties.numero} (${parcel.properties.nom_com}) · ${area} m² au cadastre · ${blds.length ? blds.length + (blds.length > 1 ? " bâtiments trouvés" : " bâtiment trouvé") : "aucun bâtiment au cadastre : ajoutez la maison"}${pools ? " · " + pools + (pools > 1 ? " piscines repérées" : " piscine repérée") : ""}${lidarTxt}${s2.geo.flight ? " · photo aérienne du " + new Date(s2.geo.flight).toLocaleDateString("fr-FR") : ""}. Vérifiez sur place ce qui a changé depuis et ajoutez l'existant manquant.`);
     toast("Terrain créé depuis le cadastre.");
   }
   // pools: the turquoise water seen on the aerial photo, inside the plot
@@ -1659,6 +1703,71 @@
     for (const q of p.slice().reverse()) { while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop(); up.push(q); }
     return lo.slice(0, -1).concat(up.slice(0, -1));
   }
+  async function findHeights(bb, F, s2) {
+    const lat0 = (bb[1] + bb[3]) / 2, wM = (bb[2] - bb[0]) * 111320 * Math.cos(lat0 * Math.PI / 180), hM = (bb[3] - bb[1]) * 110574;
+    const W = Math.min(600, Math.round(wM * 2)), H = Math.min(600, Math.round(hM * 2));       // one value every 50 cm
+    const r = await fetch(IGN.heights(bb, W, H)); if (!r.ok) return 0;
+    const v = new Float32Array(await r.arrayBuffer()); if (v.length < W * H) return 0;
+    const cell = (wM / W) * (hM / H), toLocal = (x, y) => F.to(bb[0] + (x + 0.5) / W * (bb[2] - bb[0]), bb[3] - (y + 0.5) / H * (bb[3] - bb[1]));
+    const houses = s2.blocks.filter(b => b.kind === "maison").map(b => rectPts(b.x, b.z, -b.w / 2 - 0.8, b.w / 2 + 0.8, -b.d / 2 - 0.8, b.d / 2 + 0.8, b.rot || 0));
+    const mask = new Uint8Array(W * H), loc = new Array(W * H);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = y * W + x; if (!(v[i] > 0.7 && v[i] < 30)) continue;
+      const p = toLocal(x, y); if (!inPoly(p[0], p[1], s2.poly) || houses.some(h => inPoly(p[0], p[1], h))) continue;
+      mask[i] = 1; loc[i] = p;
+    }
+    let n = 0;
+    // 1. along the plot limits: hedges, one per side, cut where there is a gap
+    const q = s2.poly, sg = polySign(q), edgeCells = q.map(() => []);
+    for (let i = 0; i < W * H; i++) {
+      if (!mask[i]) continue;
+      const [x, z] = loc[i]; let best = -1, bd = 1.6, bt = 0;
+      q.forEach((p, k) => { const p2 = q[(k + 1) % q.length], dx = p2[0] - p[0], dz = p2[1] - p[1], L2 = dx * dx + dz * dz || 1, t = clamp(((x - p[0]) * dx + (z - p[1]) * dz) / L2, 0, 1), d = Math.hypot(p[0] + t * dx - x, p[1] + t * dz - z); if (d < bd) { bd = d; best = k; bt = t * Math.sqrt(L2); } });
+      if (best >= 0) { edgeCells[best].push([bt, v[i]]); mask[i] = 0; }
+    }
+    edgeCells.forEach((cells, k) => {
+      if (!cells.length) return;
+      const p = q[k], p2 = q[(k + 1) % q.length], L = Math.hypot(p2[0] - p[0], p2[1] - p[1]), ux = (p2[0] - p[0]) / L, uz = (p2[1] - p[1]) / L;
+      const nx = -uz * sg, nz = ux * sg;   // inward normal
+      cells.sort((a2, b2) => a2[0] - b2[0]);
+      let run = [cells[0]];
+      const flush = () => {
+        const t0 = run[0][0], t1 = run[run.length - 1][0], len = t1 - t0 + 0.5; if (len < 2 || run.length < 8) return;
+        const hs = run.map(c => c[1]).sort((a2, b2) => a2 - b2), hh = hs[Math.floor(hs.length * 0.6)], tm = (t0 + t1) / 2;
+        s2.blocks.push({ kind: hh > 3.5 && len < 6 ? "arbre" : "haie", x: +(p[0] + ux * tm + nx * 0.55).toFixed(2), z: +(p[1] + uz * tm + nz * 0.55).toFixed(2), w: +len.toFixed(2), d: hh > 3.5 && len < 6 ? +len.toFixed(2) : 1, h: +hh.toFixed(1), rot: hh > 3.5 && len < 6 ? 0 : +(-Math.atan2(uz, ux)).toFixed(4), src: "lidar" });
+        n++;
+      };
+      for (let j = 1; j < cells.length; j++) { if (cells[j][0] - cells[j - 1][0] > 1.2) { flush(); run = []; } run.push(cells[j]); }
+      flush();
+    });
+    // 2. inside the garden: trees, kiosks, sheds
+    const seen = new Uint8Array(W * H);
+    const classify = cells => {
+      const area = cells.length * cell; if (area < 1.5) return;
+      const hs = cells.map(i => v[i]).sort((a2, b2) => a2 - b2), hTop = hs[Math.floor(hs.length * 0.9)], hMid = hs[Math.floor(hs.length * 0.6)];
+      const R = minRect(hull(cells.map(i => loc[i]))); if (!R) return;
+      const long = Math.max(R.w, R.d), short = Math.min(R.w, R.d), fill = area / (R.w * R.d);
+      // only clear shapes are proposed: low shrubs and irregular vegetation stay with the salesperson's eye
+      if (fill < 0.45 || area > 45 || hTop < 1.2) return;
+      let kind;
+      if (long / short > 3 && short < 2.8) kind = "haie";
+      else if (hTop > 3.2 && fill < 0.9) kind = "arbre";
+      else kind = hTop < 1.6 ? "haie" : "abri";
+      const blk = { kind, x: +R.x.toFixed(2), z: +R.z.toFixed(2), w: +R.w.toFixed(2), d: +R.d.toFixed(2), h: +(kind === "arbre" ? hTop : hMid).toFixed(1), rot: +R.rot.toFixed(4), src: "lidar" };
+      if (kind === "arbre") { blk.w = blk.d = +Math.max(R.w, R.d).toFixed(2); blk.rot = 0; }
+      s2.blocks.push(blk); n++;
+    };
+    for (let i0 = 0; i0 < W * H; i0++) {
+      if (!mask[i0] || seen[i0]) continue;
+      const stack = [i0], cells = []; seen[i0] = 1;
+      while (stack.length) {
+        const i = stack.pop(), x = i % W, y = (i / W) | 0; cells.push(i);
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const nx = x + dx, ny = y + dy, j = ny * W + nx; if (nx >= 0 && ny >= 0 && nx < W && ny < H && mask[j] && !seen[j]) { seen[j] = 1; stack.push(j); } }
+      }
+      classify(cells);
+    }
+    return n;
+  }
   let geoTimer = null;
   $("geoQ").addEventListener("input", e => {
     clearTimeout(geoTimer); const q = e.target.value.trim(), ul = $("geoList");
@@ -1693,7 +1802,7 @@
   const markGeo = new T.SphereGeometry(0.18, 16, 12), markMat = new T.MeshBasicMaterial({ color: 0xffd54a, depthTest: false });
   const lineMat = new T.LineBasicMaterial({ color: 0xffd54a, depthTest: false });
   let toolPts = [];
-  const TIPS = { parcel: "Touchez la bonne parcelle sur la photo aérienne", trace: "Touchez les angles du terrain, dans l'ordre", scale: "Touchez le premier point d'une cote connue du plan", measure: "Touchez deux points pour mesurer" };
+  const TIPS = { place: "Touchez l'emplacement sur le plan", parcel: "Touchez la bonne parcelle sur la photo aérienne", trace: "Touchez les angles du terrain, dans l'ordre", scale: "Touchez le premier point d'une cote connue du plan", measure: "Touchez deux points pour mesurer" };
   function tip(text) { $("tip").hidden = !text; if (text) $("tip").textContent = text; }
   function clearGroup(g) { g.traverse(o => { if (o.isSprite) o.material.map.dispose(); if (o.geometry && o.geometry !== markGeo) o.geometry.dispose(); }); g.clear(); }
   function setTool(t) {
@@ -1714,6 +1823,7 @@
     if (!pt) return;
     if (tool !== "measure") pt.set(Math.round(pt.x * 20) / 20, 0.05, Math.round(pt.z * 20) / 20);
     toolPts.push(pt);
+    if (tool === "place") { const k = placeKind; setTool(null); placeBlock(k, pt.x, pt.z); return; }
     if (tool === "parcel") {
       const [lon, lat] = geoFrame(site.geo.lon0, site.geo.lat0, site.geo.a).from(pt.x, pt.z);
       setTool(null); siteFromGeo(lon, lat, null, site).catch(err => geoMsg("Recherche impossible : " + err.message)); return;
