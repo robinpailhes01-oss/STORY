@@ -4,6 +4,9 @@
     "api/render.js": {
       "maxDuration": 60,
       "includeFiles": "img/{catalogue-*,face-base,droite-base,dalles/*}.jpg"
+    },
+    "api/analyse.js": {
+      "maxDuration": 60
     }
   },
   "headers": [
