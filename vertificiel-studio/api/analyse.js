@@ -36,7 +36,7 @@ async function flash(img, sk, ids, H) {
   const part = d => ({ inline_data: { mime_type: d.slice(5, d.indexOf(";")), data: d.slice(d.indexOf(",") + 1) } });
   const r = await fetch(`${API}/gemini/v1/models/gemini-3-8-flash:streamGenerateContent`, {
     method: "POST", headers: H,
-    body: JSON.stringify({ stream: false, contents: [{ role: "user", parts: [{ text: prompt(ids) }, part(img), part(sk)] }], generationConfig: { thinkingConfig: { includeThoughts: false, thinkingLevel: "high" } } }),
+    body: JSON.stringify({ stream: false, contents: [{ role: "user", parts: [{ text: prompt(ids) }, part(img), part(sk)] }], generationConfig: { thinkingConfig: { includeThoughts: false, thinkingLevel: "low" } } }),
   });
   return readText(r, j => ((j.candidates || [])[0] || { content: { parts: [] } }).content.parts.filter(p => p.text && !p.thought).map(p => p.text).join(""));
 }

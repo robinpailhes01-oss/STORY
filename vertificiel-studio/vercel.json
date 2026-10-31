@@ -6,7 +6,7 @@
       "includeFiles": "img/{catalogue-*,face-base,droite-base,dalles/*}.jpg"
     },
     "api/analyse.js": {
-      "maxDuration": 60
+      "maxDuration": 300
     }
   },
   "headers": [
