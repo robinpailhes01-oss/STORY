@@ -61,7 +61,7 @@ function pavingText(s) {
     : s.motif === "diagonale"
       ? `a paving of large ${t} x ${t} cm square slabs of ${c} laid on the diagonal (45 degrees), separated by ${b} cm wide strips of synthetic grass, forming a diamond grid, the slabs cut into triangles along the edges`
       : `a paving of large ${t} x ${t} cm square slabs of ${c} laid in a straight grid parallel to the edges, separated by ${b} cm wide strips of synthetic grass`;
-  if (s.led !== "aucune") txt += `, with slim ${LED_TXT[s.led]} LED light profiles running along the edges of the slabs`;
+  if (s.led !== "aucune") txt += `, with slim ${LED_TXT[s.led]} LED light profiles running along all the edges of every slab`;
   return `${txt}, covering a ${r(s.w)} x ${r(s.d)} m area`;
 }
 
@@ -127,7 +127,7 @@ const REAL_PASS = "Image 1 is a picture of a garden that still looks partly comp
 const RENDER_HOSTS = /^https:\/\/([a-z0-9-]+\.)*(aiquickdraw\.com|redpandaai\.co|kie\.ai)\//i;
 function buildNightPrompt(leds) {
   const led = leds.length
-    ? `The paving has slim LED light profiles along the edges of its slabs: they are switched on and glow ${leds.map(l => LED_TXT[l]).join(" and ")}, precisely outlining the slab pattern and softly lighting the slabs and the grass strips; this glowing paving is the highlight of the picture.`
+    ? `The paving has slim LED light profiles along all the edges of every single slab (not only around the outer edge of the paved area): they are switched on and glow ${leds.map(l => LED_TXT[l]).join(" and ")}, precisely outlining each slab of the pattern and softly lighting the slabs and the grass strips; this glowing paving is the highlight of the picture.`
     : "No new light fittings: the garden is lit only by the house and the night sky.";
   return [
     "Image 1 is a photorealistic daytime photograph of a house and its garden. Produce the very same photograph at night, just after blue hour.",

@@ -407,6 +407,10 @@
     .panel > section.block > .dock { margin-top: auto; }
   }
   .rv-bar #rvNext[hidden] + .sep { display: none; }
+  /* live night in the 3D */
+  .ov.cams #nightBtn[aria-pressed="true"] { background: #ffd59a; color: #1c1407; }
+  .stage[data-step="1"] #nightBtn, .stage.live #nightBtn { display: none; }
+  .stage.night .legal { color: rgba(255,255,255,.75); }
 </style>
 
 </head>
@@ -437,6 +441,7 @@
         <button type="button" id="cam-client" data-cam="client" aria-pressed="false"><span class="lg">Vue client</span><span class="sh">Client</span></button>
         <button type="button" id="cam-plan" data-cam="plan" aria-pressed="false"><span class="lg">Vue du dessus</span><span class="sh">Dessus</span></button>
         <button type="button" id="cam-photo" data-cam="photo" aria-pressed="false" hidden>Angle photo</button>
+        <button type="button" id="nightBtn" aria-pressed="false" title="Voir le jardin de nuit, LED allumées">☾<span class="lg"> Nuit</span></button>
         <button type="button" id="measureBtn" aria-pressed="false" aria-label="Mesurer une distance" title="Mesurer une distance">📏<span class="lg"> Mètre</span></button>
       </div>
     </div>
@@ -863,12 +868,30 @@
   // ---------------------------------------------------------------- lights and sky
   scene.background = canvasTex(4, 256, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, "#2c5aa8"); gr.addColorStop(0.6, "#6f9bd6"); gr.addColorStop(1, "#cadcef"); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
   scene.fog = new T.Fog(lin(0xcadcef), 60, 140);
-  scene.add(new T.HemisphereLight(0xdbe8ff, 0x8a8068, 0.8));
+  const hemi = new T.HemisphereLight(0xdbe8ff, 0x8a8068, 0.8); scene.add(hemi);
   const sun = new T.DirectionalLight(0xfff2dc, 0.95);
   sun.position.set(-18, 26, 14); sun.target.position.set(0, 0, 4);
   sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0006;
   Object.assign(sun.shadow.camera, { left: -24, right: 24, top: 24, bottom: -24, near: 1, far: 90 });
   scene.add(sun, sun.target);
+  // night in the 3D, instant: dusk sky, moonlight, the LED of the paving switched on (the 4K renders stay daylight-based)
+  const DAY_BG = scene.background, DAY_FOG = scene.fog.color.clone(), NIGHT_FOG = lin(0x16223f);
+  const NIGHT_BG = canvasTex(4, 256, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, "#02040b"); gr.addColorStop(0.55, "#0a1430"); gr.addColorStop(1, "#24375e"); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
+  let night = false;
+  function setNight(on, quiet) {
+    night = !!on;
+    scene.background = night ? NIGHT_BG : DAY_BG; scene.fog.color.copy(night ? NIGHT_FOG : DAY_FOG);
+    hemi.color.set(night ? 0x4a5a88 : 0xdbe8ff); hemi.groundColor.set(night ? 0x08080d : 0x8a8068); hemi.intensity = night ? 0.17 : 0.8;
+    sun.color.set(night ? 0x9db2ff : 0xfff2dc); sun.intensity = night ? 0.13 : 0.95;
+    M.water.color.set(night ? 0xbfeaf5 : 0xe8e8e8); waterShape.color.set(night ? 0xbfeaf5 : 0xe8e8e8);
+    const wallNight = lin(0x3a4154); demoWalls.traverse(o => { if (o.material) { if (night) o.material.color.copy(wallNight); else o.material.color.set(0xf2f2f2); } });
+    scene.traverse(o => {
+      if (o.material && o.material.userData && o.material.userData.led) o.material.emissiveIntensity = night ? 1 : 0;
+      if (o.userData && o.userData.nightOnly) o.visible = night;
+    });
+    if (!quiet) { const b = document.getElementById("nightBtn"); if (b) b.setAttribute("aria-pressed", String(night)); stage.classList.toggle("night", night); }
+    requestRender();
+  }
 
   // ---------------------------------------------------------------- site (estimated from the photos)
   scene.add(flatMesh(320, 320, M.outside, -0.03));
@@ -1244,14 +1267,16 @@
   const dgText = sp => [MOTIFS[sp.motif][0], DALLES[sp.couleur] + (sp.motif === "cubes" ? "" : " " + Math.round(sp.taille * 100) + "×" + Math.round(sp.taille * 100)),
     (sp.motif === "cubes" ? "bande minérale " : "bande de gazon ") + Math.round(sp.bande * 100) + " cm", sp.motif === "cubes" ? "joint " + JOINTS[sp.joint].toLowerCase() : null,
     sp.led === "aucune" ? "sans LED" : "LED " + LEDS[sp.led].toLowerCase(), fmt1.format(sp.w) + " × " + fmt1.format(sp.d) + " m"].filter(Boolean).join(" · ");
-  function drawDG(cv, sp, img) {
+  function drawDG(cv, sp, img, em) {
     const g = cv.getContext("2d"), W = cv.width, H = cv.height, ppm = W / sp.w, t = sp.taille * ppm, b = sp.bande * ppm;
-    let stone = DALLE_HEX[sp.couleur];
-    if (img) { stone = g.createPattern(img, "repeat"); if (stone.setTransform) stone.setTransform(new DOMMatrix().scale(0.6 * ppm / img.naturalWidth)); }
-    const led = sp.led !== "aucune" ? LED_COL[sp.led] : null, lw = Math.max(1.5, 0.018 * ppm);
+    let stone = em ? "#000000" : DALLE_HEX[sp.couleur];
+    if (img && !em) { stone = g.createPattern(img, "repeat"); if (stone.setTransform) stone.setTransform(new DOMMatrix().scale(0.6 * ppm / img.naturalWidth)); }
+    const led = sp.led !== "aucune" ? LED_COL[sp.led] : null, lw = Math.max(1.5, 0.018 * ppm), turf = em ? "#000000" : "#3f6b2c";
     const poly = q => { g.beginPath(); q.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); };
-    g.fillStyle = "#3f6b2c"; g.fillRect(0, 0, W, H);
-    for (let i = 0; i < W * H / 60; i++) { g.fillStyle = rnd() < 0.5 ? "rgba(90,140,60,.35)" : "rgba(30,60,25,.35)"; g.fillRect(rnd() * W, rnd() * H, 1.5, 1.5); }
+    // em: the emissive map, black but for the LED and the light they spread on the slabs and the grass strips
+    const ledStroke = () => { if (!led) return; g.strokeStyle = led; if (em) { g.globalAlpha = 0.2; g.lineWidth = lw * 11; g.stroke(); g.globalAlpha = 0.4; g.lineWidth = lw * 4; g.stroke(); g.globalAlpha = 1; } g.lineWidth = lw; g.stroke(); };
+    g.fillStyle = turf; g.fillRect(0, 0, W, H);
+    if (!em) for (let i = 0; i < W * H / 60; i++) { g.fillStyle = rnd() < 0.5 ? "rgba(90,140,60,.35)" : "rgba(30,60,25,.35)"; g.fillRect(rnd() * W, rnd() * H, 1.5, 1.5); }
     if (sp.motif === "cubes") {
       g.fillStyle = stone; g.fillRect(0, 0, W, H);
       const L = t, hx = Math.sqrt(3) * L, k = Math.max(0.15, 1 - b / (L * Math.sin(Math.PI / 3)));
@@ -1260,9 +1285,9 @@
         for (let a = 0; a < 6; a++) v.push([cx + L * Math.cos((a * 60 - 90) * Math.PI / 180), cy + L * Math.sin((a * 60 - 90) * Math.PI / 180)]);
         [[0, 1, 2], [2, 3, 4], [4, 5, 0]].forEach(([i1, i2, i3]) => {
           const R = [[cx, cy], v[i1], v[i2], v[i3]], mx = R.reduce((s2, p) => s2 + p[0], 0) / 4, my = R.reduce((s2, p) => s2 + p[1], 0) / 4;
-          g.strokeStyle = JOINT_COL[sp.joint]; g.lineWidth = Math.max(1, 0.012 * ppm); poly(R); g.stroke();
-          poly(R.map(([x, y]) => [mx + (x - mx) * k, my + (y - my) * k])); g.fillStyle = "#3f6b2c"; g.fill();
-          if (led) { g.strokeStyle = led; g.lineWidth = lw; g.stroke(); }
+          g.strokeStyle = em ? "#000000" : JOINT_COL[sp.joint]; g.lineWidth = Math.max(1, 0.012 * ppm); poly(R); g.stroke();
+          poly(R.map(([x, y]) => [mx + (x - mx) * k, my + (y - my) * k])); g.fillStyle = turf; g.fill();
+          ledStroke();
         });
       }
     } else {
@@ -1272,7 +1297,7 @@
       for (let i = from; i <= n; i++) for (let j = from; j <= n; j++) {
         const x = i * step2 - (sp.motif === "diagonale" ? t / 2 : 0), y = j * step2 - (sp.motif === "diagonale" ? t / 2 : 0);
         poly([[x, y], [x + t, y], [x + t, y + t], [x, y + t]]); g.fillStyle = stone; g.fill();
-        if (led) { g.strokeStyle = led; g.lineWidth = lw; g.stroke(); }
+        ledStroke();
       }
       g.restore();
     }
@@ -1283,7 +1308,19 @@
     drawDG(cv, sp, null);
     const tex = new T.CanvasTexture(cv); tex.encoding = T.sRGBEncoding; tex.anisotropy = maxAniso;
     loadImg("img/dalles/dalle-" + sp.couleur + ".jpg").then(img => { drawDG(cv, sp, img); tex.needsUpdate = true; requestRender(); }).catch(() => {});
-    const g = new T.Group(); g.add(flatMesh(sp.w, sp.d, lambert({ map: tex }), 0.022));
+    const g = new T.Group();
+    if (sp.led === "aucune") { g.add(flatMesh(sp.w, sp.d, lambert({ map: tex }), 0.022)); return g; }
+    const cvE = document.createElement("canvas"); cvE.width = Math.max(8, Math.round(cv.width / 2)); cvE.height = Math.max(8, Math.round(cv.height / 2));
+    drawDG(cvE, sp, null, true);
+    const texE = new T.CanvasTexture(cvE); texE.encoding = T.sRGBEncoding;
+    const mat = lambert({ map: tex, emissiveMap: texE, emissive: 0xffffff, emissiveIntensity: night ? 1 : 0 }); mat.userData.led = true;
+    g.add(flatMesh(sp.w, sp.d, mat, 0.022));
+    // the light spilling on the lawn around the paving, seen at night only (never picked)
+    const pad = 1.4, cw = 256, ch = Math.max(16, Math.round(cw * (sp.d + 2 * pad) / (sp.w + 2 * pad))), k = cw / (sp.w + 2 * pad);
+    const halo = flatMesh(sp.w + 2 * pad, sp.d + 2 * pad, new T.MeshBasicMaterial({
+      map: canvasTex(cw, ch, (c, w, h) => { c.fillStyle = "#000"; c.fillRect(0, 0, w, h); c.shadowColor = LED_COL[sp.led]; c.shadowBlur = pad * k * 1.1; c.fillStyle = LED_COL[sp.led]; c.globalAlpha = 0.85; c.fillRect(pad * k, pad * k, sp.w * k, sp.d * k); }),
+      transparent: true, blending: T.AdditiveBlending, depthWrite: false, opacity: 1 }), 0.012);
+    halo.castShadow = halo.receiveShadow = false; halo.raycast = () => {}; halo.userData.nightOnly = true; halo.visible = night; g.add(halo);
     return g;
   }
   const PALETTES = [
@@ -1473,7 +1510,7 @@
     $("dgBandeLab").textContent = sp.motif === "cubes" ? "Bande minérale" : "Bande de gazon";
     $("dgJointBox").hidden = sp.motif !== "cubes";
     chipRow($("dgJoint"), JOINTS, sp.joint, k => setDG({ joint: k }));
-    chipRow($("dgLed"), LEDS, sp.led, k => setDG({ led: k }));
+    chipRow($("dgLed"), LEDS, sp.led, k => { setDG({ led: k }); if (k !== "aucune" && !night) toast("Voyez l'éclairage tout de suite : passez la 3D en mode nuit.", { action: "☾ Nuit", onAction: () => setNight(true) }); });
     if (document.activeElement !== $("dgW")) $("dgW").value = sp.w;
     if (document.activeElement !== $("dgD")) $("dgD").value = sp.d;
   }
@@ -2444,6 +2481,7 @@
     handles.visible = step === 1 && !t && prepOpen; showBlockSel(); requestRender();
   }
   $("measureBtn").addEventListener("click", () => setTool(tool === "measure" ? null : "measure"));
+  $("nightBtn").addEventListener("click", () => setNight(!night));
   function mark(p, g) { const m = new T.Mesh(markGeo, markMat); m.position.copy(p); m.renderOrder = 12; g.add(m); }
   function segment(a, b, g) { const l = new T.Line(new T.BufferGeometry().setFromPoints([a, b]), lineMat); l.renderOrder = 12; g.add(l); }
   function toolTap(e) {
@@ -2661,6 +2699,7 @@
   // ---------------------------------------------------------------- photo preview: the composition rendered from the photo's own camera
   const depthOnly = new T.MeshBasicMaterial({ colorWrite: false });
   function exportLayer(withLawn) {
+    const n0 = night; if (n0) setNight(false, true);
     const groups = items.map(it => it.g), hidden = [], swapped = [], sel = selected, lawnVis = lawn.visible;
     if (withLawn == null) withLawn = !!PHOTO.custom;
     select(null);
@@ -2677,9 +2716,11 @@
     hidden.forEach(([c, v]) => { c.visible = v; }); swapped.forEach(([o, m, cs]) => { o.material = m; o.castShadow = cs; }); lawn.visible = lawnVis;
     scene.background = bg; scene.fog = fog; shadowCatcher.visible = scVis;
     renderer.setPixelRatio(ratio); renderer.setSize(size.x, size.y, false); if (sel) select(sel); requestRender();
+    if (n0) setNight(true, true);
     return url;
   }
   function freeShot() {
+    const n0 = night; if (n0) setNight(false, true);
     const sel = selected; select(null);
     const size = renderer.getSize(new T.Vector2()), ratio = renderer.getPixelRatio(), land = size.x >= size.y;
     const w = land ? 2048 : 1536, h = land ? 1536 : 2048;
@@ -2692,6 +2733,7 @@
     helpers.forEach(([o, v]) => { o.visible = v; });
     const url = renderer.domElement.toDataURL("image/jpeg", 0.92);
     renderer.setPixelRatio(ratio); renderer.setSize(size.x, size.y, false); if (sel) select(sel); requestRender();
+    if (n0) setNight(true, true);
     return { image: url, aspect: land ? "4:3" : "3:4" };
   }
   const imgCache = {};
@@ -2755,6 +2797,7 @@
   async function setPhotoLive(on) {
     if (on === photoLive) return;
     if (on) photoBase.src = await baseWithShadow();
+    if (on && night) setNight(false);
     photoLive = on;
     if (on) {
       const groups = items.map(it => it.g);
@@ -3335,6 +3378,7 @@
   function go(n) {
     if (cal) closeCalib();
     const prevStep = step; step = n; setTool(null);
+    stage.dataset.step = n; if (n === 1 && night) setNight(false);
     document.querySelectorAll("[data-panel]").forEach(p => { p.hidden = p.dataset.panel !== String(n); });
     document.querySelectorAll(".step").forEach(b => {
       const s = +b.dataset.step;
