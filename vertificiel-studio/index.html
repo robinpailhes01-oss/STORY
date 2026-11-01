@@ -1432,7 +1432,7 @@
       const K = KINDS[b.kind], li = document.createElement("li"), tree = b.kind === "arbre";
       if (b === selBlock) li.className = "on";
       const f = (k, label, v, st) => `<label>${label}<input type="number" inputmode="decimal" step="${st}" data-k="${k}" value="${v}"></label>`;
-      li.innerHTML = `<div class="hd"><span>${K.name} ${count[b.kind]}${b.src === "lidar" ? ' <small class="k">· relevé IGN, à vérifier</small>' : b.src === "photo" ? ' <small class="k">· photo, à vérifier</small>' : ""}</span><button type="button" class="link danger">Retirer</button></div><div class="grid4">`
+      li.innerHTML = `<div class="hd"><span>${K.name} ${count[b.kind]}${b.src === "lidar" ? ' <small class="k">· relevé IGN, à vérifier</small>' : b.src === "photo" ? ' <small class="k">· photo, à vérifier</small>' : b.src === "releve" ? ' <small class="k">· relevé Moasure : choisissez son type</small>' : ""}</span><button type="button" class="link danger">Retirer</button></div><div class="grid4">`
         + f("w", tree ? "Diamètre" : "Largeur", +b.w.toFixed(2), 0.05) + (tree ? "" : f("d", "Profondeur", +b.d.toFixed(2), 0.05))
         + (K.hh ? f("h", "Hauteur", +b.h.toFixed(2), 0.05) : "") + f("rot", "Rotation °", +((b.rot || 0) * 180 / Math.PI).toFixed(1), 1) + "</div>";
       li.querySelector(".hd span").addEventListener("click", () => { selBlock = b; showBlockSel(); renderBlocks(); goTo("plan"); });
@@ -1518,41 +1518,62 @@
     const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise, page = await pdf.getPage(1);
     const txt = (await page.getTextContent()).items.map(t => t.str).join(" ");
     const num = x => parseFloat(String(x).replace(/\s/g, "").replace(",", "."));
-    const pm = txt.match(/([\d\s]+[.,]\d+)\s*m\s*\(\s*([\d\s]+[.,]\d+)\s*m²\s*\)/), sc = txt.match(/1\s*:\s*([\d\s]+[.,]?\d*)/);
+    const pm = txt.match(/([\d\s]+[.,]\d+)\s*m\s*\(\s*([\d\s]+[.,]\d+)\s*m²\s*\)/), sc = txt.match(/CHELLE\s*:?\s*1\s*:\s*(\d[\d\s]*[.,]?\d*)/i);
     const O = window.pdfjsLib.OPS, ops = await page.getOperatorList();
     const mul = (a, b) => [a[0] * b[0] + a[1] * b[2], a[0] * b[1] + a[1] * b[3], a[2] * b[0] + a[3] * b[2], a[2] * b[1] + a[3] * b[3], a[4] * b[0] + a[5] * b[2] + b[4], a[4] * b[1] + a[5] * b[3] + b[5]];
-    let ctm = [1, 0, 0, 1, 0, 0]; const stack = [], paths = [];
+    let ctm = [1, 0, 0, 1, 0, 0]; const stack = [], lines = [];
     ops.fnArray.forEach((fn, k) => {
       const a = ops.argsArray[k];
       if (fn === O.save) stack.push(ctm.slice()); else if (fn === O.restore) ctm = stack.pop() || ctm;
       else if (fn === O.transform) ctm = mul(a, ctm);
       else if (fn === O.constructPath) {
-        const [sub, co] = a, T = (x, y) => [x * ctm[0] + y * ctm[2] + ctm[4], x * ctm[1] + y * ctm[3] + ctm[5]], pts = [];
-        let j = 0;
+        const [sub, co] = a, T = (x, y) => [x * ctm[0] + y * ctm[2] + ctm[4], x * ctm[1] + y * ctm[3] + ctm[5]];
+        let j = 0, cur = [];
+        const flush = () => { if (cur.length > 1) lines.push(cur); cur = []; };
         sub.forEach(op => {
-          if (op === O.moveTo || op === O.lineTo) { pts.push(T(co[j], co[j + 1])); j += 2; }
-          else if (op === O.curveTo) { pts.push(T(co[j + 4], co[j + 5])); j += 6; }
-          else if (op === O.curveTo2 || op === O.curveTo3) { pts.push(T(co[j + 2], co[j + 3])); j += 4; }
+          if (op === O.moveTo) { flush(); cur.push(T(co[j], co[j + 1])); j += 2; }
+          else if (op === O.lineTo) { cur.push(T(co[j], co[j + 1])); j += 2; }
+          else if (op === O.curveTo) { cur.push(T(co[j + 4], co[j + 5])); j += 6; }
+          else if (op === O.curveTo2 || op === O.curveTo3) { cur.push(T(co[j + 2], co[j + 3])); j += 4; }
+          else if (op === O.closePath) { if (cur.length > 2) cur.push(cur[0].slice()); }
           else if (op === O.rectangle) j += 4;
         });
-        if (pts.length > 2) paths.push(pts);
+        flush();
       }
     });
-    if (!paths.length) return null;
+    if (!lines.length) return null;
+    // pieces of the same outline (solid and dashed parts, separate strokes) are chained end to end
+    const near = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]) < 1.2;
+    const chains = lines.map(l => l.slice());
+    for (let merged = true; merged;) {
+      merged = false;
+      for (let i = 0; i < chains.length && !merged; i++) for (let j = i + 1; j < chains.length && !merged; j++) {
+        const A = chains[i], B = chains[j]; let c = null;
+        if (near(A[A.length - 1], B[0])) c = A.concat(B.slice(1)); else if (near(A[A.length - 1], B[B.length - 1])) c = A.concat(B.slice(0, -1).reverse());
+        else if (near(A[0], B[B.length - 1])) c = B.concat(A.slice(1)); else if (near(A[0], B[0])) c = B.slice().reverse().concat(A.slice(1));
+        if (c) { chains[i] = c; chains.splice(j, 1); merged = true; }
+      }
+    }
     const clean = p => p.filter((q, i, arr) => !i || Math.hypot(q[0] - arr[i - 1][0], q[1] - arr[i - 1][1]) > 1e-6);
     const perOf = p => p.reduce((s2, q, i) => s2 + (i ? Math.hypot(q[0] - p[i - 1][0], q[1] - p[i - 1][1]) : 0), 0);
-    let pts0 = null, k = null, perim = null, area = null;
-    if (pm) {
-      // the outline is the path whose area, once scaled by its perimeter, gives the stated area (not the grid, nor the scale bar)
-      perim = num(pm[1]); area = num(pm[2]);
-      let best = Infinity;
-      paths.map(clean).filter(p => p.length >= 4).forEach(p => { const kk = perim / perOf(p), A2 = polyArea(p) * kk * kk, e = Math.abs(A2 - area) / area; if (e < best) { best = e; pts0 = p; k = kk; } });
-      if (best > 0.15) pts0 = null;
-    }
-    if (!pts0 && sc) { pts0 = clean(paths.sort((p, q) => q.length - p.length)[0]); k = num(sc[1]) * 0.0254 / 72; }      // drawing scale: metres per PDF point
-    if (!pts0 || !k || !isFinite(k)) return null;
+    // a shape: a chain that closes on itself (or nearly: an unmeasured closing side)
+    const shapes = chains.map(clean).filter(p => p.length >= 4).map(p => ({ p, per: perOf(p), gap: Math.hypot(p[0][0] - p[p.length - 1][0], p[0][1] - p[p.length - 1][1]) }))
+      .filter(x => x.gap < x.per * 0.25 && polyArea(x.p) > 0).map(x => ({ p: x.gap < 1.2 ? x.p.slice(0, -1) : x.p, A: polyArea(x.p) }));
+    if (!shapes.length) return null;
+    let k = null, perim = null, area = null;
+    if (sc) k = num(sc[1]) * 0.0254 / 72;        // the drawing scale printed on the export: metres per PDF point
+    if (pm) { perim = num(pm[1]); area = num(pm[2]); }
+    let outer;
+    if (area) {
+      if (!k) { const big = shapes.slice().sort((p, q) => q.A - p.A)[0]; k = perim / perOf(big.p); }
+      outer = shapes.slice().sort((p, q) => Math.abs(p.A * k * k - area) - Math.abs(q.A * k * k - area))[0];
+    } else outer = shapes.slice().sort((p, q) => q.A - p.A)[0];
+    if (!k || !isFinite(k)) return null;
+    const inner = shapes.filter(x => x !== outer && x.A * k * k > 0.8 && x.A < outer.A && x.p.every(q => inPoly(q[0], q[1], outer.p)));
+    const pts0 = outer.p;
     const vp = page.getViewport({ scale: 1 });
-    return { pts: pts0.map(([x, y]) => [x * k, -y * k]), k, perim, area, pageW: vp.width, pageH: vp.height };
+    const toM = p => p.map(([x, y]) => [x * k, -y * k]);
+    return { pts: toM(pts0), inner: inner.map(x => toM(x.p)), k, perim, area, pageW: vp.width, pageH: vp.height };
   }
   $("filePlan").addEventListener("change", async e => {
     const f = e.target.files[0]; e.target.value = ""; if (!f) return;
@@ -1560,19 +1581,24 @@
     if (/pdf/i.test(f.type) || /\.pdf$/i.test(f.name)) {
       let sv = null; try { sv = await readSurveyPdf(f); } catch (err) { sv = null; }
       if (sv && sv.pts.length >= 3) {
-        const poly = simplify(sv.pts.slice(0, polyArea(sv.pts.slice(0, -1)) > 0 && Math.hypot(sv.pts[0][0] - sv.pts[sv.pts.length - 1][0], sv.pts[0][1] - sv.pts[sv.pts.length - 1][1]) < 0.05 ? -1 : undefined), 0.08);
+        const poly = simplify(sv.pts, 0.08);
         const A = polyArea(poly), cx = poly.reduce((a2, p) => a2 + p[0] / poly.length, 0), cz = poly.reduce((a2, p) => a2 + p[1] / poly.length, 0);
-        const info = `Relevé lu : ${fmt1.format(A)} m²${sv.area ? " (relevé : " + fmt1.format(sv.area) + " m²)" : ""}, ${poly.length} angles.`;
+        const info = `Relevé lu : ${fmt1.format(A)} m²${sv.area ? " (relevé : " + fmt1.format(sv.area) + " m²)" : ""}, ${poly.length} angles${sv.inner.length ? ", " + sv.inner.length + (sv.inner.length > 1 ? " zones intérieures (piscine, massif…)" : " zone intérieure (piscine, massif…)") : ""}.`;
         const asOutline = window.confirm(info + "\n\nOK : en faire le contour du terrain.\nAnnuler : le garder en fond de plan, à l'échelle.");
         const url = await pdfToImage(f), img = await loadImg(url);
         let ox = 0, oz = 0;
-        if (asOutline) { site.poly = poly.map(([x, z]) => [+(x - cx).toFixed(3), +(z - cz).toFixed(3)]); site.blocks = site.blocks.filter(b => !b.placeholder); buildHouse(); ox = cx; oz = cz; }
+        if (asOutline) {
+          site.poly = poly.map(([x, z]) => [+(x - cx).toFixed(3), +(z - cz).toFixed(3)]); site.blocks = site.blocks.filter(b => !b.placeholder); ox = cx; oz = cz;
+          // shapes measured inside the outline (pool, bed, terrace…): placed as zones, the salesperson sets their type
+          sv.inner.forEach(z2 => { const r = minRect(z2.map(([x, z]) => [x - cx, z - cz])); if (r) site.blocks.push({ kind: "zone", x: +r.x.toFixed(2), z: +r.z.toFixed(2), w: +r.w.toFixed(2), d: +r.d.toFixed(2), h: 0, rot: +r.rot.toFixed(4), src: "releve", note: "zone relevée (" + fmt1.format(polyArea(z2)) + " m²)" }); });
+          buildHouse();
+        }
         else { const sp = plotSpan(); ox = cx - sp.cx; oz = cz - sp.cz; }
         // the page, at the same scale, under the plan: page point (x, y) -> (x k - ox, -y k - oz)
         site.plan = { image: url, ar: img.naturalHeight / img.naturalWidth, w: sv.pageW * sv.k, x: +(sv.pageW / 2 * sv.k - ox).toFixed(3), z: +(-sv.pageH / 2 * sv.k - oz).toFixed(3), rot: 0, op: 0.55, survey: true };
         if (asOutline) site.spots = null;
         buildPlan(); siteChanged(); drawSpots(); setPrep(true); goTo("plan"); refreshSites();
-        toast(asOutline ? "Contour du terrain créé depuis le relevé" : "Relevé posé en fond de plan, à l'échelle");
+        toast(asOutline ? "Contour du terrain créé depuis le relevé" + (sv.inner.length ? " · touchez chaque zone pour choisir son type" : "") : "Relevé posé en fond de plan, à l'échelle");
         return;
       }
     }
