@@ -101,15 +101,18 @@ const EXISTING = {
   arbre: "the existing trees",
   zone: "the technical area (pool house or equipment area), in light grey concrete",
 };
-function buildFreePrompt(lines, nRefs, ambiance, existing, hasHouse) {
+function buildFreePrompt(lines, nRefs, ambiance, existing, hasHouse, counts) {
   const refs = nRefs === 1 ? "Image 2 is a real photograph" : `Images 2 to ${1 + nRefs} are real photographs`;
   const ex = existing.filter(k => EXISTING[k]).map(k => EXISTING[k]);
+  const pools = (counts && counts.piscine) || 0;
   return [
     (hasHouse ? "Image 1 is a 3D mock-up of a newly built house and its synthetic-grass garden, seen from a chosen viewpoint." : "Image 1 is a 3D mock-up of a garden measured on site, with a synthetic-grass lawn, seen from a chosen viewpoint.") + (nRefs ? ` ${refs} of this same house and plot.` : "") + " Turn image 1 into one single photorealistic photograph in very high detail, taken from EXACTLY the same viewpoint, framing, height and perspective as image 1.",
     !hasHouse ? "There is no house in image 1: show only this garden, bordered by a low rendered wall or a hedge along its outline, with a calm residential background far away. Do not add a house in the plot."
       : nRefs ? `The house keeps exactly the volumes, proportions and position of image 1, and looks like the real house of ${nRefs === 1 ? "image 2" : `images 2 to ${1 + nRefs}`}: same render, windows, doors, frames, roofs and terrace.`
       : "The house keeps exactly the volumes, proportions and position of image 1: a modern new-build villa with smooth white render, large windows and French windows with dark grey frames, flat roofs with thin edges.",
     ex.length ? "These existing features are already on the plot and appear in image 1: keep each one exactly where it is, with exactly the same outline, size and orientation, made photorealistic: " + ex.join("; ") + ". The outline of the lawn and of the plot stays exactly as in image 1." : "",
+    `There ${pools === 1 ? "is exactly ONE swimming pool" : pools ? "are exactly " + pools + " swimming pools" : "is NO swimming pool"} in the whole picture: never add another pool, basin or pond, even in the foreground or outside the plot.`,
+    !hasHouse ? "Everything outside the plot outline (the empty beige ground of the mock-up, including the foreground) becomes plain short grass or the low wall: no extra terrace, paving, pool, building or object there." : "",
     "Replace each mock-up garden element by a real, photorealistic version at EXACTLY the same position, size and orientation as in image 1:",
     ...lines,
     "Each listed element appears exactly once, only where its mock-up is in image 1. Do not add any other garden element, tree, path, plant or furniture inside the plot, and do not move, enlarge or remove anything. The rest of the plot is a clean, flat premium synthetic grass lawn.",
@@ -126,8 +129,8 @@ function buildNightPrompt(leds) {
     : "No new light fittings: the garden is lit only by the house and the night sky.";
   return [
     "Image 1 is a photorealistic daytime photograph of a house and its garden. Produce the very same photograph at night, just after blue hour.",
-    "Keep EXACTLY the same framing, lens, perspective, buildings, windows, doors, garden layout, paving pattern, plants, lawn and every object: nothing is added, moved, enlarged or removed. Only the light changes.",
-    "Deep blue night sky with a few stars, warm light glowing inside the house through the windows and French windows, a few discreet warm wall lights on the façade, soft moonlight on the lawn.",
+    "Keep EXACTLY the same framing, lens, perspective, buildings, windows, doors, garden layout, paving pattern, plants, lawn and every object: nothing is added, moved, enlarged or removed. Only the light changes. Never add a house, building, wall, pool or any object that is not already in image 1.",
+    "Deep blue night sky with a few stars; if there is a house in image 1, warm light glowing inside it through the windows and a few discreet warm wall lights on its façade; soft moonlight on the lawn; underwater pool lights if there is a pool.",
     led,
     "Realistic high-end real-estate night photography, natural night colours, crisp detail, low noise. No people, no text, no watermark.",
   ].join("\n");
@@ -163,7 +166,7 @@ export default async function handler(req, res) {
     }
     if (req.method !== "POST") return res.status(405).end();
 
-    const { image, items, empty, mode, aspect, lawn, site, ambiance, refs: houseRefs, existing: exIn, house } = req.body || {};
+    const { image, items, empty, mode, aspect, lawn, site, ambiance, refs: houseRefs, existing: exIn, house, counts } = req.body || {};
     const existing = [...new Set((Array.isArray(exIn) ? exIn : []).filter(k => EXISTING[k]))];
     const free = mode === "free";
     const RATIOS = ["1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9"], ratio = RATIOS.includes(aspect) ? aspect : "3:4";
@@ -215,7 +218,7 @@ export default async function handler(req, res) {
     const task = await (await fetch(`${API}/api/v1/jobs/createTask`, {
       method: "POST", headers: H,
       body: JSON.stringify({ model: MODEL, input: {
-        prompt: free ? buildFreePrompt(lines, houseUrls.length, ambiance, existing, house !== false) : buildPrompt(lines, emptyZones, lawn === true, ambiance),
+        prompt: free ? buildFreePrompt(lines, houseUrls.length, ambiance, existing, house !== false, counts && typeof counts === "object" ? counts : {}) : buildPrompt(lines, emptyZones, lawn === true, ambiance),
         image_input: [imageUrl, ...houseUrls, ...refUrls], aspect_ratio: ratio, resolution: "4K", output_format: "png" } }),
     })).json();
     if (task.code !== 200) return res.status(502).json({ error: task.msg || "rendu refusé" });

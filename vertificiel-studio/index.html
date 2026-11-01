@@ -2754,7 +2754,8 @@
       try { code = localStorage.getItem("studio-code") || ""; } catch (e) { /* no storage */ }
       if (!code) { code = (window.prompt("Code d'accès du studio (une seule fois sur cette tablette) :") || "").trim(); try { localStorage.setItem("studio-code", code); } catch (e) { /* no storage */ } }
       const payload = shot ? { mode: "free", image: shot.image, aspect: job.aspect, items: vis, ambiance: job.amb, site: site.demo ? "demo" : "custom", refs: site.demo ? [] : await houseRefs(),
-          existing: [...new Set(site.blocks.filter(b => b.kind !== "maison" && !b.placeholder).map(b => b.kind))], house: site.demo || site.blocks.some(b => b.kind === "maison") }
+          existing: [...new Set(site.blocks.filter(b => b.kind !== "maison" && !b.placeholder).map(b => b.kind))], house: site.demo || site.blocks.some(b => b.kind === "maison"),
+          counts: site.blocks.filter(b => !b.placeholder).reduce((c, b) => Object.assign(c, { [b.kind]: (c[b.kind] || 0) + 1 }), {}) }
         : Object.assign(await comp, { items: vis, ambiance: job.amb, aspect: job.aspect, lawn: job.custom });
       const r = await fetch(api, { method: "POST", headers: { "Content-Type": "application/json", "x-studio-code": code }, body: JSON.stringify(payload) });
       if (r.status === 401) { try { localStorage.removeItem("studio-code"); } catch (e) { /* no storage */ } throw new Error("code d'accès incorrect"); }
@@ -2775,6 +2776,10 @@
   $("render4kNow").addEventListener("click", async () => {
     if (!items.length) { toast("Ajoutez au moins un élément du catalogue."); return; }
     shotMode = "apercu"; await setView("libre");
+    if (!site.demo && !site.blocks.some(b => b.kind === "maison")) {
+      const sp = plotSpan(), need = Math.max(sp.w, sp.d) * 0.62 / Math.tan(cam.fov * Math.PI / 360);
+      if (cam.r > need) { anim = null; cam.target.set(sp.cx, 0, sp.cz); cam.r = need; cam.phi = Math.min(cam.phi, 0.95); requestRender(); await new Promise(ok => setTimeout(ok, 150)); }
+    }
     render4k();
   });
   $("closeShot").addEventListener("click", () => showShot("apercu"));
