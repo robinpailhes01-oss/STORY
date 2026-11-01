@@ -223,6 +223,31 @@
   .sites b { display: block; font-size: 16px; }
   .sites span { font-size: 13.5px; color: var(--muted); }
   .sites .new b { color: var(--accent); }
+  .guide { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .guide > li { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; padding: 12px; border-radius: 14px; border: 1.5px solid var(--line); background: var(--bg); }
+  .guide > li.next { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold); }
+  .guide > li.done { opacity: .92; }
+  .guide .gn { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--soft); color: var(--accent); font-family: var(--font-display); font-weight: 800; font-size: 15px; }
+  .guide li.done .gn { background: var(--accent); color: var(--on-accent); }
+  .guide li.next .gn { background: var(--gold); color: #ffffff; }
+  .guide .gb { display: grid; gap: 6px; min-width: 0; }
+  .guide .gb > b { font-family: var(--font-display); font-size: 16.5px; color: var(--accent); }
+  .guide .gb small { font-family: var(--font-body); font-weight: 600; font-size: 12px; color: var(--muted); }
+  .guide .gs { font-size: 14px; color: var(--fg); line-height: 1.4; }
+  .guide li.done .geo, .guide li.done .note { display: none; }
+  .guide li.done .geo.open { display: grid; }
+  .guide .sub { padding: 0; border: 0; background: transparent; }
+  .guide .geo-row { flex-wrap: wrap; }
+  .guide .geo-row input { flex: 1 1 100%; }
+  .saved summary { cursor: pointer; font-size: 13.5px; font-weight: 700; color: var(--accent); padding: 4px 0; }
+  .saved .sites { margin-top: 6px; }
+  .steps2 { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .steps2 li { display: flex; gap: 10px; align-items: center; font-size: 14.5px; line-height: 1.35; }
+  .steps2 .gn { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--soft); color: var(--accent); font-weight: 800; font-size: 13px; }
+  .steps2 li.done .gn { background: var(--accent); color: var(--on-accent); }
+  .steps2 li.next .gn { background: var(--gold); color: #ffffff; }
+  .steps2 li.next { font-weight: 700; }
+  .help { margin-left: 8px; min-height: 40px; padding: 6px 14px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--bg); color: var(--accent); font-weight: 700; font-size: 14px; text-decoration: none; display: inline-flex; align-items: center; }
   .geo { border-color: var(--gold); }
   .spots #spotMsg { font-weight: 600; color: var(--accent); }
   .geo-row { display: flex; gap: 6px; }
@@ -247,6 +272,7 @@
 <body>
 <div class="top">
   <div class="brand"><span>Démo Luma · prototype</span><b>Studio jardin Vertificiel</b></div>
+  <a class="help" href="guide-studio-vertificiel.pdf" target="_blank" rel="noopener">? Guide</a>
   <nav class="steps" aria-label="Étapes du projet">
     <button type="button" class="step" data-step="1"><i>1</i>Terrain</button>
     <button type="button" class="step" data-step="2"><i>2</i>Le jardin</button>
@@ -311,25 +337,36 @@
     <!-- step 1 -->
     <section class="block" data-panel="1">
       <h2>Le terrain du client</h2>
-      <p class="lead">Touchez le terrain, notez le nom du client, puis commencez le jardin.</p>
-      <div class="sub geo">
-        <div class="label">Nouveau terrain par l'adresse</div>
-        <div class="geo-row"><input id="geoQ" type="search" placeholder="Adresse du terrain" autocomplete="off" aria-label="Adresse du terrain"><button type="button" class="chip" id="geoMe">📍 Je suis sur place</button></div>
-        <ul class="geo-list" id="geoList" hidden></ul>
-        <p class="note" id="geoMsg">Le contour vient du cadastre et la maison des données de l'IGN, avec la photo aérienne en fond.</p>
-      </div>
-      <div class="label">Terrains enregistrés</div>
-      <div class="sites" id="siteCards" role="group" aria-label="Terrains"></div>
-      <div class="sub spots">
-        <div class="label">Sur place : photos du jardin</div>
-        <p class="note">Placez-vous à chaque point 📷, aux angles de la maison, et touchez-le : l'appareil photo s'ouvre. Tablette à l'horizontale, photographiez le jardin dans le sens de la flèche, avec la clôture ou la haie du fond dans l'image. Ce qui est au sol (terrasse, allées, massifs, kiosque, spa, abri, arbres) s'ajoute à la 3D, à vérifier.</p>
-        <div class="chips"><button type="button" class="chip" id="spotAdd">+ Point photo sur le plan</button><button type="button" class="chip" id="impMoasure">Importer un relevé Moasure (PDF)</button></div>
-        <p class="note" id="spotMsg" hidden></p>
-        <input type="file" id="fileCam" accept="image/*" capture="environment" hidden>
-      </div>
+      <p class="lead">Quatre étapes, dans l'ordre. Les deux premières se font au bureau ou en arrivant, les deux dernières dans le jardin.</p>
+      <ol class="guide" id="guide1">
+        <li data-g="terrain"><span class="gn">1</span><div class="gb">
+          <b>Trouver le terrain</b><span class="gs" id="g1s">Tapez l'adresse : le contour, la maison et la piscine arrivent tout seuls.</span>
+          <div class="sub geo">
+            <div class="geo-row"><input id="geoQ" type="search" placeholder="Adresse du terrain (n°, rue, ville)" autocomplete="off" aria-label="Adresse du terrain"><button type="button" class="chip" id="geoMe">📍 Je suis sur place</button></div>
+            <ul class="geo-list" id="geoList" hidden></ul>
+            <p class="note" id="geoMsg">Le contour vient du cadastre et la maison des données de l'IGN, avec la photo aérienne en fond.</p>
+          </div>
+          <details class="saved"><summary>Ou reprendre un terrain enregistré</summary><div class="sites" id="siteCards" role="group" aria-label="Terrains"></div></details>
+        </div></li>
+        <li data-g="mesure"><span class="gn">2</span><div class="gb">
+          <b>Mesurer <small>facultatif</small></b><span class="gs" id="g2s">Avec Moasure, le contour et la piscine sont au centimètre. Sinon, le cadastre suffit pour commencer.</span>
+          <div class="chips"><button type="button" class="chip" id="impMoasure">Importer le relevé Moasure (PDF)</button></div>
+        </div></li>
+        <li data-g="existant"><span class="gn">3</span><div class="gb">
+          <b>Vérifier l'existant</b><span class="gs" id="g3s">Maison, piscine, terrasse, arbres : comparez avec ce que vous voyez et corrigez au doigt.</span>
+          <div class="chips"><button type="button" class="chip" id="g3go">Vérifier sur le plan</button></div>
+        </div></li>
+        <li data-g="photos"><span class="gn">4</span><div class="gb">
+          <b>Photographier le jardin</b><span class="gs" id="g4s">Allez à chaque point 📷 du plan, aux angles de la maison, et touchez-le : l'appareil photo s'ouvre.</span>
+          <p class="note">Tablette à l'horizontale, dans le sens de la flèche, avec la clôture ou la haie du fond dans l'image. Ce qui est au sol (terrasse, allées, kiosque, spa, abri, arbres) s'ajoute à la 3D.</p>
+          <div class="chips"><button type="button" class="chip" id="spotAdd">+ Point photo sur le plan</button></div>
+          <p class="note" id="spotMsg" hidden></p>
+          <input type="file" id="fileCam" accept="image/*" capture="environment" hidden>
+        </div></li>
+      </ol>
       <label class="field" for="client">Nom du client<input id="client" type="text" autocomplete="off" placeholder="Ex. : M. et Mme Martin"></label>
       <div class="actions"><button type="button" class="btn" data-go="2">Commencer le jardin →</button></div>
-      <button type="button" class="prep-toggle" id="prepToggle" aria-expanded="false">Préparer ou modifier ce terrain (cotes, maison, photos)</button>
+      <button type="button" class="prep-toggle" id="prepToggle" aria-expanded="false">Outils du terrain : cotes, maison et existant, plan de masse</button>
       <div class="block prep" id="prepBox" hidden>
       <p class="note">À faire une fois par terrain, avant le rendez-vous : importez le plan de masse ou un fichier de mesures, ou saisissez les cotes.</p>
       <label class="field" for="siteSel">Terrain<select id="siteSel"></select></label>
@@ -414,7 +451,11 @@
     <!-- step 2 -->
     <section class="block" data-panel="2" hidden>
       <h2>Le jardin</h2>
-      <p class="lead">Partez d'une idée prête ou touchez un élément du catalogue, puis faites-le glisser sur le terrain avec le doigt.</p>
+      <ol class="steps2" id="guide2">
+        <li data-g2="compose"><span class="gn">1</span><span>Composez avec le client : une idée prête ou le catalogue, puis glissez au doigt.</span></li>
+        <li data-g2="cadre"><span class="gn">2</span><span>Touchez « Vue client » en haut de la 3D, puis tournez d'un doigt pour choisir l'angle.</span></li>
+        <li data-g2="rendu"><span class="gn">3</span><span>Générez le rendu 4K jour + nuit : 3 à 5 minutes, continuez à échanger pendant ce temps.</span></li>
+      </ol>
       <div class="block">
         <div class="label">Idées prêtes</div>
         <div class="chips" id="palChips"></div>
@@ -1139,17 +1180,21 @@
     return !items.some(o => o !== it && overlaps(box4, aabb(o.no, o.g.position.x, o.g.position.z, o.g.rotation.y, fpOf(o)), -0.8));   // keep 0.8 m between new elements
   }
   // nearest free spot, spiralling out from the middle of the garden in front of the house
+  // nearest free spot, spiralling out from the middle of the plot every 50 cm, turned a quarter if it helps
   function findSpot(it, no, rot) {
-    const bb = bbox(site.poly), cx = (bb[0] + bb[1]) / 2, cz = (bb[2] + bb[3]) / 2;
+    const bb = bbox(site.poly), cx = (bb[0] + bb[1]) / 2, cz = (bb[2] + bb[3]) / 2, fp = it && fpOf(it);
     let fallback = null;
-    for (let r = 0; r <= Math.ceil(Math.max(bb[1] - bb[0], bb[3] - bb[2]) / 2) + 1; r += 1) for (let i = -r; i <= r; i++) for (let j = -r; j <= r; j++) {
-      if (Math.max(Math.abs(i), Math.abs(j)) !== r) continue;
-      const x = cx + i, z = cz + j;
-      if (!fits(no, x, z, rot, it && fpOf(it)) || !inView(x, z)) continue;
-      if (freeOfOthers(it, no, x, z, rot)) return [x, z];
-      if (!fallback) fallback = [x, z];
+    for (const rr of [rot, rot + Math.PI / 2]) {
+      for (let r = 0; r <= Math.ceil(Math.max(bb[1] - bb[0], bb[3] - bb[2])) + 2; r += 1) for (let i = -r; i <= r; i++) for (let j = -r; j <= r; j++) {
+        if (Math.max(Math.abs(i), Math.abs(j)) !== r) continue;
+        const x = cx + i / 2, z = cz + j / 2;
+        if (!fits(no, x, z, rr, fp) || !inView(x, z)) continue;
+        if (freeOfOthers(it, no, x, z, rr)) return [x, z, rr];
+        if (!fallback) fallback = [x, z, rr];
+      }
+      if (fallback) return fallback;
     }
-    return fallback || [cx, cz];
+    return null;      // no room for it on this plot
   }
   // on the photo, new elements land where the photo actually shows the garden
   const probe = new T.Vector3();
@@ -1158,7 +1203,13 @@
     probe.set(x, 0, z).project(camera);
     return Math.abs(probe.x) < 0.75 && probe.y < 0.05 && probe.y > -0.85 && probe.z < 1;
   }
-  function placeFree(it) { const [x, z] = findSpot(it, it.no, it.g.rotation.y); it.g.position.set(x, 0, z); }
+  function placeFree(it) {
+    const sp = findSpot(it, it.no, it.g.rotation.y);
+    if (sp) { it.g.position.set(sp[0], 0, sp[1]); it.g.rotation.y = sp[2]; return true; }
+    const bb = bbox(site.poly); it.g.position.set((bb[0] + bb[1]) / 2, 0, (bb[2] + bb[3]) / 2);
+    toast("Pas assez de place libre pour « " + TYPES[it.no].name + " » : réduisez-le ou déplacez l'existant.");
+    return false;
+  }
   function addItem(no, x, z, rot, spec) {
     const t = TYPES[no], it = { uid: uidSeq++, no };
     if (no === "DG") it.spec = Object.assign(DG_DEFAULT(), spec || {});
@@ -1197,7 +1248,17 @@
     renderDG();
     requestRender();
   }
-  function changed() { renderCatalogue(); renderNumbers(); save(); requestRender(); }
+  let framed = false;
+  function renderGuide2() {
+    const st = { compose: items.length > 0, cadre: items.length > 0 && framed, rendu: renders.some(r => !r.test) };
+    let next = null;
+    ["compose", "cadre", "rendu"].forEach((k, i) => {
+      const li = document.querySelector('[data-g2="' + k + '"]'); if (!li) return;
+      li.classList.toggle("done", st[k]); li.classList.toggle("next", !st[k] && !next); if (!st[k] && !next) next = k;
+      li.querySelector(".gn").textContent = st[k] ? "✓" : String(i + 1);
+    });
+  }
+  function changed() { renderCatalogue(); renderNumbers(); save(); requestRender(); if (typeof renderGuide2 === "function") renderGuide2(); }
   $("selRot").addEventListener("click", () => {
     const it = selected; if (!it) return;
     const r = it.g.rotation.y + Math.PI / 12;
@@ -1240,9 +1301,9 @@
     const old = Object.assign({}, it.spec); Object.assign(it.spec, patch);
     const pos = it.g.position.clone(), rot = it.g.rotation.y;
     if ((patch.w || patch.d) && !fits(it.no, pos.x, pos.z, rot, fpOf(it))) {
-      const [x, z] = findSpot(it, it.no, rot);
-      if (!fits(it.no, x, z, rot, fpOf(it))) { Object.assign(it.spec, old); toast("Pas assez de place sur le terrain pour cette taille."); renderDG(); return; }
-      pos.set(x, 0, z);
+      const spot = findSpot(it, it.no, rot);
+      if (!spot || spot[2] !== rot) { Object.assign(it.spec, old); toast("Pas assez de place sur le terrain pour cette taille."); renderDG(); return; }
+      pos.set(spot[0], 0, spot[1]);
     }
     select(null); scene.remove(it.g); it.g.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material && o.material.map) o.material.map.dispose(); });
     it.g = buildDG(it.spec); it.g.userData = { uid: it.uid }; it.g.position.copy(pos); it.g.rotation.y = rot; it.g.visible = step !== 1; it.frame = null;
@@ -1382,11 +1443,34 @@
   let prepOpen = false;
   function setPrep(on) {
     prepOpen = on; $("prepBox").hidden = !on; $("prepToggle").setAttribute("aria-expanded", String(on));
-    $("prepToggle").textContent = on ? "Fermer la préparation du terrain" : "Préparer ou modifier ce terrain (cotes, maison, photos)";
+    $("prepToggle").textContent = on ? "✓ Terminer et fermer les outils du terrain" : "Outils du terrain : cotes, maison et existant, plan de masse";
     if (!on) { selBlock = null; setTool(null); }
     handles.visible = step === 1 && on && !tool; showBlockSel(); requestRender();
   }
-  $("prepToggle").addEventListener("click", () => setPrep(!prepOpen));
+  $("prepToggle").addEventListener("click", () => { if (prepOpen) { site.checked = true; save(); } setPrep(!prepOpen); renderGuide(); });
+  $("g3go").addEventListener("click", () => { setPrep(true); document.querySelector('[data-subtab="bati"]').click(); goTo("plan"); $("prepBox").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" }); });
+  // the guided steps of the plot: what is done, what is next
+  function renderGuide() {
+    if (!site) return;
+    const set = (g, done, txt, next) => {
+      const li = document.querySelector('[data-g="' + g + '"]'), gs = li.querySelector(".gs");
+      if (li.dataset.n == null) { li.dataset.n = li.querySelector(".gn").textContent; li.dataset.t = gs.textContent; }
+      li.classList.toggle("done", !!done); li.classList.toggle("next", !!next);
+      gs.textContent = txt || li.dataset.t; li.querySelector(".gn").textContent = done ? "✓" : li.dataset.n;
+    };
+    const NAMES = { maison: ["bâtiment", "bâtiments"], terrasse: ["terrasse", "terrasses"], piscine: ["piscine", "piscines"], spa: ["spa", "spas"], kiosque: ["kiosque", "kiosques"], abri: ["abri", "abris"], arbre: ["arbre", "arbres"], haie: ["haie", "haies"], mineral: ["allée", "allées"], massif: ["massif", "massifs"], zone: ["zone", "zones"] };
+    const placeholder = site.blocks.some(b => b.placeholder) && !site.geo && !(site.plan && site.plan.survey);
+    const d1 = site.demo || !placeholder, area = fmt.format(polyArea(site.poly)) + " m²";
+    const d2 = !!(site.plan && site.plan.survey);
+    const ex = site.blocks.filter(b => !b.placeholder), cnt = {}; ex.forEach(b => { cnt[b.kind] = (cnt[b.kind] || 0) + 1; });
+    const exTxt = Object.keys(cnt).map(k => cnt[k] + " " + (NAMES[k] || [k, k])[cnt[k] > 1 ? 1 : 0]).join(" · ");
+    const d3 = site.demo || !!site.checked;
+    const shots = site.photos.filter(p => p.pose).length + (site.demo ? 2 : 0), nSpots = (site.spots || []).length, d4 = shots >= 2;
+    set("terrain", d1, d1 ? site.name + " · " + area + (site.geo ? " · cadastre " + site.geo.section + " " + site.geo.numero : "") : null, !d1);
+    set("mesure", d2, d2 ? "Relevé importé : contour mesuré, " + area + "." : null, false);
+    set("existant", d3, (exTxt || "Aucun élément") + (d3 ? " · vérifié" : " · à vérifier sur le plan"), d1 && !d3);
+    set("photos", d4, shots + " photo" + (shots > 1 ? "s" : "") + " calée" + (shots > 1 ? "s" : "") + (nSpots ? " · " + nSpots + " points sur le plan" : "") + (d4 ? " : prêtes pour les rendus exacts." : " · 2 au minimum conseillées."), d1 && d3 && !d4);
+  }
   $("client").addEventListener("change", () => refreshSites());
   $("siteName").addEventListener("change", () => { save(); refreshSites(); });
   $("client").addEventListener("input", save);
@@ -1419,7 +1503,7 @@
       delB.addEventListener("click", () => { if (q.length <= 3) { toast("Un terrain a au moins 3 angles."); return; } q.splice(j, 1); siteChanged(); });
       ol.appendChild(li);
     });
-    renderBlocks(); renderPhotoList(); $("planBox").hidden = !site.plan;
+    renderBlocks(); renderPhotoList(); $("planBox").hidden = !site.plan; renderGuide();
   }
   // a side keeps its direction: its end point moves to the typed length
   function setSide(i, len) {
@@ -2021,7 +2105,7 @@
       const [ux, uz] = spotAim(sp), L = 2.6, tip2 = [sp.x + ux * L, sp.z + uz * L];
       const ar = new T.Line(new T.BufferGeometry().setFromPoints([new T.Vector3(sp.x, 0.12, sp.z), new T.Vector3(tip2[0], 0.12, tip2[1])]), lineMat); ar.renderOrder = 12; spotGroup.add(ar);
     });
-    spotGroup.visible = step === 1; requestRender();
+    spotGroup.visible = step === 1; requestRender(); renderGuide();
   }
   function spotMsg(t) { $("spotMsg").hidden = !t; if (t) $("spotMsg").textContent = t; }
   $("spotAdd").addEventListener("click", () => { setTool("spot"); goTo("plan"); });
@@ -2319,12 +2403,30 @@
     const sp = plotSpan(), cx = sp.cx, cz = sp.cz, span = Math.max(sp.w, sp.d, 12);
     if (name === "photo" && photoSph()) return photoSph();
     // as seen by someone standing at the edge of the garden, eyes a little above a person (2.4 m): the most believable 4K photos
-    if (name === "client") { const r = Math.max(span * 0.85, 9), eye = 2.4; return { t: [cx, 0.4, cz], r, theta: cam.theta, phi: Math.acos(clamp((eye - 0.4) / r, 0, 1)), fov: 60 }; }
+    if (name === "client") {
+      // standing at the edge of the garden, eyes at 2.4 m, nothing tall right in front of the lens
+      const q = site.poly, eye = 2.4, tall = items.filter(it => ["07", "10", "05", "23", "01", "02"].includes(it.no)).map(it => [it.g.position.x, it.g.position.z])
+        .concat(site.blocks.filter(b => ["maison", "abri", "kiosque", "arbre", "haie"].includes(b.kind)).map(b => [b.x, b.z]));
+      const at = th => {
+        const dx = Math.sin(th), dz = Math.cos(th); let edge = span;
+        q.forEach((p, i) => { const p2 = q[(i + 1) % q.length], ex = p2[0] - p[0], ez = p2[1] - p[1], den = dx * ez - dz * ex; if (Math.abs(den) < 1e-9) return;
+          const t = ((p[0] - cx) * ez - (p[1] - cz) * ex) / den, u = ((p[0] - cx) * dz - (p[1] - cz) * dx) / den; if (t > 0 && u >= 0 && u <= 1) edge = Math.min(edge, t); });
+        const r = Math.max(6, edge - 1.2), px = cx + dx * r, pz = cz + dz * r;
+        // the nearest tall thing between the camera and the middle of the garden
+        let block = Infinity; tall.forEach(([x, z]) => { const t2 = ((x - px) * -dx + (z - pz) * -dz); if (t2 < 0 || t2 > r) return; const off = Math.abs((x - px) * dz - (z - pz) * dx); if (off < 3) block = Math.min(block, t2); });
+        return { r, clear: block > 4.5 };
+      };
+      let th = cam.theta, pick = at(th);
+      for (const d of [0.5, -0.5, 1, -1, 1.5, -1.5, 2.1, -2.1, Math.PI]) { if (pick.clear) break; const c = at(cam.theta + d); if (c.clear) { th = cam.theta + d; pick = c; } }
+      return { t: [cx, 0.4, cz], r: pick.r, theta: th, phi: Math.acos(clamp((eye - 0.4) / pick.r, 0, 1)), fov: 68 };
+    }
     if (name === "plan") return { t: [cx + 0.6, 0, cz + 0.6], r: span * 1.35, theta: 0, phi: 0.06, fov: 55 };
     return { t: [cx - 1, 0.8, cz + 0.5], r: span * 1.15, theta: 0.26, phi: 1.12, fov: 55 };
   }
   let anim = null;
   function goTo(name, instant) {
+    if (name === "client" && step === 2 && items.length) { framed = true; renderGuide2(); }
+    dims.visible = step <= 2 && name !== "client";      // the dimension labels would hide the view at eye level
     document.querySelectorAll("[data-cam]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.cam === name)));
     const p = preset(name), from = { t: cam.target.clone(), r: cam.r, theta: cam.theta, phi: cam.phi, fov: cam.fov };
     const dTh = Math.atan2(Math.sin(p.theta - from.theta), Math.cos(p.theta - from.theta));
@@ -2337,7 +2439,7 @@
     cam.target.lerpVectors(a.t, b.t, e); cam.r = a.r + (b.r - a.r) * e; cam.theta = a.theta + (b.theta - a.theta) * e; cam.phi = a.phi + (b.phi - a.phi) * e; cam.fov = a.fov + (b.fov - a.fov) * e;
     needsRender = true; if (k >= 1) anim = null;
   }
-  const userMoved = () => { anim = null; document.querySelectorAll("[data-cam]").forEach(b => b.setAttribute("aria-pressed", "false")); requestRender(); };
+  const userMoved = () => { if (step === 2 && items.length && !framed) { framed = true; renderGuide2(); } anim = null; document.querySelectorAll("[data-cam]").forEach(b => b.setAttribute("aria-pressed", "false")); requestRender(); };
   function updateCamera() {
     if (photoLive) {
       camera.position.fromArray(PHOTO.pos); camera.up.fromArray(PHOTO.up); camera.lookAt(new T.Vector3().fromArray(PHOTO.target));
@@ -2540,6 +2642,7 @@
   }
   // the project's renders, kept with the site (the image files stay on the render service)
   function drawGallery() {
+    renderGuide2();
     ["gal", "gal2"].forEach(id => { $(id).innerHTML = ""; });
     $("galBlock").hidden = $("galBlock2").hidden = !renders.length;
     for (const gal of [$("gal"), $("gal2")]) renders.forEach(r => {
@@ -2634,6 +2737,7 @@
     rvPos = clamp(p, 0, 100);
     $("rvNightWrap").style.clipPath = `inset(0 0 0 ${rvPos}%)`; $("rvHandle").style.left = rvPos + "%";
     $("rvJour").setAttribute("aria-pressed", String(rvPos >= 99)); $("rvNuit").setAttribute("aria-pressed", String(rvPos <= 1));
+    $("rvHandle").style.opacity = rvPos >= 99 || rvPos <= 1 ? "0" : "1";
   }
   function showRv(e, nightJustArrived) {
     $("rvDay").src = e.url;
@@ -3038,7 +3142,10 @@
   // ---------------------------------------------------------------- recap: send to the client, start a new client
   $("shareRecap").addEventListener("click", async () => {
     const photos = renders.filter(r => !r.test).map(r => "· " + r.label + " : " + r.url + (r.night ? "\n  de nuit : " + r.night : ""));
-    const text = recapText() + (photos.length ? "\n\nPhotos du projet :\n" + photos.join("\n") : "");
+    const who = $("client").value.trim();
+    const text = "Bonjour" + (who ? " " + who : "") + ",\n\nVoici la projection de votre futur jardin, préparée ensemble avec le studio Vertificiel."
+      + (photos.length ? "\n\nVos photos (de jour, et de nuit avec l'éclairage) :\n" + photos.join("\n") : "")
+      + "\n\nLe détail du projet :\n" + recapText() + "\n\nÀ très vite,\nVertificiel";
     if (navigator.share) { try { await navigator.share({ title: "Projet jardin · " + ($("client").value.trim() || site.name), text }); return; } catch (e) { if (e && e.name === "AbortError") return; } }
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => toast("Récap et photos copiés : collez-les dans un message au client."), () => toast("Envoi impossible sur cet appareil."));
     else toast("Envoi impossible sur cet appareil.");
