@@ -2753,7 +2753,8 @@
       let code = "";
       try { code = localStorage.getItem("studio-code") || ""; } catch (e) { /* no storage */ }
       if (!code) { code = (window.prompt("Code d'accès du studio (une seule fois sur cette tablette) :") || "").trim(); try { localStorage.setItem("studio-code", code); } catch (e) { /* no storage */ } }
-      const payload = shot ? { mode: "free", image: shot.image, aspect: job.aspect, items: vis, ambiance: job.amb, site: site.demo ? "demo" : "custom", refs: site.demo ? [] : await houseRefs() }
+      const payload = shot ? { mode: "free", image: shot.image, aspect: job.aspect, items: vis, ambiance: job.amb, site: site.demo ? "demo" : "custom", refs: site.demo ? [] : await houseRefs(),
+          existing: [...new Set(site.blocks.filter(b => b.kind !== "maison" && !b.placeholder).map(b => b.kind))], house: site.demo || site.blocks.some(b => b.kind === "maison") }
         : Object.assign(await comp, { items: vis, ambiance: job.amb, aspect: job.aspect, lawn: job.custom });
       const r = await fetch(api, { method: "POST", headers: { "Content-Type": "application/json", "x-studio-code": code }, body: JSON.stringify(payload) });
       if (r.status === 401) { try { localStorage.removeItem("studio-code"); } catch (e) { /* no storage */ } throw new Error("code d'accès incorrect"); }

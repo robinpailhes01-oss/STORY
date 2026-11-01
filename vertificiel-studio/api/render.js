@@ -88,18 +88,34 @@ function buildPrompt(lines, empty, lawn, ambiance) {
 }
 
 // any angle of the 3D: the mock-up gives the viewpoint and the layout, the plot photos give the real house
-function buildFreePrompt(lines, nRefs, ambiance) {
+// existing features measured on site (shown in the mock-up): rendered real, with exactly their outline
+const EXISTING = {
+  piscine: "the swimming pool, with its exact outline, clear turquoise water and a light stone coping",
+  terrasse: "the terrace slab, with its exact outline, in light grey concrete or stone",
+  mineral: "the gravel path or area, with its exact outline, in light grey gravel",
+  massif: "the planted bed, with its exact outline, with low Mediterranean shrubs",
+  spa: "the spa or hot tub, in wood, with its water",
+  kiosque: "the wooden kiosk or gazebo",
+  abri: "the garden shed",
+  haie: "the hedges",
+  arbre: "the existing trees",
+  zone: "the technical area (pool house or equipment area), in light grey concrete",
+};
+function buildFreePrompt(lines, nRefs, ambiance, existing, hasHouse) {
   const refs = nRefs === 1 ? "Image 2 is a real photograph" : `Images 2 to ${1 + nRefs} are real photographs`;
+  const ex = existing.filter(k => EXISTING[k]).map(k => EXISTING[k]);
   return [
-    "Image 1 is a 3D mock-up of a newly built house and its synthetic-grass garden, seen from a chosen viewpoint." + (nRefs ? ` ${refs} of this same house and plot.` : "") + " Turn image 1 into one single photorealistic photograph in very high detail, taken from EXACTLY the same viewpoint, framing, height and perspective as image 1.",
-    nRefs ? `The house keeps exactly the volumes, proportions and position of image 1, and looks like the real house of ${nRefs === 1 ? "image 2" : `images 2 to ${1 + nRefs}`}: same render, windows, doors, frames, roofs and terrace.`
+    (hasHouse ? "Image 1 is a 3D mock-up of a newly built house and its synthetic-grass garden, seen from a chosen viewpoint." : "Image 1 is a 3D mock-up of a garden measured on site, with a synthetic-grass lawn, seen from a chosen viewpoint.") + (nRefs ? ` ${refs} of this same house and plot.` : "") + " Turn image 1 into one single photorealistic photograph in very high detail, taken from EXACTLY the same viewpoint, framing, height and perspective as image 1.",
+    !hasHouse ? "There is no house in image 1: show only this garden, bordered by a low rendered wall or a hedge along its outline, with a calm residential background far away. Do not add a house in the plot."
+      : nRefs ? `The house keeps exactly the volumes, proportions and position of image 1, and looks like the real house of ${nRefs === 1 ? "image 2" : `images 2 to ${1 + nRefs}`}: same render, windows, doors, frames, roofs and terrace.`
       : "The house keeps exactly the volumes, proportions and position of image 1: a modern new-build villa with smooth white render, large windows and French windows with dark grey frames, flat roofs with thin edges.",
+    ex.length ? "These existing features are already on the plot and appear in image 1: keep each one exactly where it is, with exactly the same outline, size and orientation, made photorealistic: " + ex.join("; ") + ". The outline of the lawn and of the plot stays exactly as in image 1." : "",
     "Replace each mock-up garden element by a real, photorealistic version at EXACTLY the same position, size and orientation as in image 1:",
     ...lines,
     "Each listed element appears exactly once, only where its mock-up is in image 1. Do not add any other garden element, tree, path, plant or furniture inside the plot, and do not move, enlarge or remove anything. The rest of the plot is a clean, flat premium synthetic grass lawn.",
-    "The surroundings stay simple and plausible as in image 1: light boundary strips, neighbouring white houses, a few trees, the street. No people, no cars in the garden.",
+    hasHouse ? "The surroundings stay simple and plausible as in image 1: light boundary strips, neighbouring white houses, a few trees, the street. No people, no cars in the garden." : "No people, no cars, no dimension labels or numbers.",
     ambiance === "soir" ? LIGHT.soir : "Sunny afternoon light with realistic soft shadows, photorealistic real-estate photography, natural colours, crisp detail. No text, no watermark, no labels.",
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 }
 
 // night version of a finished day render: same picture, only the light changes, LED profiles switched on
@@ -147,7 +163,8 @@ export default async function handler(req, res) {
     }
     if (req.method !== "POST") return res.status(405).end();
 
-    const { image, items, empty, mode, aspect, lawn, site, ambiance, refs: houseRefs } = req.body || {};
+    const { image, items, empty, mode, aspect, lawn, site, ambiance, refs: houseRefs, existing: exIn, house } = req.body || {};
+    const existing = [...new Set((Array.isArray(exIn) ? exIn : []).filter(k => EXISTING[k]))];
     const free = mode === "free";
     const RATIOS = ["1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9"], ratio = RATIOS.includes(aspect) ? aspect : "3:4";
     if (mode === "night") {
@@ -198,7 +215,7 @@ export default async function handler(req, res) {
     const task = await (await fetch(`${API}/api/v1/jobs/createTask`, {
       method: "POST", headers: H,
       body: JSON.stringify({ model: MODEL, input: {
-        prompt: free ? buildFreePrompt(lines, houseUrls.length, ambiance) : buildPrompt(lines, emptyZones, lawn === true, ambiance),
+        prompt: free ? buildFreePrompt(lines, houseUrls.length, ambiance, existing, house !== false) : buildPrompt(lines, emptyZones, lawn === true, ambiance),
         image_input: [imageUrl, ...houseUrls, ...refUrls], aspect_ratio: ratio, resolution: "4K", output_format: "png" } }),
     })).json();
     if (task.code !== 200) return res.status(502).json({ error: task.msg || "rendu refusé" });
