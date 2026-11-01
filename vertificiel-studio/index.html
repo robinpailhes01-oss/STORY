@@ -374,6 +374,7 @@
       </div>
       <div class="block" data-sub="bati" hidden>
         <div class="chips" id="addBlock"></div>
+        <button type="button" class="chip" id="traceShape">✏︎ Tracer une forme sur le plan (piscine, terrasse, allée…)</button>
         <ul class="blocks" id="blockList"></ul>
         <p class="note">Faites glisser un volume sur le plan pour le placer ; la poignée dorée change sa taille. Les hauteurs sont sur les plans de façade du permis.</p>
       </div>
@@ -718,8 +719,39 @@
     zone: { name: "Zone non aménageable", add: "Zone non aménageable", w: 4, d: 3, h: 0 },
   };
   const zoneMat = new T.MeshLambertMaterial({ color: lin(0xc9a46a), transparent: true, opacity: 0.6 });
+  // an outline grown outwards by d metres (pool coping, borders)
+  function grow(q, d) {
+    const sg = polySign(q);
+    return q.map((p, i) => {
+      const a = q[(i + q.length - 1) % q.length], c = q[(i + 1) % q.length];
+      const n1 = [(p[1] - a[1]), -(p[0] - a[0])], n2 = [(c[1] - p[1]), -(c[0] - p[0])], l1 = Math.hypot(...n1) || 1, l2 = Math.hypot(...n2) || 1;
+      const m = [n1[0] / l1 + n2[0] / l2, n1[1] / l1 + n2[1] / l2], lm = Math.hypot(...m) || 1, cosh = Math.max(0.35, (m[0] / lm) * (n1[0] / l1) + (m[1] / lm) * (n1[1] / l1));
+      return [p[0] + sg * m[0] / lm * d / cosh, p[1] + sg * m[1] / lm * d / cosh];
+    });
+  }
+  const waterShape = new T.MeshBasicMaterial({ map: photoTex("water.jpg", 0.25, 0.25, T.MirroredRepeatWrapping), color: 0xe8e8e8 });   // shapes carry UVs in metres
+  const shapeOf = (q, hole) => { const sh = new T.Shape(q.map(([x, z]) => new T.Vector2(x, -z))); if (hole) sh.holes.push(new T.Path(hole.map(([x, z]) => new T.Vector2(x, -z)))); return sh; };
+  function flatShape(q, mat, y, hole) { const m = mesh(new T.ShapeGeometry(shapeOf(q, hole)), mat, { cast: false }); m.rotation.x = -Math.PI / 2; m.position.y = y; return m; }
+  function solidShape(q, mat, h, y) { const geo = new T.ExtrudeGeometry(shapeOf(q), { depth: h, bevelEnabled: false }); const m = mesh(geo, mat); m.rotation.x = -Math.PI / 2; m.position.y = y || 0; return m; }
+  function buildShaped(b, g) {
+    const q = b.poly, k = b.kind;
+    if (k === "piscine") {
+      g.add(flatShape(q, waterShape, 0.03));
+      const rim = mesh(new T.ExtrudeGeometry(shapeOf(grow(q, 0.35), q), { depth: 0.06, bevelEnabled: false }), M.stone); rim.rotation.x = -Math.PI / 2; g.add(rim);
+    }
+    else if (k === "terrasse") g.add(solidShape(q, M.concrete, Math.max(b.h, 0.04)));
+    else if (k === "mineral") g.add(flatShape(q, lambert({ map: gravelTex(1, 1) }), 0.02));
+    else if (k === "massif") { g.add(flatShape(q, M.soil, 0.02)); const bb = bbox(q); for (let i = 0; i < 40 && g.children.length < 16; i++) { const x = bb[0] + rnd() * (bb[1] - bb[0]), z = bb[2] + rnd() * (bb[3] - bb[2]); if (inPoly(x, z, q)) g.add(blob(0.35, M.hedge, x, 0.3, z)); } }
+    else if (k === "haie") g.add(solidShape(q, M.hedge, Math.max(b.h, 0.3)));
+    else if (k === "maison" || k === "abri") { g.add(solidShape(q, k === "maison" ? M.render : M.white, b.h)); g.add(solidShape(grow(q, 0.06), M.roof, 0.12, b.h)); }
+    else if (k === "spa") { g.add(solidShape(q, M.timber, Math.max(b.h, 0.3))); g.add(flatShape(grow(q, -0.2), M.water, Math.max(b.h, 0.3) + 0.01)); }
+    else if (k === "kiosque" || k === "arbre") return false;      // drawn from their box
+    else g.add(flatShape(q, zoneMat, 0.02));
+    return true;
+  }
   function buildBlock(b) {
     const g = new T.Group(), k = b.kind;
+    if (b.poly && b.poly.length >= 3 && buildShaped(b, g)) { g.position.set(b.x, 0, b.z); g.rotation.y = b.rot || 0; g.userData.block = b; return g; }
     if (k === "maison" || k === "abri") { g.add(box(b.w, b.h, b.d, k === "maison" ? M.render : M.white)); g.add(box(b.w + 0.12, 0.12, b.d + 0.12, M.roof, 0, b.h, 0)); }
     else if (k === "terrasse") g.add(box(b.w, Math.max(b.h, 0.04), b.d, M.concrete));
     else if (k === "piscine") {
@@ -916,7 +948,24 @@
   }
   const bbox = q => q.reduce((b, [x, z]) => [Math.min(b[0], x), Math.max(b[1], x), Math.min(b[2], z), Math.max(b[3], z)], [Infinity, -Infinity, Infinity, -Infinity]);
   function rectPts(x, z, a, b, c, d, rot) { const cs = Math.cos(rot), sn = Math.sin(rot); return [[a, c], [b, c], [b, d], [a, d]].map(([px, pz]) => [x + px * cs + pz * sn, z - px * sn + pz * cs]); }
-  const blockPts = b => rectPts(b.x, b.z, -b.w / 2, b.w / 2, -b.d / 2, b.d / 2, b.rot || 0);
+  const blockPts = b => {
+    if (!b.poly) return rectPts(b.x, b.z, -b.w / 2, b.w / 2, -b.d / 2, b.d / 2, b.rot || 0);
+    const cs = Math.cos(b.rot || 0), sn = Math.sin(b.rot || 0);
+    return b.poly.map(([px, pz]) => [b.x + px * cs + pz * sn, b.z - px * sn + pz * cs]);
+  };
+  // any two outlines (concave too) overlap: a corner inside the other, or crossing sides
+  function shapesHit(P, Q) {
+    const cross = (a, b, c, d) => { const o = (p, q, r) => Math.sign((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])); return o(a, b, c) * o(a, b, d) < 0 && o(c, d, a) * o(c, d, b) < 0; };
+    if (P.some(p => inPoly(p[0], p[1], Q)) || Q.some(q => inPoly(q[0], q[1], P))) return true;
+    for (let i = 0; i < P.length; i++) for (let j = 0; j < Q.length; j++) if (cross(P[i], P[(i + 1) % P.length], Q[j], Q[(j + 1) % Q.length])) return true;
+    return false;
+  }
+  const blockHit = (P, b, m) => b.poly ? shapesHit(P, blockPts(b)) : satHit(P, blockPts(b), m);
+  // a world outline becomes a volume: centred on its box, with its exact outline kept
+  function blockFromOutline(kind, pts, extra) {
+    const bb = bbox(pts), cx = (bb[0] + bb[1]) / 2, cz = (bb[2] + bb[3]) / 2, K = KINDS[kind];
+    return Object.assign({ kind, x: +cx.toFixed(2), z: +cz.toFixed(2), w: +(bb[1] - bb[0]).toFixed(2), d: +(bb[3] - bb[2]).toFixed(2), h: K.h, rot: 0, poly: pts.map(([x, z]) => [+(x - cx).toFixed(3), +(z - cz).toFixed(3)]) }, extra || {});
+  }
   // two convex polygons overlap by more than m metres
   function satHit(P, Q, m) {
     for (const S of [P, Q]) for (let i = 0; i < S.length; i++) {
@@ -1082,7 +1131,7 @@
     const [a, b, c, d] = fp || TYPES[no].fp, m = 0.03, P = rectPts(x, z, a + m, b - m, c + m, d - m, rot);
     const probes = P.concat([[x, z]], P.map(([px, pz], i) => [(px + P[(i + 1) % 4][0]) / 2, (pz + P[(i + 1) % 4][1]) / 2]));
     if (!probes.every(([px, pz]) => inPoly(px, pz, site.poly))) return false;
-    return !site.blocks.some(bk => satHit(P, blockPts(bk), 0.02));
+    return !site.blocks.some(bk => blockHit(P, bk, 0.02));
   }
   function freeOfOthers(it, no, x, z, rot) {
     const box4 = aabb(no, x, z, rot, it && fpOf(it));
@@ -1383,10 +1432,23 @@
     if (!(w >= 4 && d >= 4)) { toast("Indiquez la largeur et la profondeur en mètres."); return; }
     const bb = bbox(site.poly); site.poly = [[bb[0], bb[2]], [bb[0] + w, bb[2]], [bb[0] + w, bb[2] + d], [bb[0], bb[2] + d]]; siteChanged(); goTo("plan");
   });
-  $("traceBtn").addEventListener("click", () => { setTool("trace"); goTo("plan"); });
+  let traceFor = "plot";
+  // the same tracing box serves the plot outline and the shapes of existing features
+  function traceHere(target) {
+    traceFor = target;
+    const box2 = $("traceBox"); (target === "shape" ? $("traceShape") : $("traceBtn").parentNode).after(box2);
+    box2.querySelector(".note").firstChild.textContent = target === "shape" ? "Touchez chaque angle de la forme sur le plan, dans l'ordre (pour une courbe, plusieurs points rapprochés). " : "Touchez chaque angle du terrain sur le plan, dans l'ordre. ";
+    $("traceDone").textContent = target === "shape" ? "Terminer la forme" : "Terminer le contour";
+    setTool("trace"); goTo("plan");
+    if (target === "shape") tip("Touchez les angles de la forme, dans l'ordre, puis « Terminer la forme »");
+  }
+  $("traceBtn").addEventListener("click", () => traceHere("plot"));
+  $("traceShape").addEventListener("click", () => traceHere("shape"));
   $("traceDone").addEventListener("click", () => {
     if (toolPts.length < 3) { toast("Touchez au moins 3 angles du terrain."); return; }
-    site.poly = toolPts.map(p => [+p.x.toFixed(3), +p.z.toFixed(3)]); setTool(null); siteChanged();
+    const pts = toolPts.map(p => [+p.x.toFixed(3), +p.z.toFixed(3)]); setTool(null);
+    if (traceFor === "shape") { traceFor = "plot"; const b = blockFromOutline("zone", pts, { src: "trace" }); site.blocks.push(b); buildHouse(); selBlock = b; showBlockSel(); siteChanged(); toast("Forme ajoutée : choisissez son type dans la barre du bas"); return; }
+    site.poly = pts; siteChanged();
   });
   $("traceCancel").addEventListener("click", () => setTool(null));
 
@@ -1414,7 +1476,7 @@
       if (Math.max(Math.abs(i), Math.abs(j)) !== r) continue;
       b.x = +(cx + i).toFixed(2); b.z = +(cz + j).toFixed(2);
       const P = blockPts(b);
-      if (P.every(([x, z]) => inPoly(x, z, site.poly)) && !site.blocks.some(o => satHit(P, blockPts(o), 0.05))) break search;
+      if (P.every(([x, z]) => inPoly(x, z, site.poly)) && !site.blocks.some(o => blockHit(P, o, 0.05))) break search;
       if (r === 40) { b.x = +cx.toFixed(2); b.z = +cz.toFixed(2); }
     }
     site.blocks.push(b); touchDemo(b); buildHouse(); selBlock = b; showBlockSel(); siteChanged(); goTo("plan");
@@ -1432,14 +1494,15 @@
       const K = KINDS[b.kind], li = document.createElement("li"), tree = b.kind === "arbre";
       if (b === selBlock) li.className = "on";
       const f = (k, label, v, st) => `<label>${label}<input type="number" inputmode="decimal" step="${st}" data-k="${k}" value="${v}"></label>`;
-      li.innerHTML = `<div class="hd"><span>${K.name} ${count[b.kind]}${b.src === "lidar" ? ' <small class="k">· relevé IGN, à vérifier</small>' : b.src === "photo" ? ' <small class="k">· photo, à vérifier</small>' : b.src === "releve" ? ' <small class="k">· relevé Moasure : choisissez son type</small>' : ""}</span><button type="button" class="link danger">Retirer</button></div><div class="grid4">`
+      li.innerHTML = `<div class="hd"><span>${K.name} ${count[b.kind]}${b.poly ? ' <small class="k">· forme exacte, ' + fmt1.format(polyArea(b.poly)) + " m²</small>" : ""}${b.src === "lidar" ? ' <small class="k">· relevé IGN, à vérifier</small>' : b.src === "photo" ? ' <small class="k">· photo, à vérifier</small>' : b.src === "releve" ? ' <small class="k">· relevé Moasure : choisissez son type</small>' : ""}</span><button type="button" class="link danger">Retirer</button></div><div class="grid4">`
         + f("w", tree ? "Diamètre" : "Largeur", +b.w.toFixed(2), 0.05) + (tree ? "" : f("d", "Profondeur", +b.d.toFixed(2), 0.05))
         + (K.hh ? f("h", "Hauteur", +b.h.toFixed(2), 0.05) : "") + f("rot", "Rotation °", +((b.rot || 0) * 180 / Math.PI).toFixed(1), 1) + "</div>";
       li.querySelector(".hd span").addEventListener("click", () => { selBlock = b; showBlockSel(); renderBlocks(); goTo("plan"); });
       li.querySelector(".hd button").addEventListener("click", () => { site.blocks.splice(site.blocks.indexOf(b), 1); touchDemo(b); buildHouse(); siteChanged(); });
       li.querySelectorAll("input").forEach(inp => inp.addEventListener("change", () => {
         const v = parseFloat(inp.value), k = inp.dataset.k; if (!isFinite(v)) { renderBlocks(); return; }
-        if (k === "rot") b.rot = v * Math.PI / 180; else b[k] = Math.max(k === "h" ? 0 : 0.2, v);
+        if (k === "rot") b.rot = v * Math.PI / 180;
+        else { const old = b[k]; b[k] = Math.max(k === "h" ? 0 : 0.2, v); if (b.poly && (k === "w" || k === "d") && old > 0) b.poly = b.poly.map(([px, pz]) => k === "w" ? [+(px * b.w / old).toFixed(3), pz] : [px, +(pz * b.d / old).toFixed(3)]); }
         if (tree && k === "w") b.d = b.w;
         selBlock = b; rebuildBlock(b); siteChanged();
       }));
@@ -1467,7 +1530,8 @@
     if (selBlock) {
       const P = blockPts(selBlock);
       selLine.geometry.dispose(); selLine.geometry = new T.BufferGeometry().setFromPoints(P.map(([x, z]) => new T.Vector3(x, 0.1, z)));
-      resizeH.position.set(P[2][0], 0.1, P[2][1]);
+      const R4 = rectPts(selBlock.x, selBlock.z, -selBlock.w / 2, selBlock.w / 2, -selBlock.d / 2, selBlock.d / 2, selBlock.rot || 0);
+      resizeH.position.set(R4[2][0], 0.1, R4[2][1]);
     }
     requestRender();
   }
@@ -1590,7 +1654,7 @@
         if (asOutline) {
           site.poly = poly.map(([x, z]) => [+(x - cx).toFixed(3), +(z - cz).toFixed(3)]); site.blocks = site.blocks.filter(b => !b.placeholder); ox = cx; oz = cz;
           // shapes measured inside the outline (pool, bed, terrace…): placed as zones, the salesperson sets their type
-          sv.inner.forEach(z2 => { const r = minRect(z2.map(([x, z]) => [x - cx, z - cz])); if (r) site.blocks.push({ kind: "zone", x: +r.x.toFixed(2), z: +r.z.toFixed(2), w: +r.w.toFixed(2), d: +r.d.toFixed(2), h: 0, rot: +r.rot.toFixed(4), src: "releve", note: "zone relevée (" + fmt1.format(polyArea(z2)) + " m²)" }); });
+          sv.inner.forEach(z2 => site.blocks.push(blockFromOutline("zone", simplify(z2.map(([x, z]) => [x - cx, z - cz]), 0.04), { src: "releve", note: "zone relevée (" + fmt1.format(polyArea(z2)) + " m²)" })));
           buildHouse();
         }
         else { const sp = plotSpan(); ox = cx - sp.cx; oz = cz - sp.cz; }
@@ -1796,7 +1860,9 @@
       const loc = hull(pts).map(([xx, yy]) => toLocal(xx, yy)), r = minRect(loc), A = polyArea(loc);
       if (!r || A < 6 || A > 120 || r.w * r.d > A * 1.6 || Math.max(r.w, r.d) > 4.5 * Math.min(r.w, r.d)) continue;
       if (!inPoly(r.x, r.z, s2.poly)) continue;
-      s2.blocks.push({ kind: "piscine", x: +r.x.toFixed(2), z: +r.z.toFixed(2), w: +r.w.toFixed(2), d: +r.d.toFixed(2), h: 0, rot: +r.rot.toFixed(4) });
+      // a clearly non-rectangular pool keeps its outline
+      if (A < r.w * r.d * 0.88) s2.blocks.push(blockFromOutline("piscine", simplify(loc, 0.15), { h: 0 }));
+      else s2.blocks.push({ kind: "piscine", x: +r.x.toFixed(2), z: +r.z.toFixed(2), w: +r.w.toFixed(2), d: +r.d.toFixed(2), h: 0, rot: +r.rot.toFixed(4) });
     }
   }
   function hull(P) {
@@ -2179,7 +2245,7 @@
   function pickEdit(e) {
     setRay(e);
     let h = ray.intersectObjects(handles.children.filter(o => o.isMesh), false)[0]; if (h) return { kind: "vertex", i: h.object.userData.vertex };
-    if (blockSel.visible && ray.intersectObject(resizeH, false)[0]) return { kind: "resize", b: selBlock, o: blockPts(selBlock)[0] };
+    if (blockSel.visible && ray.intersectObject(resizeH, false)[0]) { const b = selBlock; return { kind: "resize", b, o: rectPts(b.x, b.z, -b.w / 2, b.w / 2, -b.d / 2, b.d / 2, b.rot || 0)[0], w0: b.w, d0: b.d, poly0: b.poly && b.poly.map(p => p.slice()) }; }
     h = ray.intersectObjects(house.children, true)[0];
     if (h) {
       let o = h.object; while (o && !(o.userData && o.userData.block)) o = o.parent;
@@ -2197,6 +2263,7 @@
       const r = b.rot || 0, cs = Math.cos(r), sn = Math.sin(r), vx = sx - d.o[0], vz = sz - d.o[1];
       b.w = +Math.max(0.5, vx * cs - vz * sn).toFixed(2); b.d = b.kind === "arbre" ? b.w : +Math.max(0.5, vx * sn + vz * cs).toFixed(2);
       b.x = +(d.o[0] + b.w / 2 * cs + b.d / 2 * sn).toFixed(3); b.z = +(d.o[1] - b.w / 2 * sn + b.d / 2 * cs).toFixed(3);
+      if (d.poly0) b.poly = d.poly0.map(([px, pz]) => [+(px * b.w / d.w0).toFixed(3), +(pz * b.d / d.d0).toFixed(3)]);
       const g = blockGroup(b); if (g) { house.remove(g); disposeGroup(g); } house.add(buildBlock(b));
     }
     d.moved = true; showBlockSel();
