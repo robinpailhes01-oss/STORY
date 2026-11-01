@@ -1943,8 +1943,18 @@
     if (q.length < 5) { ul.hidden = true; return; }
     geoTimer = setTimeout(async () => {
       try {
-        const d = await getJSON(IGN.geocode(q)); ul.innerHTML = "";
-        (d.features || []).forEach(f => {
+        let feats = (await getJSON(IGN.geocode(q))).features || [], hint = "";
+        // a postcode with a typo (30138 for 30128): search the street in the same department, closest postcode first
+        const pc = (q.match(/\b(\d{5})\b/) || [])[1];
+        if (pc && !feats.some(f => f.properties.postcode === pc)) {
+          const q2 = q.replace(pc, " ").replace(/\s+/g, " ").trim(), diff = c => [...c].reduce((n, ch, i) => n + (ch !== pc[i]), 0);
+          const near = ((await getJSON(IGN.geocode(q2).replace("limit=5", "limit=50"))).features || []).filter(f => f.properties.postcode && f.properties.postcode.slice(0, 2) === pc.slice(0, 2))
+            .sort((a, b) => diff(a.properties.postcode) - diff(b.properties.postcode) || b.properties.score - a.properties.score);
+          if (near.length) { feats = near.slice(0, 5).concat(feats.filter(f => !near.includes(f))).slice(0, 6); hint = "Code postal " + pc + " introuvable pour cette rue : voici les plus proches."; }
+        }
+        geoMsg(hint || "Touchez la bonne adresse dans la liste.");
+        ul.innerHTML = "";
+        feats.forEach(f => {
           const li = document.createElement("li"), b = document.createElement("button"); b.type = "button"; b.textContent = f.properties.label;
           b.addEventListener("click", () => { ul.hidden = true; $("geoQ").value = f.properties.label; siteFromGeo(f.geometry.coordinates[0], f.geometry.coordinates[1], f.properties.label).catch(err => geoMsg("Recherche impossible : " + err.message)); });
           li.appendChild(b); ul.appendChild(li);
