@@ -152,6 +152,9 @@ async function frameUrl(f, i, H) {
   return null;
 }
 
+// kie.ai answers in English: the salesperson gets a clear French message when the account is empty
+const kieMsg = m => (/credit|balance|top up/i.test(String(m || "")) ? "Crédits de rendu épuisés : le compte kie.ai doit être rechargé." : m);
+
 // catalogue photos are bundled with the function and uploaded once per warm instance
 const refCache = {};
 async function upload(dataUrl, fileName, H) {
@@ -199,14 +202,14 @@ export default async function handler(req, res) {
         method: "POST", headers: H,
         body: JSON.stringify({ model: "veo-3-1", input: { prompt: VIDEO[k], model: "veo3_fast", generation_type: "FIRST_AND_LAST_FRAMES_2_VIDEO", image_urls: urls, aspect_ratio: aspect === "9:16" ? "9:16" : "16:9", resolution: ["720p", "1080p", "4k"].includes(resolution) ? resolution : "4k", duration: 8 } }),
       })).json();
-      if (t.code !== 200) return res.status(502).json({ error: t.msg || "vidéo refusée" });
+      if (t.code !== 200) return res.status(502).json({ error: kieMsg(t.msg) || "vidéo refusée" });
       return res.json({ taskId: t.data.taskId });
     }
     if (mode === "real") {
       const { source } = req.body;
       if (typeof source !== "string" || !RENDER_HOSTS.test(source) || source.length > 500) return res.status(400).json({ error: "photo invalide" });
       const t = await (await fetch(`${API}/api/v1/jobs/createTask`, { method: "POST", headers: H, body: JSON.stringify({ model: MODEL, input: { prompt: REAL_PASS, image_input: [source], aspect_ratio: ratio, resolution: "4K", output_format: "png" } }) })).json();
-      if (t.code !== 200) return res.status(502).json({ error: t.msg || "rendu refusé" });
+      if (t.code !== 200) return res.status(502).json({ error: kieMsg(t.msg) || "rendu refusé" });
       return res.json({ taskId: t.data.taskId });
     }
     if (mode === "night") {
@@ -217,7 +220,7 @@ export default async function handler(req, res) {
         method: "POST", headers: H,
         body: JSON.stringify({ model: MODEL, input: { prompt: buildNightPrompt(ledOk), image_input: [source], aspect_ratio: ratio, resolution: "4K", output_format: "png" } }),
       })).json();
-      if (t.code !== 200) return res.status(502).json({ error: t.msg || "rendu refusé" });
+      if (t.code !== 200) return res.status(502).json({ error: kieMsg(t.msg) || "rendu refusé" });
       return res.json({ taskId: t.data.taskId });
     }
     const own = (Array.isArray(houseRefs) ? houseRefs : []).filter(r => typeof r === "string" && r.startsWith("data:image/") && r.length < 3e6).slice(0, 2);
@@ -260,7 +263,7 @@ export default async function handler(req, res) {
         prompt: free ? buildFreePrompt(lines, houseUrls.length, ambiance, existing, house !== false, counts && typeof counts === "object" ? counts : {}) : buildPrompt(lines, emptyZones, lawn === true, ambiance),
         image_input: [imageUrl, ...houseUrls, ...refUrls], aspect_ratio: ratio, resolution: "4K", output_format: "png" } }),
     })).json();
-    if (task.code !== 200) return res.status(502).json({ error: task.msg || "rendu refusé" });
+    if (task.code !== 200) return res.status(502).json({ error: kieMsg(task.msg) || "rendu refusé" });
     return res.json({ taskId: task.data.taskId });
   } catch (e) {
     return res.status(502).json({ error: "serveur de rendu indisponible" });
