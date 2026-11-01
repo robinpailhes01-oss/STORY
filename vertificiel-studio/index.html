@@ -2778,7 +2778,7 @@
     shotMode = "apercu"; await setView("libre");
     if (!site.demo && !site.blocks.some(b => b.kind === "maison")) {
       const sp = plotSpan(), need = Math.max(sp.w, sp.d) * 0.62 / Math.tan(cam.fov * Math.PI / 360);
-      if (cam.r > need) { anim = null; cam.target.set(sp.cx, 0, sp.cz); cam.r = need; cam.phi = Math.min(cam.phi, 0.95); requestRender(); await new Promise(ok => setTimeout(ok, 150)); }
+      if (cam.r > need) { anim = null; cam.target.set(sp.cx, cam.target.y, sp.cz); cam.r = need; requestRender(); await new Promise(ok => setTimeout(ok, 150)); }
     }
     render4k();
   });
