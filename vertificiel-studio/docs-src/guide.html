@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Guide du studio jardin Vertificiel</title>
+<style>
+  @page { size: A4; margin: 0; }
+  :root { --green: #16392c; --green2: #22503f; --gold: #b98d3f; --soft: #e8efeb; --line: #d9cfbd; --muted: #5f6f67; --ink: #1c2a24; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #ffffff; color: var(--ink); font-family: "Inter", Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .page { width: 210mm; height: 297mm; padding: 16mm 15mm 14mm; position: relative; overflow: hidden; page-break-after: always; break-after: page; }
+  .page:last-child { page-break-after: auto; break-after: auto; }
+  .foot { position: absolute; left: 15mm; right: 15mm; bottom: 8mm; display: flex; justify-content: space-between; font-size: 8.5pt; color: var(--muted); border-top: 1px solid var(--line); padding-top: 2.5mm; }
+  h1, h2, h3 { margin: 0; color: var(--green); letter-spacing: -0.01em; }
+  h2 { font-size: 20pt; font-weight: 800; }
+  h3 { font-size: 12pt; font-weight: 800; margin-top: 4mm; }
+  p { margin: 2mm 0 0; font-size: 10.5pt; line-height: 1.45; }
+  .kicker { font-size: 8.5pt; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--gold); }
+  .lead { font-size: 11.5pt; color: var(--muted); margin-top: 2.5mm; }
+  img.shot { width: 100%; display: block; border-radius: 3mm; border: 1px solid var(--line); }
+  .cap { font-size: 8.5pt; color: var(--muted); margin-top: 1.5mm; }
+  ol.do { margin: 3mm 0 0; padding: 0; list-style: none; counter-reset: s; display: grid; gap: 2mm; }
+  ol.do li { counter-increment: s; display: grid; grid-template-columns: 7mm 1fr; gap: 2.5mm; font-size: 10.5pt; line-height: 1.4; align-items: start; }
+  ol.do li::before { content: counter(s); width: 6.5mm; height: 6.5mm; border-radius: 50%; background: var(--green); color: #fff; font-weight: 800; font-size: 9pt; display: grid; place-items: center; margin-top: .3mm; }
+  ul.tips { margin: 2mm 0 0; padding-left: 4.5mm; font-size: 10pt; line-height: 1.45; }
+  ul.tips li { margin-top: 1mm; }
+  .box { border-radius: 3mm; padding: 4mm 4.5mm; margin-top: 4mm; }
+  .box.gold { background: #f7f0e3; border: 1px solid #e3cfa6; }
+  .box.green { background: var(--soft); border: 1px solid #c9dbd1; }
+  .box b.t { display: block; font-size: 10.5pt; color: var(--green); margin-bottom: 1mm; }
+  .box p, .box li { font-size: 10pt; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; margin-top: 4mm; }
+  .btn { display: inline-block; padding: .4mm 2.2mm; border-radius: 99px; background: var(--green); color: #fff; font-weight: 700; font-size: 9pt; white-space: nowrap; }
+  .btn.o { background: #fff; color: var(--green); border: 1px solid var(--green); }
+  .btn.g { background: var(--gold); }
+  /* cover */
+  .cover { padding: 0; background: var(--green); color: #fff; }
+  .cover .hero { height: 150mm; background: url(img/rendu-nuit.jpg) center/cover; position: relative; }
+  .cover .hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(22,57,44,0) 55%, rgba(22,57,44,1) 100%); }
+  .cover .txt { padding: 6mm 16mm 0; }
+  .cover h1 { color: #fff; font-size: 32pt; line-height: 1.05; font-weight: 900; }
+  .cover .sub { font-size: 13pt; color: #cfe2d8; margin-top: 4mm; line-height: 1.4; }
+  .cover .route { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; margin-top: 10mm; }
+  .cover .route div { border: 1px solid rgba(255,255,255,.25); border-radius: 3mm; padding: 3mm; font-size: 9.5pt; line-height: 1.35; color: #e4ece8; }
+  .cover .route b { display: block; color: #fff; font-size: 10.5pt; margin-bottom: 1mm; }
+  .cover .route i { font-style: normal; color: var(--gold); font-weight: 800; }
+  .cover .link { position: absolute; left: 16mm; right: 16mm; bottom: 12mm; font-size: 10pt; color: #cfe2d8; border-top: 1px solid rgba(255,255,255,.2); padding-top: 3mm; display: flex; justify-content: space-between; }
+  .cover .link b { color: #fff; }
+  .grid-dn { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm; margin-top: 4mm; }
+  .grid-dn img { width: 100%; border-radius: 2.5mm; display: block; }
+  table.check { width: 100%; border-collapse: collapse; margin-top: 3mm; font-size: 10pt; }
+  table.check td { border-bottom: 1px solid var(--line); padding: 2.2mm 1mm; vertical-align: top; line-height: 1.35; }
+  table.check td:first-child { width: 8mm; color: var(--gold); font-weight: 900; font-size: 12pt; }
+  table.check td b { color: var(--green); }
+</style>
+</head>
+<body>
+
+<!-- 1. cover -->
+<section class="page cover">
+  <div class="hero"></div>
+  <div class="txt">
+    <div class="kicker" style="color:#d4ab5f">Guide du commercial · 10 minutes de lecture</div>
+    <h1>Le studio jardin<br>Vertificiel</h1>
+    <p class="sub">Composer le jardin avec le client sur la tablette, puis lui montrer en quelques minutes la photo de son futur jardin, de jour et de nuit avec les LED.</p>
+    <div class="route">
+      <div><i>1</i><b>Terrain</b>L'adresse, puis vérifier sur place.</div>
+      <div><i>2</i><b>Le jardin</b>Composer avec le client.</div>
+      <div><i>3</i><b>Photos 4K</b>Jour et nuit, plusieurs angles.</div>
+      <div><i>4</i><b>Récap</b>Envoyer au client.</div>
+    </div>
+  </div>
+  <div class="link"><span>Lien du studio : <b>story-vertificiel-studio.vercel.app</b></span><span>Projection indicative, non contractuelle</span></div>
+</section>
+
+<!-- 2. before you start -->
+<section class="page">
+  <div class="kicker">Avant le premier rendez-vous</div>
+  <h2>Installer le studio sur la tablette</h2>
+  <p class="lead">Une seule fois, au bureau. Ensuite, le studio s'ouvre comme une application.</p>
+  <ol class="do">
+    <li><span>Ouvrez sur la tablette le lien envoyé par Luma (il contient votre code d'accès). Le code est retenu : il ne vous sera plus demandé.</span></li>
+    <li><span>Sur iPad, touchez <b>Partager</b> puis <b>Sur l'écran d'accueil</b> : l'icône du studio s'ajoute à côté de vos applications.</span></li>
+    <li><span>Gardez à portée de main : l'adresse du client, et si vous l'avez, le relevé <b>Moasure</b> exporté en PDF.</span></li>
+  </ol>
+  <h3>Ce que fait le studio</h3>
+  <div class="two">
+    <div>
+      <img class="shot" src="img/avant.jpg" alt="">
+      <p class="cap">La photo prise sur le chantier…</p>
+    </div>
+    <div>
+      <img class="shot" src="img/apres.jpg" alt="">
+      <p class="cap">… et le jardin composé, en photo réaliste 4K.</p>
+    </div>
+  </div>
+  <div class="box green">
+    <b class="t">Les 3 règles d'or</b>
+    <ul class="tips">
+      <li><b>Le studio guide :</b> à chaque étape, le cadre doré montre ce qu'il reste à faire, la coche verte ce qui est fait.</li>
+      <li><b>Les photos 4K prennent 3 à 5 minutes :</b> lancez-les, puis continuez à échanger avec le client.</li>
+      <li><b>Tout est enregistré sur la tablette :</b> chaque terrain, chaque composition et chaque photo restent disponibles.</li>
+    </ul>
+  </div>
+  <div class="foot"><span>Studio jardin Vertificiel · Guide du commercial</span><span>2</span></div>
+</section>
+
+<!-- 3. step 1: find the plot -->
+<section class="page">
+  <div class="kicker">Étape 1 · Terrain · au bureau ou en arrivant</div>
+  <h2>Trouver le terrain par l'adresse</h2>
+  <p class="lead">Le studio va chercher seul le cadastre, la maison, la piscine, les haies et la photo aérienne.</p>
+  <img class="shot" src="img/01-adresse.jpg" alt="" style="margin-top:4mm">
+  <ol class="do">
+    <li><span>Tapez l'adresse : <b>numéro, rue et ville</b>. Touchez la bonne ligne dans la liste.</span></li>
+    <li><span>Déjà sur place ? Touchez <span class="btn o">📍 Je suis sur place</span> : la tablette trouve le terrain par le GPS.</span></li>
+    <li><span>Notez le <b>nom du client</b> plus bas : il apparaîtra sur le récap et dans le message.</span></li>
+  </ol>
+  <div class="box gold">
+    <b class="t">Si ce n'est pas la bonne parcelle</b>
+    <p>Cela arrive en lotissement : le point de l'adresse tombe parfois sur la rue ou chez le voisin. Ouvrez <span class="btn o">Outils du terrain</span>, puis <b>Choisir une autre parcelle sur la photo aérienne</b>, et touchez le bon terrain.</p>
+  </div>
+  <div class="foot"><span>Studio jardin Vertificiel · Guide du commercial</span><span>3</span></div>
+</section>
+
+<!-- 4. step 1: check -->
+<section class="page">
+  <div class="kicker">Étape 1 · Terrain · sur place</div>
+  <h2>Vérifier ce qui existe déjà</h2>
+  <p class="lead">Le studio propose un premier plan. Sur place, comparez avec ce que vous voyez et corrigez au doigt.</p>
+  <img class="shot" src="img/02-terrain-trouve.jpg" alt="" style="margin-top:4mm">
+  <p class="cap">Le terrain trouvé : la parcelle, la maison avec sa hauteur, la piscine et les haies repérées. Les points 📷 indiquent où prendre les photos.</p>
+  <h3>Corriger et ajouter l'existant</h3>
+  <ol class="do">
+    <li><span>Touchez <span class="btn o">Vérifier sur le plan</span> : les outils du terrain s'ouvrent sur <b>Maison et existant</b>.</span></li>
+    <li><span>Pour ajouter un kiosque, un spa, un abri, un arbre…, touchez son bouton, puis <b>touchez l'endroit sur le plan</b>.</span></li>
+    <li><span>Un élément sélectionné se déplace au doigt ; la barre du bas permet de <b>changer son type, le tourner, le dupliquer ou le retirer</b>.</span></li>
+    <li><span>Forme libre (piscine en haricot, terrasse en L) : <b>✏︎ Tracer une forme</b>, touchez ses angles un par un, puis choisissez son type.</span></li>
+    <li><span>Quand tout correspond, touchez <span class="btn">✓ Terminer et fermer les outils du terrain</span>.</span></li>
+  </ol>
+  <div class="foot"><span>Studio jardin Vertificiel · Guide du commercial</span><span>4</span></div>
+</section>
+
+<!-- 5. Moasure -->
+<section class="page">
+  <div class="kicker">Étape 1 · Terrain · facultatif</div>
+  <h2>Les mesures exactes avec Moasure</h2>
+  <p class="lead">Le cadastre est précis à environ 50 cm. Pour un chiffrage au centimètre, faites le relevé avec Moasure, puis importez-le.</p>
+  <div class="two" style="grid-template-columns: 0.62fr 1.38fr; align-items: start;">
+    <div><img class="shot" src="img/moasure.jpg" alt="" style="height:78mm; object-fit:cover; object-position:center 30%"><p class="cap">Le relevé exporté en PDF par l'application Moasure.</p></div>
+    <div><img class="shot" src="img/06-moasure.jpg" alt=""><p class="cap">Le même relevé dans le studio : contour et piscine à leurs mesures.</p></div>
+  </div>
+  <ol class="do">
+    <li><span>Dans Moasure, mesurez le <b>contour du jardin</b>, puis chaque élément à part : <b>piscine, terrasse, massif</b> (un tracé par élément).</span></li>
+    <li><span>Exportez le dessin en <b>PDF</b> depuis l'application.</span></li>
+    <li><span>Dans le studio, touchez <span class="btn o">Importer le relevé Moasure (PDF)</span>. Choisissez <b>OK</b> pour en faire le contour du terrain.</span></li>
+    <li><span>Chaque forme mesurée à l'intérieur apparaît : touchez-la et choisissez son type (piscine, terrasse…).</span></li>
+  </ol>
+  <div class="box gold"><b class="t">Bon à savoir</b><p>Le studio vérifie la surface lue avec celle du relevé : l'écart affiché doit rester de l'ordre de 1 à 2 %.</p></div>
+  <div class="foot"><span>Studio jardin Vertificiel · Guide du commercial</span><span>5</span></div>
+</section>
+
+<!-- 6. photos on site -->
+<section class="page">
+  <div class="kicker">Étape 1 · Terrain · sur place</div>
+  <h2>Photographier le jardin</h2>
+  <p class="lead">Les photos complètent le plan avec ce qui est au sol, et servent ensuite aux photos 4K les plus fidèles.</p>
+  <img class="shot" src="img/05-points-photo.jpg" alt="" style="margin-top:4mm">
+  <ol class="do">
+    <li><span>Allez à un point <b>📷</b> du plan : ils sont aux angles de la maison.</span></li>
+    <li><span><b>Touchez le point</b> sur la tablette : l'appareil photo s'ouvre.</span></li>
+    <li><span>Tablette <b>à l'horizontale</b>, photographiez le jardin <b>dans le sens de la flèche</b>, avec la clôture ou la haie du fond dans l'image.</span></li>
+    <li><span>Attendez 30 à 45 secondes : ce qui est au sol (terrasse, allées, kiosque, spa, arbres) s'ajoute au plan, marqué « à vérifier ». Le point passe au vert ✓.</span></li>
+  </ol>
+  <div class="box gold"><b class="t">Si le studio demande de reprendre la photo</b><p>Il n'a pas reconnu assez de repères. Reprenez-la en gardant un angle de la maison ou de la clôture dans l'image. Deux photos réussies suffisent pour commencer.</p></div>
+  <div class="foot"><span>Studio jardin Vertificiel · Guide du commercial</span><span>6</span></div>
+</section>
+
+<!-- 7. step 2 compose -->
+<section class="page">
+  <div class="kicker">Étape 2 · Le jardin · avec le client</div>
+  <h2>Composer le jardin</h2>
+  <p class="lead">Le moment clé du rendez-vous : le client choisit, vous placez au doigt.</p>
+  <img class="shot" src="img/07-composer-dalles.jpg" alt="" style="margin-top:4mm">
+  <ol class="do">
+    <li><span>Touchez <span class="btn">Commencer le jardin →</span>.</span></li>
+    <li><span>Partez d'une <b>idée prête</b> (Piscine &amp; olivier, Palmier &amp; golf…) ou touchez un élément du <b>catalogue</b>.</span></li>
+    <li><span><b>Glissez</b> les éléments au doigt. Un doigt tourne la vue, deux doigts zooment.</span></li>
+    <li><span><b>Dalles &amp; gazon sur mesure</b> : touchez le dallage pour régler le motif, la dalle (14 teintes), le format, la bande de gazon et la <b>lumière LED</b>.</span></li>
+  </ol>
+  <div class="box green"><b class="t">Le chiffrage suit en direct</b><p>Surface de gazon, surfaces aménagées et estimation se mettent à jour à chaque changement : le client voit l'effet de ses choix.</p></div>
+  <div class="foot"><span>Studio jardin Vertificiel · Guide du commercial</span><span>7</span></div>
+</section>
+
+<!-- 8. step 3 4K -->
+<section class="page">
+  <div class="kicker">Étape 3 · Photos 4K · l'effet waouh</div>
+  <h2>Montrer le jardin de jour et de nuit</h2>
+  <p class="lead">Touchez <span class="btn o">Vue client</span> : le studio se place à hauteur d'yeux, comme le client dans son jardin. Choisissez l'angle d'un doigt.</p>
+  <img class="shot" src="img/08-vue-client.jpg" alt="" style="margin-top:3mm">
+  <ol class="do">
+    <li><span>Laissez <b>Jour + nuit</b> sélectionné, puis touchez <span class="btn">Générer le rendu 4K de cette vue</span>.</span></li>
+    <li><span>La photo de jour arrive en 2 à 3 minutes, la nuit avec les LED allumées juste après. Vous pouvez lancer d'autres angles sans attendre.</span></li>
+    <li><span><span class="btn g">Visite 4K</span> fait le tour du jardin toute seule : 4 angles, chacun de jour et de nuit.</span></li>
+  </ol>
+  <div class="grid-dn"><img src="img/rendu-jour.jpg" alt=""><img src="img/rendu-nuit.jpg" alt=""></div>
+  <p class="cap">Faites glisser le curseur ☀︎ ⟷ ☾ sur la photo : le client voit son jardin passer du jour à la nuit et les LED s'allumer.</p>
+  <div class="foot"><span>Studio jardin Vertificiel · Guide du commercial</span><span>8</span></div>
+</section>
+
+<!-- 9. step 4 recap -->
+<section class="page">
+  <div class="kicker">Étape 4 · Récap · avant de partir</div>
+  <h2>Envoyer le projet au client</h2>
+  <div class="two" style="grid-template-columns: 1.15fr 1fr; align-items: start;">
+    <img class="shot" src="img/11-recap.jpg" alt="">
+    <div>
+      <ol class="do" style="margin-top:0">
+        <li><span>Vérifiez la <b>formule de gazon</b> : l'estimation se met à jour.</span></li>
+        <li><span>Touchez <span class="btn">Envoyer au client</span> : WhatsApp, SMS ou mail s'ouvre avec un message prêt, le détail du projet et les liens des photos jour et nuit.</span></li>
+        <li><span>Client suivant sur le même terrain : <b>Nouveau client sur ce terrain</b> efface la composition et garde le terrain.</span></li>
+      </ol>
+      <div class="box gold"><b class="t">À dire au client</b><p>Les photos sont une <b>projection indicative</b> : le métré définitif et le devis suivent après la visite technique.</p></div>
+    </div>
+  </div>
+  <h3>Pour les photos les plus fidèles</h3>
+  <p>À l'étape 3, choisissez une <b>photo du terrain</b> (prise sur place) plutôt que la vue libre : la maison et l'existant restent exactement comme dans la réalité, seuls les aménagements Vertificiel s'ajoutent.</p>
+  <div class="foot"><span>Studio jardin Vertificiel · Guide du commercial</span><span>9</span></div>
+</section>
+
+<!-- 10. memo -->
+<section class="page">
+  <div class="kicker">Mémo · à garder sous la main</div>
+  <h2>Le rendez-vous en 10 gestes</h2>
+  <table class="check">
+    <tr><td>1</td><td><b>Au bureau</b> : tapez l'adresse, vérifiez la parcelle sur la photo aérienne.</td></tr>
+    <tr><td>2</td><td><b>Sur place</b> : faites le relevé Moasure si le chiffrage doit être précis, puis importez le PDF.</td></tr>
+    <tr><td>3</td><td>Comparez le plan avec le jardin : <b>ajoutez ou corrigez l'existant</b> au doigt.</td></tr>
+    <tr><td>4</td><td>Prenez <b>2 photos minimum</b> depuis les points 📷, dans le sens de la flèche.</td></tr>
+    <tr><td>5</td><td>Notez le <b>nom du client</b>, puis <b>Commencer le jardin</b>.</td></tr>
+    <tr><td>6</td><td>Composez <b>avec le client</b> : idée prête ou catalogue, dalles et LED.</td></tr>
+    <tr><td>7</td><td><b>Vue client</b>, choisissez l'angle, lancez le rendu <b>Jour + nuit</b>.</td></tr>
+    <tr><td>8</td><td>Pendant le rendu, continuez l'échange ; lancez d'autres angles ou la <b>Visite 4K</b>.</td></tr>
+    <tr><td>9</td><td>Montrez le <b>curseur jour / nuit</b> : c'est le moment où les LED se vendent.</td></tr>
+    <tr><td>10</td><td><b>Récap → Envoyer au client</b> avant de partir.</td></tr>
+  </table>
+  <div class="box green" style="margin-top:6mm">
+    <b class="t">En cas de souci</b>
+    <ul class="tips">
+      <li><b>Le rendu tarde :</b> le service de rendu peut être chargé ; la tablette attend jusqu'à 20 minutes, et un rendu en cours n'est jamais perdu, même si la page se recharge.</li>
+      <li><b>L'adresse n'est pas trouvée :</b> vérifiez le code postal, ou tapez le nom de la ville.</li>
+      <li><b>Un élément ne veut pas se poser :</b> il n'y a pas la place ; réduisez-le ou déplacez l'existant.</li>
+      <li><b>Le bouton « ? Guide »</b> en haut du studio rouvre ce document.</li>
+    </ul>
+  </div>
+  <div class="foot"><span>Studio jardin Vertificiel · Guide du commercial</span><span>10</span></div>
+</section>
+
+</body>
+</html>
