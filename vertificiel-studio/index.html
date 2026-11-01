@@ -259,6 +259,7 @@
   <div class="stage" id="stage">
     <div class="ov tr" role="group" aria-label="Point de vue" id="camBar">
       <button type="button" id="cam-jardin" data-cam="jardin" aria-pressed="true">Vue 3D</button>
+      <button type="button" id="cam-client" data-cam="client" aria-pressed="false">Vue client</button>
       <button type="button" id="cam-plan" data-cam="plan" aria-pressed="false">Vue du dessus</button>
       <button type="button" id="cam-photo" data-cam="photo" aria-pressed="false">Angle photo</button>
       <button type="button" id="measureBtn" aria-pressed="false">Mesurer</button>
@@ -455,7 +456,7 @@
         <div class="chips" role="group" aria-label="Ambiance du rendu"><button type="button" class="chip" data-amb="journuit" aria-pressed="true">Jour + nuit</button><button type="button" class="chip" data-amb="jour" aria-pressed="false">Jour seulement</button></div>
         <button type="button" class="btn" id="render4kNow">Générer le rendu 4K de cette vue</button>
         <button type="button" class="btn gold" id="tour4k">Visite 4K : 4 angles autour du jardin</button>
-        <p class="note">Le rendu reprend l'angle affiché. La visite fait le tour du jardin toute seule.</p>
+        <p class="note">Le rendu reprend l'angle affiché : « Vue client », à hauteur d'yeux, donne les photos les plus réalistes. La visite fait le tour du jardin toute seule.</p>
       </div>
     </section>
 
@@ -2317,6 +2318,8 @@
   function preset(name) {
     const sp = plotSpan(), cx = sp.cx, cz = sp.cz, span = Math.max(sp.w, sp.d, 12);
     if (name === "photo" && photoSph()) return photoSph();
+    // as seen by someone standing at the edge of the garden, eyes a little above a person (2.4 m): the most believable 4K photos
+    if (name === "client") { const r = Math.max(span * 0.85, 9), eye = 2.4; return { t: [cx, 0.4, cz], r, theta: cam.theta, phi: Math.acos(clamp((eye - 0.4) / r, 0, 1)), fov: 60 }; }
     if (name === "plan") return { t: [cx + 0.6, 0, cz + 0.6], r: span * 1.35, theta: 0, phi: 0.06, fov: 55 };
     return { t: [cx - 1, 0.8, cz + 0.5], r: span * 1.15, theta: 0.26, phi: 1.12, fov: 55 };
   }
