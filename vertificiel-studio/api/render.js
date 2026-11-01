@@ -66,8 +66,8 @@ function pavingText(s) {
 }
 
 const LIGHT = {
-  jour: "Sunny afternoon light with realistic soft shadows, photorealistic real-estate photography, natural colours, crisp detail. No people, no text, no watermark.",
-  soir: "Evening at blue hour: deep blue twilight sky, warm lights glowing inside the house, garden lights and the LED light profiles of the paving switched on and glowing, realistic soft night shadows, photorealistic high-end real-estate evening photography. No people, no text, no watermark.",
+  jour: "Late-afternoon Mediterranean sunlight with long soft shadows. It must look like an authentic photograph taken by a professional photographer with a full-frame camera, not a 3D rendering and not CGI: real materials with their natural texture and slight wear, real Mediterranean plants of the South of France (olive trees, Phoenix palms, lavender, rosemary, oleanders) with natural irregular foliage, premium synthetic grass with subtle natural colour variation and soft blade texture, natural depth of field, gentle lens vignetting, true-to-life colours, no oversaturation, no plastic look. No people, no text, no watermark.",
+  soir: "Evening at blue hour: deep blue twilight sky, warm lights glowing inside the house, garden lights and the LED light profiles of the paving switched on and glowing, soft night shadows. It must look like an authentic photograph taken by a professional photographer with a full-frame camera, not a 3D rendering and not CGI: real materials with their natural texture and slight wear, real Mediterranean plants of the South of France (olive trees, Phoenix palms, lavender, rosemary, oleanders) with natural irregular foliage, premium synthetic grass with subtle natural colour variation and soft blade texture, natural depth of field, gentle lens vignetting, true-to-life colours, no oversaturation, no plastic look. No people, no text, no watermark.",
 };
 
 function buildPrompt(lines, empty, lawn, ambiance) {
@@ -117,11 +117,13 @@ function buildFreePrompt(lines, nRefs, ambiance, existing, hasHouse, counts) {
     ...lines,
     "Each listed element appears exactly once, only where its mock-up is in image 1. Do not add any other garden element, tree, path, plant or furniture inside the plot, and do not move, enlarge or remove anything. The rest of the plot is a clean, flat premium synthetic grass lawn.",
     hasHouse ? "The surroundings stay simple and plausible as in image 1: light boundary strips, neighbouring white houses, a few trees, the street. No people, no cars in the garden." : "No people, no cars, no dimension labels or numbers.",
-    ambiance === "soir" ? LIGHT.soir : "Sunny afternoon light with realistic soft shadows, photorealistic real-estate photography, natural colours, crisp detail. No text, no watermark, no labels.",
+    "Image 1 only gives the layout, the positions and the sizes: its simple 3D shapes, flat colours and low-poly trees must NOT show in the result; every element is redrawn as the real thing, like its catalogue photo.",
+    ambiance === "soir" ? LIGHT.soir : LIGHT.jour,
   ].filter(Boolean).join("\n");
 }
 
 // night version of a finished day render: same picture, only the light changes, LED profiles switched on
+const REAL_PASS = "Image 1 is a picture of a garden that still looks partly computer-generated. Produce the very same picture as an authentic photograph: keep EXACTLY the same framing, perspective, layout, shapes, sizes, positions and number of every element (pool, paving, trees, walls, lawn outline); nothing is added, moved, enlarged or removed. Only the realism changes: " + "It must look like an authentic photograph taken by a professional photographer with a full-frame camera, not a 3D rendering and not CGI: real materials with their natural texture and slight wear, real Mediterranean plants of the South of France (olive trees, Phoenix palms, lavender, rosemary, oleanders) with natural irregular foliage, premium synthetic grass with subtle natural colour variation and soft blade texture, natural depth of field, gentle lens vignetting, true-to-life colours, no oversaturation, no plastic look." + " Keep the same time of day and the same light.";
 const RENDER_HOSTS = /^https:\/\/([a-z0-9-]+\.)*(aiquickdraw\.com|redpandaai\.co|kie\.ai)\//i;
 function buildNightPrompt(leds) {
   const led = leds.length
@@ -132,7 +134,7 @@ function buildNightPrompt(leds) {
     "Keep EXACTLY the same framing, lens, perspective, buildings, windows, doors, garden layout, paving pattern, plants, lawn and every object: nothing is added, moved, enlarged or removed. Only the light changes. Never add a house, building, wall, pool or any object that is not already in image 1.",
     "Deep blue night sky with a few stars; if there is a house in image 1, warm light glowing inside it through the windows and a few discreet warm wall lights on its façade; soft moonlight on the lawn; underwater pool lights if there is a pool.",
     led,
-    "Realistic high-end real-estate night photography, natural night colours, crisp detail, low noise. No people, no text, no watermark.",
+    "An authentic night photograph taken by a professional photographer on a tripod, not a 3D rendering: natural night colours, real light falloff, low noise. No people, no text, no watermark.",
   ].join("\n");
 }
 
@@ -170,6 +172,13 @@ export default async function handler(req, res) {
     const existing = [...new Set((Array.isArray(exIn) ? exIn : []).filter(k => EXISTING[k]))];
     const free = mode === "free";
     const RATIOS = ["1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9"], ratio = RATIOS.includes(aspect) ? aspect : "3:4";
+    if (mode === "real") {
+      const { source } = req.body;
+      if (typeof source !== "string" || !RENDER_HOSTS.test(source) || source.length > 500) return res.status(400).json({ error: "photo invalide" });
+      const t = await (await fetch(`${API}/api/v1/jobs/createTask`, { method: "POST", headers: H, body: JSON.stringify({ model: MODEL, input: { prompt: REAL_PASS, image_input: [source], aspect_ratio: ratio, resolution: "4K", output_format: "png" } }) })).json();
+      if (t.code !== 200) return res.status(502).json({ error: t.msg || "rendu refusé" });
+      return res.json({ taskId: t.data.taskId });
+    }
     if (mode === "night") {
       const { source, leds } = req.body;
       if (typeof source !== "string" || !RENDER_HOSTS.test(source) || source.length > 500) return res.status(400).json({ error: "photo de jour invalide" });
