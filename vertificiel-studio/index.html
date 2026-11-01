@@ -234,8 +234,7 @@
   .guide .gb > b { font-family: var(--font-display); font-size: 16.5px; color: var(--accent); }
   .guide .gb small { font-family: var(--font-body); font-weight: 600; font-size: 12px; color: var(--muted); }
   .guide .gs { font-size: 14px; color: var(--fg); line-height: 1.4; }
-  .guide li.done .geo, .guide li.done .note { display: none; }
-  .guide li.done .geo.open { display: grid; }
+  .guide li.done > .gb > .note { display: none; }      /* the address field stays: a new client may be on another plot */
   .guide .sub { padding: 0; border: 0; background: transparent; }
   .guide .geo-row { flex-wrap: wrap; }
   .guide .geo-row input { flex: 1 1 100%; }
