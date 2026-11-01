@@ -138,6 +138,20 @@ function buildNightPrompt(leds) {
   ].join("\n");
 }
 
+// visite filmée : Veo 3.1 anime nos photos 4K (un plan glissé, ou le passage du jour à la nuit)
+const VIDEO_KEEP = "Keep everything in the garden exactly as in the image: the same pool and its exact shape, the same paving slabs and their number, the same trees, palm and plants, the same lawn, walls, hedges and house. Nothing appears, disappears, moves or changes shape. No people, no animals, no text, no music, no voice; only soft natural garden sounds.";
+const VIDEO = {
+  glide: "Cinematic real-estate film of this exact garden, as filmed by a professional on a stabilised gimbal. One continuous, very slow and smooth camera move forward with a slight lateral arc, steady and level, no cut, no zoom jump. Only natural subtle motion: palm and leaves swaying gently in a light breeze, soft ripples and light reflections on the pool water. Photorealistic, natural light, real camera, shallow realistic depth of field. " + VIDEO_KEEP,
+  daynight: "Cinematic time-lapse of this exact garden from daylight to night, camera almost still with a very slow push-in. The sun goes down, the sky turns golden, then deep blue dusk, then night. As it gets dark, the warm LED light strips along the paving and the garden and pool lights switch on progressively and glow, exactly as in the last image. Photorealistic, real camera. " + VIDEO_KEEP,
+  move: "Cinematic real-estate film of this exact garden: one continuous, slow and smooth camera move from the first viewpoint to the second, like a stabilised gimbal walking through the garden, steady and level, no cut. " + VIDEO_KEEP,
+};
+async function frameUrl(f, i, H) {
+  if (typeof f !== "string") return null;
+  if (RENDER_HOSTS.test(f) && f.length <= 500) return f;
+  if (/^data:image\/(jpeg|png|webp);base64,/.test(f) && f.length < 4.4e6) return upload(f, `visite-${Date.now()}-${i}.jpg`, H);
+  return null;
+}
+
 // catalogue photos are bundled with the function and uploaded once per warm instance
 const refCache = {};
 async function upload(dataUrl, fileName, H) {
@@ -163,7 +177,10 @@ export default async function handler(req, res) {
       const r = await fetch(`${API}/api/v1/jobs/recordInfo?taskId=${encodeURIComponent(req.query.task || "")}`, { headers: H });
       const d = (await r.json()).data || {};
       let url = null;
-      if (d.state === "success") { const j = typeof d.resultJson === "string" ? JSON.parse(d.resultJson) : d.resultJson; url = j.resultUrls[0]; }
+      if (d.state === "success") {
+        const j = (typeof d.resultJson === "string" ? JSON.parse(d.resultJson) : d.resultJson) || {}, dj = j.data || {};
+        url = [j.resultUrls, j.result_urls, dj.result_urls, dj.resultUrls, j.originUrls, dj.origin_urls].map(a => Array.isArray(a) ? a[0] : null).find(Boolean) || null;
+      }
       return res.json({ state: d.state || "waiting", url, error: d.failMsg || null });
     }
     if (req.method !== "POST") return res.status(405).end();
@@ -172,6 +189,19 @@ export default async function handler(req, res) {
     const existing = [...new Set((Array.isArray(exIn) ? exIn : []).filter(k => EXISTING[k]))];
     const free = mode === "free";
     const RATIOS = ["1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9"], ratio = RATIOS.includes(aspect) ? aspect : "3:4";
+    if (mode === "video") {
+      const { frames, kind, resolution } = req.body;
+      const k = VIDEO[kind] ? kind : "glide";
+      const urls = [];
+      for (const [i, f] of (Array.isArray(frames) ? frames : []).slice(0, k === "glide" ? 1 : 2).entries()) { const u = await frameUrl(f, i, H); if (!u) return res.status(400).json({ error: "photo invalide" }); urls.push(u); }
+      if (!urls.length || (k !== "glide" && urls.length < 2)) return res.status(400).json({ error: "photos manquantes" });
+      const t = await (await fetch(`${API}/api/v1/jobs/createTask`, {
+        method: "POST", headers: H,
+        body: JSON.stringify({ model: "veo-3-1", input: { prompt: VIDEO[k], model: "veo3_fast", generation_type: "FIRST_AND_LAST_FRAMES_2_VIDEO", image_urls: urls, aspect_ratio: aspect === "9:16" ? "9:16" : "16:9", resolution: ["720p", "1080p", "4k"].includes(resolution) ? resolution : "4k", duration: 8 } }),
+      })).json();
+      if (t.code !== 200) return res.status(502).json({ error: t.msg || "vidéo refusée" });
+      return res.json({ taskId: t.data.taskId });
+    }
     if (mode === "real") {
       const { source } = req.body;
       if (typeof source !== "string" || !RENDER_HOSTS.test(source) || source.length > 500) return res.status(400).json({ error: "photo invalide" });
