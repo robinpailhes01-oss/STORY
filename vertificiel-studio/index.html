@@ -413,7 +413,9 @@
   .stage.night .legal { color: rgba(255,255,255,.75); }
   .aerial-pill { display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 14px; border-radius: 999px; color: #ffffff; font: 600 13.5px var(--font-body); }
   .aerial-pill select { min-height: 38px; padding: 6px 10px; border: 0; border-radius: 999px; background: rgba(255,255,255,.16); color: #ffffff; font: 600 14px var(--font-body); }
-  .aerial-pill select option { color: #111111; }
+  .aerial-pill select option, .aerial-pill select optgroup { color: #111111; }
+  .aerial-pill small { font-size: 11px; opacity: .8; padding-right: 8px; }
+  .aerial-pill select { max-width: min(62vw, 420px); text-overflow: ellipsis; }
   .aerial-pill[aria-busy="true"] select { opacity: .55; }
   .stage:not([data-step="1"]) .aerial-pill, .stage.viewing .aerial-pill { display: none; }
 </style>
@@ -434,7 +436,7 @@
 <div class="main">
   <div class="stage" id="stage">
     <div class="stage-top" id="stageTop">
-        <label class="ov aerial-pill" id="aerialBox" hidden title="Une photo prise en hiver montre le sol sous les arbres ; l'infrarouge montre la végétation en rouge"><span class="lg">Photo aérienne</span><select id="aerialSel" aria-label="Photo aérienne"></select></label>
+        <label class="ov aerial-pill" id="aerialBox" hidden title="Une photo prise en hiver montre le sol sous les arbres ; l'infrarouge montre la végétation en rouge"><span class="lg">Photo aérienne</span><select id="aerialSel" aria-label="Photo aérienne"></select><small id="aerialCredit" hidden>© Esri, Maxar</small></label>
       <button type="button" class="close-shot" id="closeShot" hidden aria-label="Fermer la photo">✕<span class="lg"> Fermer</span></button>
       <div class="ov" role="group" aria-label="Image affichée" id="shotBar" hidden>
         <button type="button" data-shot="avant" aria-pressed="false">Avant</button>
@@ -1639,30 +1641,103 @@
   document.querySelectorAll("#guide1 [data-open]").forEach(b => b.addEventListener("click", () => { const li = b.closest("li"); li.classList.toggle("open"); const sv = li.querySelector("details.saved"); if (sv) sv.open = li.classList.contains("open"); }));
   $("g3go").addEventListener("click", () => { setPrep(true); document.querySelector('[data-subtab="bati"]').click(); goTo("plan"); $("prepBox").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" }); });
   // the guided steps of the plot: what is done, what is next
-  // ---------------------------------------------------------------- aerial photos of other years (IGN): winter flights show the ground under the trees
+  // ---------------------------------------------------------------- aerial photos to choose from: IGN flights of past years, dated Esri satellite archives,
+  // each scored by how much vegetation hides the ground (the least is recommended, like a winter view), and the most recent one
   const AERIAL_NOW = "HR.ORTHOIMAGERY.ORTHOPHOTOS", AERIAL_IRC = "ORTHOIMAGERY.ORTHOPHOTOS.IRC";
   const AERIAL_YEARS = []; for (let y = 2024; y >= 2006; y--) AERIAL_YEARS.push("ORTHOIMAGERY.ORTHOPHOTOS" + y);
+  const WB_CFG = "https://s3-us-west-2.amazonaws.com/config.maptiles.arcgis.com/waybackconfig.json";
+  const WB_TILE = (r, z, y, x) => `https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/${r}/${z}/${y}/${x}`;
   const corsImg = src => new Promise((ok, ko) => { const i = new Image(); i.crossOrigin = "anonymous"; i.onload = () => ok(i); i.onerror = () => ko(new Error("photo aérienne indisponible")); i.src = src; });
+  const tileXY = (lon, lat, z) => { const n = 2 ** z; return [(lon + 180) / 360 * n, (1 - Math.asinh(Math.tan(lat * Math.PI / 180)) / Math.PI) / 2 * n]; };
+  async function esriImage(r, bb, W, H, z) {
+    const [x0, y0] = tileXY(bb[0], bb[3], z), [x1, y1] = tileXY(bb[2], bb[1], z), tx0 = Math.floor(x0), ty0 = Math.floor(y0), tx1 = Math.floor(x1), ty1 = Math.floor(y1);
+    const c = document.createElement("canvas"); c.width = (tx1 - tx0 + 1) * 256; c.height = (ty1 - ty0 + 1) * 256; const g = c.getContext("2d"), jobs = [];
+    for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) jobs.push(corsImg(WB_TILE(r, z, ty, tx)).then(i => g.drawImage(i, (tx - tx0) * 256, (ty - ty0) * 256)));
+    await Promise.all(jobs);
+    const o = document.createElement("canvas"); o.width = W; o.height = H; o.getContext("2d").drawImage(c, (x0 - tx0) * 256, (y0 - ty0) * 256, (x1 - x0) * 256, (y1 - y0) * 256, 0, 0, W, H);
+    return o;
+  }
+  const sourceImage = (L, bb, W, H) => L.startsWith("esri:") ? esriImage(+L.slice(5), bb, W, H, W > 200 ? 19 : 17) : corsImg(IGN.orthoL(L, bb, W, H));
+  // share of the plot hidden by vegetation (green and dark-green pixels), from a small image; null when the image is blank (no flight that year)
+  async function vegOf(L, bb) {
+    const img = await sourceImage(L, bb, 40, 40), c = document.createElement("canvas"); c.width = c.height = 40;
+    const x = c.getContext("2d", { willReadFrequently: true }); x.fillStyle = "#ffffff"; x.fillRect(0, 0, 40, 40); x.drawImage(img, 0, 0, 40, 40);
+    const d = x.getImageData(0, 0, 40, 40).data; let lo = Infinity, hi = 0, veg = 0;
+    for (let i = 0; i < d.length; i += 4) { const r = d[i], g = d[i + 1], b = d[i + 2], v = r + g + b; lo = Math.min(lo, v); hi = Math.max(hi, v); if (g > r * 1.04 && g > b * 1.04 && v < 560) veg++; }
+    return hi - lo > 24 ? Math.round(veg / 16) : null;
+  }
+  // the distinct Esri images over the plot, newest first: each archive redirects to the release that holds its image
+  async function probeEsri(g) {
+    const cfg = await (await fetch(WB_CFG)).json();
+    const rel = Object.keys(cfg).map(k => ({ r: +k, pub: ((cfg[k].itemTitle || "").match(/\d{4}-\d{2}-\d{2}/) || [""])[0], meta: cfg[k].metadataLayerUrl })).filter(x => x.pub).sort((p, q) => q.pub.localeCompare(p.pub));
+    const lon = (g.bb[0] + g.bb[2]) / 2, lat = (g.bb[1] + g.bb[3]) / 2, [cx, cy] = tileXY(lon, lat, 19), out = [];
+    let i = 0;
+    while (i < rel.length && out.length < 10) {
+      let res = null; try { res = await fetch(WB_TILE(rel[i].r, 19, Math.floor(cy), Math.floor(cx))); } catch (e) { res = null; }
+      if (!res || !res.ok) { i++; continue; }
+      const m = res.url.match(/tile\/(\d+)\//), src = rel.find(x => x.r === (m ? +m[1] : rel[i].r)) || rel[i];
+      let date = null;
+      try { const q = await (await fetch(`${src.meta}/4/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=SRC_DATE2&returnGeometry=false&f=json`)).json(); const t = q.features && q.features[0] && q.features[0].attributes.SRC_DATE2; date = t ? new Date(t).toISOString().slice(0, 10) : null; } catch (e) { date = null; }
+      if (!out.some(o => o.r === src.r || (date && o.date === date))) out.push({ r: src.r, pub: src.pub, date });
+      const j = rel.findIndex(x => x.pub < src.pub); if (j < 0) break; i = j;
+    }
+    return out;
+  }
   let aerialProbe = null;
   async function probeAerial(g) {
-    const has = async L => { try { const img = await corsImg(IGN.orthoL(L, g.bb, 24, 24)), c = document.createElement("canvas"); c.width = c.height = 24; const x = c.getContext("2d", { willReadFrequently: true }); x.fillStyle = "#ffffff"; x.fillRect(0, 0, 24, 24); x.drawImage(img, 0, 0, 24, 24); const d = x.getImageData(0, 0, 24, 24).data; let lo = Infinity, hi = 0; for (let i = 0; i < d.length; i += 4) { const v = d[i] + d[i + 1] + d[i + 2]; lo = Math.min(lo, v); hi = Math.max(hi, v); } return hi - lo > 24; } catch (e) { return false; } };
-    const ok = await Promise.all(AERIAL_YEARS.map(has));
-    return AERIAL_YEARS.filter((L, i) => ok[i]);
+    const ign = (await Promise.all(AERIAL_YEARS.map(async L => { try { const v = await vegOf(L, g.bb); return v == null ? null : { L, veg: v }; } catch (e) { return null; } }))).filter(Boolean);
+    let esri = [];
+    try { esri = await probeEsri(g); } catch (e) { esri = []; }
+    await Promise.all(esri.map(async e => { try { e.veg = await vegOf("esri:" + e.r, g.bb); } catch (err) { e.veg = null; } }));
+    let now = null; try { now = await vegOf(AERIAL_NOW, g.bb); } catch (e) { now = null; }
+    g.years = ign.map(x => x.L); g.veg = Object.fromEntries(ign.map(x => [x.L, x.veg]).concat([[AERIAL_NOW, now]], esri.map(e => ["esri:" + e.r, e.veg])));
+    g.esri = esri.filter(e => e.veg != null);
+  }
+  const MOIS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
+  const whenTxt = d => d ? MOIS[+d.slice(5, 7) - 1] + " " + d.slice(0, 4) + ([12, 1, 2, 3].includes(+d.slice(5, 7)) ? " · hiver" : "") : "date inconnue";
+  // every source with its label, acquisition date and vegetation score
+  function aerialSources(g) {
+    const v = L => (g.veg && g.veg[L] != null ? " · végétation " + g.veg[L] + " %" : "");
+    const list = [{ L: AERIAL_NOW, date: g.flight || null, t: "IGN " + (g.flight ? whenTxt(g.flight) : "actuelle") + v(AERIAL_NOW) }];
+    (g.years || []).filter(L => !(g.flight && L.endsWith(g.flight.slice(0, 4)))).forEach(L => list.push({ L, date: L.slice(-4) + "-06-30", t: "IGN " + L.slice(-4) + v(L) }));
+    (g.esri || []).forEach(e => list.push({ L: "esri:" + e.r, date: e.date, t: "Satellite " + whenTxt(e.date) + v("esri:" + e.r) }));
+    return list;
+  }
+  function aerialPicks(g) {
+    const list = aerialSources(g), newest = list.filter(x => x.date).sort((p, q) => q.date.localeCompare(p.date))[0] || null;
+    // only recent photos are recommended: an old one may predate the house or the pool
+    const cutoff = newest ? (+newest.date.slice(0, 4) - 4) + newest.date.slice(4) : "";
+    const scored = list.filter(x => g.veg && g.veg[x.L] != null && x.date && x.date >= cutoff);
+    const least = scored.slice().sort((p, q) => g.veg[p.L] - g.veg[q.L] || String(q.date).localeCompare(String(p.date)))[0] || null;
+    return { list, least, newest };
   }
   function renderAerial() {
     const g = site && site.geo, pl = site && site.plan, box = $("aerialBox"), sel = $("aerialSel");
     box.hidden = !(g && g.bb && pl && pl.aerial);
     if (box.hidden) return;
-    const cur = pl.layer || AERIAL_NOW, fl = g.flight ? " · " + g.flight.slice(5, 7) + "/" + g.flight.slice(0, 4) : "";
-    const years = g.years || [];
-    const list = [[AERIAL_NOW, "Actuelle" + fl]].concat(years.filter(L => !(g.flight && L.endsWith(g.flight.slice(0, 4)))).map(L => [L, L.slice(-4)]), [[AERIAL_IRC, "Infrarouge"]]);
-    if (!g.years) list.push(["", "Recherche des autres années…"]);
-    const key = list.map(x => x[0]).join() + "|" + cur;
+    const cur = pl.layer || AERIAL_NOW, { list, least, newest } = aerialPicks(g);
+    const groups = [];
+    if (g.veg && least) groups.push(["Conseillées", [[least.L, "★ Le moins de végétation (récente) · " + least.t.replace(/ · végétation.*/, "") + " · " + g.veg[least.L] + " %"]].concat(newest && newest.L !== least.L ? [[newest.L, "La plus récente · " + newest.t]] : [])]);
+    groups.push(["IGN, photo d'avion", list.filter(x => !x.L.startsWith("esri:")).map(x => [x.L, x.t]).concat([[AERIAL_IRC, "IGN infrarouge (végétation en rouge)"]])]);
+    if ((g.esri || []).length) groups.push(["Satellite Esri / Maxar", list.filter(x => x.L.startsWith("esri:")).map(x => [x.L, x.t])]);
+    if (!g.veg) groups.push(["", [["", "Recherche des autres photos…"]]]);
+    const key = JSON.stringify(groups) + "|" + cur;
     if (sel.dataset.key !== key) {
-      sel.dataset.key = key; sel.innerHTML = "";
-      list.forEach(([L, t]) => { const o = document.createElement("option"); o.value = L; o.textContent = t; o.disabled = !L; o.selected = L === cur; sel.appendChild(o); });
+      sel.dataset.key = key; sel.innerHTML = ""; let done = false;
+      groups.forEach(([name, opts]) => {
+        const og = name ? document.createElement("optgroup") : sel; if (name) { og.label = name; sel.appendChild(og); }
+        opts.forEach(([L, t]) => { const o = document.createElement("option"); o.value = L; o.textContent = t; o.disabled = !L; if (L === cur && !done) { o.selected = true; done = true; } og.appendChild(o); });
+      });
     }
-    if (!g.years && !aerialProbe) aerialProbe = probeAerial(g).then(y => { g.years = y; save(); }).finally(() => { aerialProbe = null; renderAerial(); });
+    $("aerialCredit").hidden = !cur.startsWith("esri:");
+    if (!g.veg && !aerialProbe) aerialProbe = probeAerial(g).then(async () => {
+      save();
+      // first look at this plot: switch to the photo where the ground shows best, if it is clearly better
+      const { least: best } = aerialPicks(g), now = g.veg[pl.layer || AERIAL_NOW];
+      if (best && (!pl.layer || pl.layer === AERIAL_NOW) && best.L !== (pl.layer || AERIAL_NOW) && now != null && g.veg[best.L] <= now - 8) {
+        await setAerial(best.L); toast("Photo aérienne choisie : la moins végétalisée (" + best.t.replace(/ · végétation.*/, "") + ", " + g.veg[best.L] + " % de végétation). Changez-la en haut à gauche.");
+      }
+    }).catch(() => {}).finally(() => { aerialProbe = null; renderAerial(); });
   }
   $("aerialSel").addEventListener("change", e => { if (e.target.value) setAerial(e.target.value); });
   async function setAerial(L) {
@@ -1670,7 +1745,7 @@
     const [W, H] = pl.px || [1600, Math.round(1600 * pl.ar)];
     $("aerialBox").setAttribute("aria-busy", "true");
     try {
-      const img = await corsImg(IGN.orthoL(L, g.bb, W, H)), c = document.createElement("canvas"); c.width = W; c.height = H; c.getContext("2d").drawImage(img, 0, 0);
+      const img = await sourceImage(L, g.bb, W, H), c = document.createElement("canvas"); c.width = W; c.height = H; c.getContext("2d").drawImage(img, 0, 0, W, H);
       pl.image = c.toDataURL("image/jpeg", 0.85); pl.layer = L; buildPlan(); save();
       if (step === 1) goTo("plan");
     } catch (e) { toast("Cette photo aérienne n'a pas pu être chargée. Réessayez dans un instant."); }
