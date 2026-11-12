@@ -3334,7 +3334,7 @@
     pts.push(pool.slice().sort((p, q) => Math.hypot(p.x - foc[0], p.z - foc[1]) - Math.hypot(q.x - foc[0], q.z - foc[1]))[0]);
     while (pts.length < 3) {
       // far enough from the other points, but not pushed into a corner: beyond 8 m, the most open ground wins
-      const far = pool.map(f => { const d = Math.min(...pts.map(p => Math.hypot(p.x - f.x, p.z - f.z))); return { f, d, s: Math.min(d, 8) + Math.min(f.c, 4) * 0.6 - Math.hypot(f.x - foc[0], f.z - foc[1]) * 0.08 }; }).filter(o => o.d >= 4).sort((p, q) => q.s - p.s)[0];
+      const far = pool.map(f => { const d = Math.min(...pts.map(p => Math.hypot(p.x - f.x, p.z - f.z))); return { f, d, s: Math.min(d, 6) + Math.min(f.c, 4) * 0.6 - Math.hypot(f.x - foc[0], f.z - foc[1]) * 0.3 }; }).filter(o => o.d >= 4).sort((p, q) => q.s - p.s)[0];
       if (!far) break; pts.push(far.f);
     }
     return pts.map((p, i) => { const dx = foc[0] - p.x, dz = foc[1] - p.z; return { x: +p.x.toFixed(2), z: +p.z.toFixed(2), yaw: Math.hypot(dx, dz) > 0.8 ? +Math.atan2(dx, -dz).toFixed(3) : 0, label: String(i + 1) }; });
@@ -3371,7 +3371,7 @@
     if (jobs.some(j => j.visit)) { toast("Une visite 360° est déjà en préparation."); return; }
     const pts = visitPoints();
     if (!pts.length) { toast("Pas assez de place libre dans le jardin pour s'y tenir : dégagez un peu la pelouse."); return; }
-    if (await ask("Lancer la visite 360° ?", pts.length + " point" + (pts.length > 1 ? "s" : "") + " de vue dans le jardin, où le client regarde tout autour de lui. Prête en 4 à 6 minutes (" + pts.length * 2 + " rendus), vous pouvez continuer pendant ce temps.", [{ label: "Lancer la visite", value: true, primary: true }, { label: "Pas maintenant", value: false }]) !== true) return;
+    if (await ask("Lancer la visite 360° ?", pts.length + " point" + (pts.length > 1 ? "s" : "") + " de vue dans le jardin, où le client regarde tout autour de lui. Prête en 3 à 5 minutes, vous pouvez continuer pendant ce temps.", [{ label: "Lancer la visite", value: true, primary: true }, { label: "Pas maintenant", value: false }]) !== true) return;
     let code = ""; try { code = localStorage.getItem("studio-code") || ""; } catch (e) { /* no storage */ }
     const H = { "Content-Type": "application/json", "x-studio-code": code }, sid = site.id, t0 = Date.now(), amb = ambiance === "dore" ? "dore" : "jour";
     const base = { mode: "free", style: "pano", aspect: "21:9", ambiance: amb, site: site.demo ? "demo" : "custom", refs: site.demo ? [] : await houseRefs(),
@@ -3382,30 +3382,34 @@
     const done = new Array(pts.length).fill(null); let lastErr = "";
     const post = async body => { const j = await (await fetch(api, { method: "POST", headers: H, body: JSON.stringify(body) })).json(); if (!j.taskId && !j.url) throw new Error(j.error || "refus du serveur"); return j; };
     const W = 4096, Hh = Math.round(W * 9 / 21);
-    await Promise.all(pts.map(async (p, i) => {
+    // the two ends of an AI panorama never quite join: the colour step between them is spread over a wide band on each side
+    const blendJoin = c => {
+      const g = c.getContext("2d"), B = Math.round(W * 0.12), E = 12, L = g.getImageData(0, 0, B, Hh), R = g.getImageData(W - B, 0, B, Hh), diff = new Float32Array(Hh * 3), sm = new Float32Array(Hh * 3);
+      for (let y = 0; y < Hh; y++) for (let k = 0; k < 3; k++) { let l = 0, r = 0; for (let x = 0; x < E; x++) { l += L.data[(y * B + x) * 4 + k]; r += R.data[(y * B + B - 1 - x) * 4 + k]; } diff[y * 3 + k] = (l - r) / E; }
+      for (let y = 0; y < Hh; y++) for (let k = 0; k < 3; k++) { let t = 0, n = 0; for (let d = -30; d <= 30; d++) { const yy = y + d; if (yy >= 0 && yy < Hh) { t += diff[yy * 3 + k]; n++; } } sm[y * 3 + k] = t / n; }
+      for (let y = 0; y < Hh; y++) for (let x = 0; x < B; x++) for (let k = 0; k < 3; k++) {
+        const d = sm[y * 3 + k] / 2, il = (y * B + x) * 4 + k;
+        L.data[il] = L.data[il] - d * (1 - x / B); R.data[il] = R.data[il] + d * ((x + 1) / B);
+      }
+      g.putImageData(L, 0, 0); g.putImageData(R, W - B, 0);
+    };
+    const onePoint = async (p, i, look) => {
       const job = { visit: true, label: "Point " + p.label, t0, taskId: null }; jobs.push(job); showJobs();
+      let rawUrl = null;
       try {
-        job.taskId = (await post(Object.assign({ image: shots[i] }, base))).taskId;
-        const raw = await corsImage(await pollTask(job, api, code, t0, 15));
-        // the panorama, at the size the phones can show, then shifted by half a turn so that its join sits in the middle
-        const c = document.createElement("canvas"); c.width = W; c.height = Hh; const g = c.getContext("2d"); g.drawImage(raw, 0, 0, W, Hh);
-        const r = document.createElement("canvas"); r.width = W; r.height = Hh; const rg = r.getContext("2d"); rg.drawImage(c, W / 2, 0, W / 2, Hh, 0, 0, W / 2, Hh); rg.drawImage(c, 0, 0, W / 2, Hh, W / 2, 0, W / 2, Hh);
-        try {
-          job.taskId = (await post({ mode: "seam", image: r.toDataURL("image/jpeg", 0.88) })).taskId;
-          const fix = await corsImage(await pollTask(job, api, code, t0, 15));
-          // only the band around the join is taken from the repaired picture, feathered on both sides
-          const f = document.createElement("canvas"); f.width = W; f.height = Hh; const fg = f.getContext("2d"); fg.drawImage(fix, 0, 0, W, Hh);
-          const band = Math.round(W * 0.16), fe = Math.round(W * 0.05), m = fg.createLinearGradient(W / 2 - band, 0, W / 2 + band, 0), a = fe / (2 * band);
-          m.addColorStop(0, "rgba(0,0,0,0)"); m.addColorStop(a, "rgba(0,0,0,1)"); m.addColorStop(1 - a, "rgba(0,0,0,1)"); m.addColorStop(1, "rgba(0,0,0,0)");
-          fg.globalCompositeOperation = "destination-in"; fg.fillStyle = m; fg.fillRect(0, 0, W, Hh);
-          rg.drawImage(f, 0, 0);
-          g.drawImage(r, W / 2, 0, W / 2, Hh, 0, 0, W / 2, Hh); g.drawImage(r, 0, 0, W / 2, Hh, W / 2, 0, W / 2, Hh);      // shifted back
-        } catch (e) { /* the join stays as it is: the visit is still usable */ }
+        job.taskId = (await post(Object.assign({ image: shots[i] }, base, look ? { look } : {}))).taskId;
+        rawUrl = await pollTask(job, api, code, t0, 15);
+        const raw = await corsImage(rawUrl), c = document.createElement("canvas"); c.width = W; c.height = Hh; c.getContext("2d", { willReadFrequently: true }).drawImage(raw, 0, 0, W, Hh);
+        try { blendJoin(c); } catch (e) { /* the join stays as it is */ }
         const st = await post({ mode: "store", image: c.toDataURL("image/jpeg", 0.86) });
         done[i] = Object.assign({ url: st.url }, p);
       } catch (e) { lastErr = e.message; }
       if (jobs.includes(job)) jobs.splice(jobs.indexOf(job), 1); showJobs();
-    }));
+      return rawUrl;
+    };
+    // the first point sets the look of the garden (house, walls, light): the others are rendered with its picture as a reference
+    const first = await onePoint(pts[0], 0, null);
+    await Promise.all(pts.slice(1).map((p, k) => onePoint(p, k + 1, first)));
     const ok = done.filter(Boolean);
     if (!ok.length) { toast("La visite 360° n'a pas abouti : " + lastErr, { ms: 8000 }); return; }
     if (site.id !== sid) return;

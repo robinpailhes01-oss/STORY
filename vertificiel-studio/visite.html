@@ -48,7 +48,9 @@
   function show(i) {
     // keep looking in the same direction of the garden when moving to another point
     const head = cur >= 0 ? (V.p[cur].y || 0) - yaw : null;
-    loader.load(V.p[i].u, tex => {
+    // our stored panoramas come through the studio's relay (their host sends no CORS header, which a 3D view needs)
+    const src = /^https:\/\/tempfile\.redpandaai\.co\//.test(V.p[i].u) ? "api/render?img=" + encodeURIComponent(V.p[i].u) : V.p[i].u;
+    loader.load(src, tex => {
       tex.encoding = T.sRGBEncoding; tex.wrapS = T.RepeatWrapping; tex.repeat.x = -1; tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
       if (mat.map) mat.map.dispose(); mat.map = tex; mat.needsUpdate = true; cur = i;
       yaw = head == null ? 0 : (V.p[i].y || 0) - head;

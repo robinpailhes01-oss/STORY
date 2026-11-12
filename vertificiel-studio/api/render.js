@@ -90,12 +90,13 @@ function buildPlanPrompt(lines, existing, hasHouse, counts, ambiance) {
   ].filter(Boolean).join("\n");
 }
 // 360° visit: the panorama of the mock-up, from a standing point of the garden, becomes a photographic panorama with the same geometry
-function buildPanoPrompt(lines, nRefs, ambiance, existing, hasHouse, counts, staging) {
+function buildPanoPrompt(lines, nRefs, ambiance, existing, hasHouse, counts, staging, lookIdx) {
   const ex = existing.filter(k => EXISTING[k]).map(k => EXISTING[k]), pools = (counts && counts.piscine) || 0;
   return [
     "Image 1 is a full 360-degree cylindrical panorama of a 3D mock-up of a garden" + (hasHouse ? " and its house" : "") + ", taken from one standing point inside the garden at eye height: it wraps all the way around, so its left edge and its right edge show the same direction and join." + (nRefs ? ` Image${nRefs > 1 ? "s 2 to " + (1 + nRefs) + " are real photographs" : " 2 is a real photograph"} of this same house.` : ""),
     "Turn image 1 into one single photorealistic 360-degree panorama photograph in very high detail, as shot with a professional 360 camera from EXACTLY the same point. Keep EXACTLY the same panoramic projection and its curved lines, the same horizon height, and the same horizontal position and size of every object along the panorama: nothing shifts sideways, nothing is moved, resized, added or removed.",
     "The left edge and the right edge must match seamlessly, in content, light and colour, so that the panorama loops without any visible seam.",
+    lookIdx ? `Image ${lookIdx} is a photograph of this same garden already taken from another point: this panorama must show the very same place. Give the house exactly the same architecture (same roofs, render, windows and doors), and use the same boundary walls and hedges, the same materials for each garden element, the same neighbourhood, the same sky and the same light as in image ${lookIdx}.` : "",
     hasHouse ? "The house keeps exactly its volumes and its place in the panorama" + (nRefs ? ", and looks like the real house of the photographs: same render, windows, doors and frames." : ": a modern villa with smooth white render and dark grey window frames.") : "There is no house on this plot: do not add one.",
     ex.length ? "Existing features already on the plot, kept exactly where they are and made photorealistic: " + ex.join("; ") + "." : "",
     `There ${pools === 1 ? "is exactly ONE swimming pool" : pools ? "are exactly " + pools + " swimming pools" : "is NO swimming pool"} in the whole panorama: never add another pool, basin or pond.`,
@@ -160,7 +161,6 @@ function buildFreePrompt(lines, nRefs, ambiance, existing, hasHouse, counts, sta
 
 // night version of a finished day render: same picture, only the light changes, LED profiles switched on
 const REAL_PASS = "Image 1 is a picture of a garden that still looks partly computer-generated. Produce the very same picture as an authentic photograph: keep EXACTLY the same framing, perspective, layout, shapes, sizes, positions and number of every element (pool, paving, trees, walls, lawn outline); nothing is added, moved, enlarged or removed. Only the realism changes: " + "It must look like an authentic photograph taken by a professional photographer with a full-frame camera, not a 3D rendering and not CGI: real materials with their natural texture and slight wear, real Mediterranean plants of the South of France (olive trees, Phoenix palms, lavender, rosemary, oleanders) with natural irregular foliage, premium synthetic grass with subtle natural colour variation and soft blade texture, natural depth of field, gentle lens vignetting, true-to-life colours, no oversaturation, no plastic look." + " Keep the same time of day and the same light.";
-const SEAM_PASS = "Image 1 is a 360-degree panorama photograph of a garden whose two halves were not shot continuously: a vertical seam runs down the exact middle of the picture, where the sky colour, the light, the horizon, the walls, the hedges and the lawn do not match from one side to the other. Repair this seam: repaint only a vertical band around the middle of the picture so that the sky, the clouds, the light, the horizon, the boundary wall or hedge, the background and the lawn continue naturally across it, with no visible line or change of colour. Keep everything else strictly identical, pixel for pixel: the same panoramic projection, framing, objects, shapes, positions and colours on the left third and on the right third of the picture. Do not add any object, tree, building, pool, paving or furniture, and do not remove any. Photorealistic, no text, no watermark.";
 const RENDER_HOSTS = /^https:\/\/([a-z0-9-]+\.)*(aiquickdraw\.com|redpandaai\.co|kie\.ai)\//i;
 function buildNightPrompt(leds) {
   const led = leds.length
@@ -208,6 +208,17 @@ async function bundledUrl(name, H) {
 }
 
 export default async function handler(req, res) {
+  // the panoramas of a 360° visit, relayed for the client's page: only our own uploaded panoramas, no access code (the client has none)
+  if (req.method === "GET" && req.query.img) {
+    const u = String(req.query.img);
+    if (!/^https:\/\/tempfile\.redpandaai\.co\/kieai\/\d+\/studio-jardin\/visite-360-\d+\.jpg$/.test(u)) return res.status(400).end();
+    try {
+      const r = await fetch(u); if (!r.ok) return res.status(404).end();
+      const buf = Buffer.from(await r.arrayBuffer()); if (buf.length > 4.2e6) return res.status(413).end();
+      res.setHeader("Content-Type", "image/jpeg"); res.setHeader("Cache-Control", "public, max-age=86400"); res.setHeader("Access-Control-Allow-Origin", "*");
+      return res.status(200).send(buf);
+    } catch (e) { return res.status(502).end(); }
+  }
   const key = process.env.KIE_AI_API_KEY;
   if (!key) return res.status(500).json({ error: "serveur de rendu non configuré" });
   if (process.env.STUDIO_CODE && req.headers["x-studio-code"] !== process.env.STUDIO_CODE) return res.status(401).json({ error: "code d'accès invalide" });
@@ -226,7 +237,7 @@ export default async function handler(req, res) {
     }
     if (req.method !== "POST") return res.status(405).end();
 
-    const { image, items, empty, mode, aspect, lawn, site, ambiance, refs: houseRefs, existing: exIn, house, counts, style, staging } = req.body || {};
+    const { image, items, empty, mode, aspect, lawn, site, ambiance, refs: houseRefs, existing: exIn, house, counts, style, staging, look } = req.body || {};
     const plan = mode === "free" && style === "plan", pano = mode === "free" && style === "pano", cnt = counts && typeof counts === "object" ? counts : {};
     const existing = [...new Set((Array.isArray(exIn) ? exIn : []).filter(k => EXISTING[k]))];
     const free = mode === "free";
@@ -250,16 +261,6 @@ export default async function handler(req, res) {
       if (typeof img !== "string" || !/^data:image\/jpeg;base64,/.test(img) || img.length > 4.4e6) return res.status(400).json({ error: "image invalide" });
       const url = await upload(img, `visite-360-${Date.now()}.jpg`, H);
       return url ? res.json({ url }) : res.status(502).json({ error: "envoi de l'image refusé" });
-    }
-    // 360° visit: the two ends of an AI panorama do not join; the panorama comes back shifted by half a turn and the join, now in the middle, is repainted
-    if (mode === "seam") {
-      const { image: img } = req.body;
-      if (typeof img !== "string" || !/^data:image\/jpeg;base64,/.test(img) || img.length > 4.4e6) return res.status(400).json({ error: "image invalide" });
-      const src = await upload(img, `raccord-${Date.now()}.jpg`, H);
-      if (!src) return res.status(502).json({ error: "envoi de l'image refusé" });
-      const t = await (await fetch(`${API}/api/v1/jobs/createTask`, { method: "POST", headers: H, body: JSON.stringify({ model: MODEL, input: { prompt: SEAM_PASS, image_input: [src], aspect_ratio: "21:9", resolution: "4K", output_format: "png" } }) })).json();
-      if (t.code !== 200) return res.status(502).json({ error: kieMsg(t.msg) || "rendu refusé" });
-      return res.json({ taskId: t.data.taskId });
     }
     if (mode === "real") {
       const { source } = req.body;
@@ -303,6 +304,8 @@ export default async function handler(req, res) {
     if (free && !plan && site !== "custom") houseUrls.push(await bundledUrl("face-base", H), await bundledUrl("droite-base", H));
     if (free && !plan && site === "custom") for (const [i, r] of own.entries()) { const u = await upload(r, `maison-${Date.now()}-${i}.jpg`, H); if (u) houseUrls.push(u); }
 
+    const nHouse = houseUrls.length, lookOk = pano && typeof look === "string" && RENDER_HOSTS.test(look) && look.length <= 500;
+    if (lookOk) houseUrls.push(look);
     // reference photos: catalogue photo of each element, or the motif and the slab of each paving, within the model's image limit
     const refKeys = [], room = MAX_IMAGES - 1 - houseUrls.length;
     const ref = k => { if (!refKeys.includes(k) && refKeys.length < room) refKeys.push(k); const i = refKeys.indexOf(k); return i < 0 ? null : 2 + houseUrls.length + i; };
@@ -320,7 +323,7 @@ export default async function handler(req, res) {
     const task = await (await fetch(`${API}/api/v1/jobs/createTask`, {
       method: "POST", headers: H,
       body: JSON.stringify({ model: MODEL, input: {
-        prompt: plan ? buildPlanPrompt(lines, existing, house !== false, cnt, ambiance) : pano ? buildPanoPrompt(lines, houseUrls.length, ambiance, existing, house !== false, cnt, staging === true) : free ? buildFreePrompt(lines, houseUrls.length, ambiance, existing, house !== false, cnt, staging === true) : buildPrompt(lines, emptyZones, lawn === true, ambiance, staging === true),
+        prompt: plan ? buildPlanPrompt(lines, existing, house !== false, cnt, ambiance) : pano ? buildPanoPrompt(lines, nHouse, ambiance, existing, house !== false, cnt, staging === true, lookOk ? 1 + houseUrls.length : 0) : free ? buildFreePrompt(lines, houseUrls.length, ambiance, existing, house !== false, cnt, staging === true) : buildPrompt(lines, emptyZones, lawn === true, ambiance, staging === true),
         image_input: [imageUrl, ...houseUrls, ...refUrls], aspect_ratio: ratio, resolution: "4K", output_format: "png" } }),
     })).json();
     if (task.code !== 200) return res.status(502).json({ error: kieMsg(task.msg) || "rendu refusé" });
