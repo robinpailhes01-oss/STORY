@@ -3812,6 +3812,12 @@
   }
 
   window.studio = { visibleItems: () => visibleItems(), visibleNos: () => visibleNos(), setView: id => setView(id), items: () => items.map(it => [it.no, +it.g.position.x.toFixed(2), +it.g.position.z.toFixed(2)]), addItem: (no, x, z, rot, spec) => { const it = addItem(no, x, z, rot, spec); changed(); return it.uid; }, go, exportLayer, recapText,
+    // the scene as it stands, without the editing helpers: for an export to Blender
+    sceneForExport: () => {
+      // name what Blender needs to recognise: the lawn, the house blocks by kind, the catalogue items by number
+      lawn.name = "pelouse"; decor.name = "decor"; house.children.forEach(g => { const b = g.userData && g.userData.block; g.name = b ? "bloc-" + b.kind : "maison-photo"; });
+      items.forEach(it => { it.g.name = "item-" + it.no; });
+      const hid = [measures, toolGroup, planMesh, handles, blockSel, dims, spotGroup, shadowCatcher].map(o => [o, o.visible]); hid.forEach(([o]) => { o.visible = false; }); return { scene, restore: () => hid.forEach(([o, v]) => { o.visible = v; }) }; },
     pano: (x, z, yaw, eye) => panoShot(x, z, yaw, eye), visitPoints: () => visitPoints(), visitLink: () => visitLink(),
     shotFrom: T0 => { const c = new THREE.PerspectiveCamera(T0.fov, 4 / 3, 0.1, 400); c.position.fromArray(T0.pos); c.lookAt(new THREE.Vector3().fromArray(T0.target)); const hide = [dims, spotGroup, handles, blockSel].map(o => [o, o.visible]); hide.forEach(([o]) => { o.visible = false; }); const sz = renderer.getSize(new THREE.Vector2()), pr = renderer.getPixelRatio(); renderer.setPixelRatio(1); renderer.setSize(1600, 1200, false); renderer.render(scene, c); const u = renderer.domElement.toDataURL("image/jpeg", 0.9); renderer.setPixelRatio(pr); renderer.setSize(sz.x, sz.y, false); hide.forEach(([o, v]) => { o.visible = v; }); requestRender(); return u; },
     toScreen: (x, y, z) => { const v = new THREE.Vector3(x, y, z).project(camera), r = renderer.domElement.getBoundingClientRect(); return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height]; },
