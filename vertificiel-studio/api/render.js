@@ -160,6 +160,7 @@ function buildFreePrompt(lines, nRefs, ambiance, existing, hasHouse, counts, sta
 
 // night version of a finished day render: same picture, only the light changes, LED profiles switched on
 const REAL_PASS = "Image 1 is a picture of a garden that still looks partly computer-generated. Produce the very same picture as an authentic photograph: keep EXACTLY the same framing, perspective, layout, shapes, sizes, positions and number of every element (pool, paving, trees, walls, lawn outline); nothing is added, moved, enlarged or removed. Only the realism changes: " + "It must look like an authentic photograph taken by a professional photographer with a full-frame camera, not a 3D rendering and not CGI: real materials with their natural texture and slight wear, real Mediterranean plants of the South of France (olive trees, Phoenix palms, lavender, rosemary, oleanders) with natural irregular foliage, premium synthetic grass with subtle natural colour variation and soft blade texture, natural depth of field, gentle lens vignetting, true-to-life colours, no oversaturation, no plastic look." + " Keep the same time of day and the same light.";
+const SEAM_PASS = "Image 1 is a 360-degree panorama photograph of a garden whose two halves were not shot continuously: a vertical seam runs down the exact middle of the picture, where the sky colour, the light, the horizon, the walls, the hedges and the lawn do not match from one side to the other. Repair this seam: repaint only a vertical band around the middle of the picture so that the sky, the clouds, the light, the horizon, the boundary wall or hedge, the background and the lawn continue naturally across it, with no visible line or change of colour. Keep everything else strictly identical, pixel for pixel: the same panoramic projection, framing, objects, shapes, positions and colours on the left third and on the right third of the picture. Do not add any object, tree, building, pool, paving or furniture, and do not remove any. Photorealistic, no text, no watermark.";
 const RENDER_HOSTS = /^https:\/\/([a-z0-9-]+\.)*(aiquickdraw\.com|redpandaai\.co|kie\.ai)\//i;
 function buildNightPrompt(leds) {
   const led = leds.length
@@ -241,6 +242,23 @@ export default async function handler(req, res) {
         body: JSON.stringify({ model: "veo-3-1", input: { prompt: VIDEO[k], model: "veo3_fast", generation_type: "FIRST_AND_LAST_FRAMES_2_VIDEO", image_urls: urls, aspect_ratio: aspect === "9:16" ? "9:16" : "16:9", resolution: ["720p", "1080p", "4k"].includes(resolution) ? resolution : "1080p", duration: 8 } }),
       })).json();
       if (t.code !== 200) return res.status(502).json({ error: kieMsg(t.msg) || "vidéo refusée" });
+      return res.json({ taskId: t.data.taskId });
+    }
+    // 360° visit: the finished panorama of a point is hosted so that the client's link can show it
+    if (mode === "store") {
+      const { image: img } = req.body;
+      if (typeof img !== "string" || !/^data:image\/jpeg;base64,/.test(img) || img.length > 4.4e6) return res.status(400).json({ error: "image invalide" });
+      const url = await upload(img, `visite-360-${Date.now()}.jpg`, H);
+      return url ? res.json({ url }) : res.status(502).json({ error: "envoi de l'image refusé" });
+    }
+    // 360° visit: the two ends of an AI panorama do not join; the panorama comes back shifted by half a turn and the join, now in the middle, is repainted
+    if (mode === "seam") {
+      const { image: img } = req.body;
+      if (typeof img !== "string" || !/^data:image\/jpeg;base64,/.test(img) || img.length > 4.4e6) return res.status(400).json({ error: "image invalide" });
+      const src = await upload(img, `raccord-${Date.now()}.jpg`, H);
+      if (!src) return res.status(502).json({ error: "envoi de l'image refusé" });
+      const t = await (await fetch(`${API}/api/v1/jobs/createTask`, { method: "POST", headers: H, body: JSON.stringify({ model: MODEL, input: { prompt: SEAM_PASS, image_input: [src], aspect_ratio: "21:9", resolution: "4K", output_format: "png" } }) })).json();
+      if (t.code !== 200) return res.status(502).json({ error: kieMsg(t.msg) || "rendu refusé" });
       return res.json({ taskId: t.data.taskId });
     }
     if (mode === "real") {

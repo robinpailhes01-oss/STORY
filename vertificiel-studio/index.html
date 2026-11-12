@@ -424,6 +424,13 @@
   .photo-view video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #0b1410; z-index: 2; }
   .gal button.film { display: grid; place-items: center; aspect-ratio: auto; background: var(--accent); color: var(--on-accent); font: 700 14px var(--font-display); padding: 10px; text-align: center; }
   @media (max-width: 699px) { .dock .btn small { display: none; } .dock .seg button { min-width: 40px; padding-inline: 6px; } }
+  /* 360° visit */
+  .visit-ov { position: fixed; inset: 0; z-index: 60; background: #0b1410; }
+  .visit-ov iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  .visit-acts { position: absolute; right: 12px; top: calc(44px + env(safe-area-inset-top, 0px)); display: flex; gap: 8px; }
+  .visit-acts button { min-height: 44px; padding: 0 16px; border: 0; border-radius: 999px; background: rgba(16,24,20,.7); color: #ffffff; font: 700 14px var(--font-body); cursor: pointer; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+  .visit-acts #visitShare { background: #ffffff; color: #16392c; }
+  .gal button.film.v360 { background: var(--gold); color: var(--on-gold); }
 </style>
 
 </head>
@@ -660,8 +667,9 @@
         <div class="label">Présenter le projet</div>
         <div class="chips">
           <button type="button" class="chip" id="plan4k" title="Le plan du jardin vu de dessus, dessiné comme un plan de paysagiste">Plan paysager</button>
-          <button type="button" class="chip" id="tour4k" title="4 photos 4K autour du jardin">Visite 4K · 4 angles</button>
-          <button type="button" class="chip" id="filmBtn" title="Un film qui part du plan et traverse les photos 4K">▶ Visite immersive</button>
+          <button type="button" class="chip" id="visitBtn" title="Le client regarde tout autour de lui, depuis plusieurs points du jardin">Visite 360°</button>
+          <button type="button" class="chip" id="tour4k" title="4 photos 4K autour du jardin">4 photos autour du jardin</button>
+          <button type="button" class="chip" id="filmBtn" title="Un film qui part du plan et traverse les photos 4K">▶ Film</button>
         </div>
         <label class="check"><input type="checkbox" id="staging"> Mise en scène : l'IA ajoute mobilier, plantes et lumières d'ambiance</label>
         <button type="button" class="linkbtn danger" id="clearAll">Vider le jardin</button>
@@ -728,6 +736,7 @@
   </aside>
 </div>
 <div class="toast" id="toast" role="status" hidden><span id="toastMsg"></span><button type="button" id="toastAct" hidden></button></div>
+<div class="visit-ov" id="visitOv" hidden><iframe id="visitFrame" title="Visite 360° du jardin" allowfullscreen></iframe><div class="visit-acts"><button type="button" id="visitShare">Envoyer le lien au client</button><button type="button" id="visitClose">✕ Fermer</button></div></div>
 <div class="sheet-bg" id="sheet" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle"><h3 id="sheetTitle"></h3><p id="sheetBody"></p><div class="sheet-acts" id="sheetActs"></div></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -3033,8 +3042,9 @@
     renderGuide2();
     ["gal", "gal2"].forEach(id => { $(id).innerHTML = ""; });
     $("galBlock").hidden = $("galBlock2").hidden = !renders.length;
-    if ((site.film || []).length) for (const gal of [$("gal"), $("gal2")]) { const b = document.createElement("button"); b.type = "button"; b.className = "film"; b.textContent = "▶ Visite immersive"; b.addEventListener("click", () => playFilm(0)); gal.appendChild(b); }
-    $("galBlock").hidden = $("galBlock2").hidden = !renders.length && !(site.film || []).length;
+    if (site.visit && site.visit.points.length) for (const gal of [$("gal"), $("gal2")]) { const b = document.createElement("button"); b.type = "button"; b.className = "film v360"; b.textContent = "Visite 360°"; b.addEventListener("click", openVisit); gal.appendChild(b); }
+    if ((site.film || []).length) for (const gal of [$("gal"), $("gal2")]) { const b = document.createElement("button"); b.type = "button"; b.className = "film"; b.textContent = "▶ Film"; b.addEventListener("click", () => playFilm(0)); gal.appendChild(b); }
+    $("galBlock").hidden = $("galBlock2").hidden = !renders.length && !(site.film || []).length && !site.visit;
     for (const gal of [$("gal"), $("gal2")]) renders.forEach(r => {
       const b = document.createElement("button"); b.type = "button";
       b.innerHTML = `<img src="${r.url}" alt="" loading="lazy"><span></span>` + (r.night ? '<b class="moon">☾ nuit</b>' : nightRunning(r) ? '<b class="moon">☾ …</b>' : "");
@@ -3170,7 +3180,8 @@
     const queued = jobs.some(j => j.state === "waiting" || j.state === "queuing");
     const t0 = Math.min(...jobs.map(j => j.t0)), nights = jobs.filter(j => j.night).length;
     const films = jobs.filter(j => j.film).length;
-    progress(films === jobs.length ? "Visite immersive en préparation" : jobs.length > 1 ? jobs.length + " rendus en préparation" : nights ? "Version de nuit" : jobs[0].plan ? "Plan paysager en préparation" : "Photo 4K en préparation",
+    const visits = jobs.filter(j => j.visit).length;
+    progress(visits === jobs.length ? "Visite 360° en préparation" : films === jobs.length ? "Film en préparation" : jobs.length > 1 ? jobs.length + " rendus en préparation" : nights ? "Version de nuit" : jobs[0].plan ? "Plan paysager en préparation" : "Photo 4K en préparation",
       fmtT(now - t0) + (queued && now - t0 > 150000 ? " · service chargé, ça arrive" : ""));
   }
   // renders already paid for are never lost: their task ids stay on the tablet until the image is back
@@ -3298,6 +3309,108 @@
     scene.fog.near = fog[0]; scene.fog.far = fog[1]; shotNear = 0; decor.visible = decorVis;
     cam.target.copy(keep.t); Object.assign(cam, { r: keep.r, theta: keep.theta, phi: keep.phi, fov: keep.fov }); if (n0) setNight(true, true); requestRender();
     toast("Plan paysager lancé : il arrive dans les photos du projet dans 2 à 3 minutes.");
+  });
+  // ---------------------------------------------------------------- 360° visit: photographic panoramas from a few standing points of the garden
+  const distSeg = (x, z, a, b) => { const dx = b[0] - a[0], dz = b[1] - a[1], t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / (dx * dx + dz * dz || 1))); return Math.hypot(x - a[0] - t * dx, z - a[1] - t * dz); };
+  const distPoly = (x, z, q) => q.reduce((m, p, i) => Math.min(m, distSeg(x, z, p, q[(i + 1) % q.length])), Infinity);
+  // up to 3 points on open ground: the first one close to the project, the others as far apart as the garden allows
+  function visitPoints() {
+    const WALK = ["terrasse", "mineral"], obs = site.blocks.filter(b => !b.placeholder && !WALK.includes(b.kind)).map(blockPts)
+      .concat(items.filter(it => !it.spec).map(it => { const [a, b, c, d] = fpOf(it); return rectPts(it.g.position.x, it.g.position.z, a, b, c, d, it.g.rotation.y); }));
+    const bb = bbox(site.poly), free = [];
+    for (let x = bb[0] + 0.5; x < bb[1]; x += 1) for (let z = bb[2] + 0.5; z < bb[3]; z += 1) {
+      if (!inPoly(x, z, site.poly) || obs.some(q => inPoly(x, z, q))) continue;
+      const c = Math.min(distPoly(x, z, site.poly), ...obs.map(q => distPoly(x, z, q)));
+      if (c >= 1.3) free.push({ x, z, c });
+    }
+    if (!free.length) return [];
+    const foc = items.length ? [items.reduce((s, it) => s + it.g.position.x, 0) / items.length, items.reduce((s, it) => s + it.g.position.z, 0) / items.length] : [(bb[0] + bb[1]) / 2, (bb[2] + bb[3]) / 2];
+    // a point must see the project: no building between it and the middle of the composition
+    const tall = site.blocks.filter(b => !b.placeholder && ["maison", "abri", "kiosque"].includes(b.kind)).map(blockPts);
+    const cross = (a, b, c, d) => { const o = (p, q, r) => Math.sign((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])); return o(a, b, c) !== o(a, b, d) && o(c, d, a) !== o(c, d, b); };
+    const sees = f => !tall.some(q => q.some((p, i) => cross([f.x, f.z], foc, p, q[(i + 1) % q.length])));
+    const seen = free.filter(sees), base = seen.length ? seen : free;
+    const open = base.filter(f => f.c >= 2.2), pool = open.length >= 3 ? open : base, pts = [];
+    pts.push(pool.slice().sort((p, q) => Math.hypot(p.x - foc[0], p.z - foc[1]) - Math.hypot(q.x - foc[0], q.z - foc[1]))[0]);
+    while (pts.length < 3) {
+      // far enough from the other points, but not pushed into a corner: beyond 8 m, the most open ground wins
+      const far = pool.map(f => { const d = Math.min(...pts.map(p => Math.hypot(p.x - f.x, p.z - f.z))); return { f, d, s: Math.min(d, 8) + Math.min(f.c, 4) * 0.6 - Math.hypot(f.x - foc[0], f.z - foc[1]) * 0.08 }; }).filter(o => o.d >= 4).sort((p, q) => q.s - p.s)[0];
+      if (!far) break; pts.push(far.f);
+    }
+    return pts.map((p, i) => { const dx = foc[0] - p.x, dz = foc[1] - p.z; return { x: +p.x.toFixed(2), z: +p.z.toFixed(2), yaw: Math.hypot(dx, dz) > 0.8 ? +Math.atan2(dx, -dz).toFixed(3) : 0, label: String(i + 1) }; });
+  }
+  const b64url = t => btoa(unescape(encodeURIComponent(t))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  function visitLink() {
+    const v = site.visit; if (!v) return "";
+    const name = ($("client").value.trim() || site.name || "votre jardin").slice(0, 60);
+    return new URL("visite.html", location.href).href.split("#")[0] + "#" + b64url(JSON.stringify({ n: name, p: v.points.map(p => ({ u: p.url, x: p.x, z: p.z, y: p.yaw, l: p.label })) }));
+  }
+  function openVisit() { if (!site.visit) return; $("visitFrame").src = visitLink(); $("visitOv").hidden = false; }
+  $("visitClose").addEventListener("click", () => { $("visitOv").hidden = true; $("visitFrame").src = "about:blank"; });
+  $("visitShare").addEventListener("click", async () => {
+    const url = visitLink(), title = "Visite 360° · " + ($("client").value.trim() || site.name);
+    if (navigator.share) { try { await navigator.share({ title, text: "La visite à 360° de votre futur jardin :", url }); return; } catch (e) { if (e && e.name === "AbortError") return; } }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(() => toast("Lien de la visite copié : collez-le dans un message au client."), () => toast("Copie impossible sur cet appareil."));
+  });
+  const corsImage = src => new Promise((ok, ko) => { const i = new Image(); i.crossOrigin = "anonymous"; i.onload = () => ok(i); i.onerror = () => ko(new Error("image du rendu illisible")); i.src = src; });
+  async function pollTask(job, api, code, t0, mins) {
+    for (;;) {
+      await new Promise(ok => setTimeout(ok, 6000));
+      let d = null; try { d = await (await fetch(api + "?task=" + encodeURIComponent(job.taskId), { headers: { "x-studio-code": code } })).json(); } catch (e) { d = null; }
+      if (d) job.state = d.state;
+      if (d && d.state === "success" && d.url) return d.url;
+      if (d && d.state === "fail") throw new Error(d.error || "échec du rendu");
+      if (Date.now() - t0 > mins * 60 * 1000) throw new Error("le service de rendu n'a pas répondu en " + mins + " minutes");
+    }
+  }
+  $("visitBtn").addEventListener("click", async () => {
+    const meta = document.querySelector('meta[name="studio-render-api"]'), api = window.STUDIO_RENDER_API || (meta && meta.content);
+    if (site.visit && await ask("Visite 360°", "Une visite existe déjà pour ce projet.", [{ label: "La regarder", value: "play", primary: true }, { label: "En refaire une", value: "new" }]) === "play") { openVisit(); return; }
+    if (!api) { toast("La visite 360° se lance depuis la version en ligne du studio."); return; }
+    if (!items.length) { toast("Ajoutez au moins un élément du catalogue."); return; }
+    if (jobs.some(j => j.visit)) { toast("Une visite 360° est déjà en préparation."); return; }
+    const pts = visitPoints();
+    if (!pts.length) { toast("Pas assez de place libre dans le jardin pour s'y tenir : dégagez un peu la pelouse."); return; }
+    if (await ask("Lancer la visite 360° ?", pts.length + " point" + (pts.length > 1 ? "s" : "") + " de vue dans le jardin, où le client regarde tout autour de lui. Prête en 4 à 6 minutes (" + pts.length * 2 + " rendus), vous pouvez continuer pendant ce temps.", [{ label: "Lancer la visite", value: true, primary: true }, { label: "Pas maintenant", value: false }]) !== true) return;
+    let code = ""; try { code = localStorage.getItem("studio-code") || ""; } catch (e) { /* no storage */ }
+    const H = { "Content-Type": "application/json", "x-studio-code": code }, sid = site.id, t0 = Date.now(), amb = ambiance === "dore" ? "dore" : "jour";
+    const base = { mode: "free", style: "pano", aspect: "21:9", ambiance: amb, site: site.demo ? "demo" : "custom", refs: site.demo ? [] : await houseRefs(),
+      items: items.slice(0, 12).map(it => Object.assign({ no: it.no, where: "" }, it.spec ? { spec: it.spec } : {})),
+      existing: [...new Set(site.blocks.filter(b => b.kind !== "maison" && !b.placeholder).map(b => b.kind))], house: site.demo || site.blocks.some(b => b.kind === "maison"),
+      counts: site.blocks.filter(b => !b.placeholder).reduce((c, b) => Object.assign(c, { [b.kind]: (c[b.kind] || 0) + 1 }), {}) };
+    const shots = pts.map(p => panoShot(p.x, p.z, p.yaw, 1.6));     // all captures now, before any wait
+    const done = new Array(pts.length).fill(null); let lastErr = "";
+    const post = async body => { const j = await (await fetch(api, { method: "POST", headers: H, body: JSON.stringify(body) })).json(); if (!j.taskId && !j.url) throw new Error(j.error || "refus du serveur"); return j; };
+    const W = 4096, Hh = Math.round(W * 9 / 21);
+    await Promise.all(pts.map(async (p, i) => {
+      const job = { visit: true, label: "Point " + p.label, t0, taskId: null }; jobs.push(job); showJobs();
+      try {
+        job.taskId = (await post(Object.assign({ image: shots[i] }, base))).taskId;
+        const raw = await corsImage(await pollTask(job, api, code, t0, 15));
+        // the panorama, at the size the phones can show, then shifted by half a turn so that its join sits in the middle
+        const c = document.createElement("canvas"); c.width = W; c.height = Hh; const g = c.getContext("2d"); g.drawImage(raw, 0, 0, W, Hh);
+        const r = document.createElement("canvas"); r.width = W; r.height = Hh; const rg = r.getContext("2d"); rg.drawImage(c, W / 2, 0, W / 2, Hh, 0, 0, W / 2, Hh); rg.drawImage(c, 0, 0, W / 2, Hh, W / 2, 0, W / 2, Hh);
+        try {
+          job.taskId = (await post({ mode: "seam", image: r.toDataURL("image/jpeg", 0.88) })).taskId;
+          const fix = await corsImage(await pollTask(job, api, code, t0, 15));
+          // only the band around the join is taken from the repaired picture, feathered on both sides
+          const f = document.createElement("canvas"); f.width = W; f.height = Hh; const fg = f.getContext("2d"); fg.drawImage(fix, 0, 0, W, Hh);
+          const band = Math.round(W * 0.16), fe = Math.round(W * 0.05), m = fg.createLinearGradient(W / 2 - band, 0, W / 2 + band, 0), a = fe / (2 * band);
+          m.addColorStop(0, "rgba(0,0,0,0)"); m.addColorStop(a, "rgba(0,0,0,1)"); m.addColorStop(1 - a, "rgba(0,0,0,1)"); m.addColorStop(1, "rgba(0,0,0,0)");
+          fg.globalCompositeOperation = "destination-in"; fg.fillStyle = m; fg.fillRect(0, 0, W, Hh);
+          rg.drawImage(f, 0, 0);
+          g.drawImage(r, W / 2, 0, W / 2, Hh, 0, 0, W / 2, Hh); g.drawImage(r, 0, 0, W / 2, Hh, W / 2, 0, W / 2, Hh);      // shifted back
+        } catch (e) { /* the join stays as it is: the visit is still usable */ }
+        const st = await post({ mode: "store", image: c.toDataURL("image/jpeg", 0.86) });
+        done[i] = Object.assign({ url: st.url }, p);
+      } catch (e) { lastErr = e.message; }
+      if (jobs.includes(job)) jobs.splice(jobs.indexOf(job), 1); showJobs();
+    }));
+    const ok = done.filter(Boolean);
+    if (!ok.length) { toast("La visite 360° n'a pas abouti : " + lastErr, { ms: 8000 }); return; }
+    if (site.id !== sid) return;
+    site.visit = { t: Date.now(), points: ok.map((p, i) => Object.assign(p, { label: String(i + 1) })) }; save(); drawGallery();
+    toast("Visite 360° prête" + (ok.length < pts.length ? " (" + ok.length + " points sur " + pts.length + ")" : "") + ".", { action: "Regarder", onAction: openVisit, ms: 8000 });
   });
   // the immersive tour: short film clips between the 4K pictures (plan -> garden, one view to the next, day -> night)
   function filmPlan() {
@@ -3627,7 +3740,8 @@
     const who = $("client").value.trim();
     const text = "Bonjour" + (who ? " " + who : "") + ",\n\nVoici la projection de votre futur jardin, préparée ensemble avec le studio Vertificiel."
       + (photos.length ? "\n\nVos photos (de jour, et de nuit avec l'éclairage) :\n" + photos.join("\n") : "")
-      + ((site.film || []).length ? "\n\nLa visite immersive de votre jardin :\n" + site.film.map(f => "· " + f.label + " : " + f.url).join("\n") : "")
+      + (site.visit && site.visit.points.length ? "\n\nLa visite à 360° de votre jardin (glissez pour regarder autour de vous) :\n" + visitLink() : "")
+      + ((site.film || []).length ? "\n\nLe film de votre jardin :\n" + site.film.map(f => "· " + f.label + " : " + f.url).join("\n") : "")
       + "\n\nLe détail du projet :\n" + recapText() + "\n\nÀ très vite,\nVertificiel";
     if (navigator.share) { try { await navigator.share({ title: "Projet jardin · " + ($("client").value.trim() || site.name), text }); return; } catch (e) { if (e && e.name === "AbortError") return; } }
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => toast("Récap et photos copiés : collez-les dans un message au client."), () => toast("Envoi impossible sur cet appareil."));
@@ -3694,7 +3808,7 @@
   }
 
   window.studio = { visibleItems: () => visibleItems(), visibleNos: () => visibleNos(), setView: id => setView(id), items: () => items.map(it => [it.no, +it.g.position.x.toFixed(2), +it.g.position.z.toFixed(2)]), addItem: (no, x, z, rot, spec) => { const it = addItem(no, x, z, rot, spec); changed(); return it.uid; }, go, exportLayer, recapText,
-    pano: (x, z, yaw, eye) => panoShot(x, z, yaw, eye),
+    pano: (x, z, yaw, eye) => panoShot(x, z, yaw, eye), visitPoints: () => visitPoints(), visitLink: () => visitLink(),
     shotFrom: T0 => { const c = new THREE.PerspectiveCamera(T0.fov, 4 / 3, 0.1, 400); c.position.fromArray(T0.pos); c.lookAt(new THREE.Vector3().fromArray(T0.target)); const hide = [dims, spotGroup, handles, blockSel].map(o => [o, o.visible]); hide.forEach(([o]) => { o.visible = false; }); const sz = renderer.getSize(new THREE.Vector2()), pr = renderer.getPixelRatio(); renderer.setPixelRatio(1); renderer.setSize(1600, 1200, false); renderer.render(scene, c); const u = renderer.domElement.toDataURL("image/jpeg", 0.9); renderer.setPixelRatio(pr); renderer.setSize(sz.x, sz.y, false); hide.forEach(([o, v]) => { o.visible = v; }); requestRender(); return u; },
     toScreen: (x, y, z) => { const v = new THREE.Vector3(x, y, z).project(camera), r = renderer.domElement.getBoundingClientRect(); return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height]; },
     jobs: () => jobs.map(j => ({ label: j.label, t0: j.t0, state: j.state, now: Date.now() })), site: () => site, solvePose: (pts, W, H) => solvePose(pts, W, H), projector, garden: () => gardenArea(), loadSite: s2 => loadSite(s2), photos: () => Object.keys(PHOTOS) };
