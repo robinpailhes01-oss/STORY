@@ -423,6 +423,7 @@
   .check input { width: 22px; height: 22px; flex: none; margin: 0; accent-color: var(--accent); }
   .photo-view video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #0b1410; z-index: 2; }
   .gal button.film { display: grid; place-items: center; aspect-ratio: auto; background: var(--accent); color: var(--on-accent); font: 700 14px var(--font-display); padding: 10px; text-align: center; }
+  @media (max-width: 699px) { .dock .btn small { display: none; } .dock .seg button { min-width: 40px; padding-inline: 6px; } }
 </style>
 
 </head>
@@ -3268,11 +3269,13 @@
     const keep = { t: cam.target.clone(), r: cam.r, theta: cam.theta, phi: cam.phi, fov: cam.fov }, p = preset("plan"), n0 = night;
     if (n0) setNight(false, true);
     // a long lens from far above: almost no perspective, the walls of the house do not show; the haze is pushed away for the shot
-    const kf = Math.tan(p.fov * Math.PI / 360) / Math.tan(14 * Math.PI / 360), fog = [scene.fog.near, scene.fog.far];
-    anim = null; cam.target.set(...p.t); Object.assign(cam, { r: Math.min(p.r * kf, camera.far * 0.8), theta: p.theta, phi: p.phi, fov: 14 });
-    scene.fog.near = 1e4; scene.fog.far = 2e4; shotNear = cam.r * 0.5;
+    // the plot fills the frame and the neighbourhood is left out: the plan shows the garden only
+    const fog = [scene.fog.near, scene.fog.far], sz = renderer.getSize(new T.Vector2()), ar = sz.x >= sz.y ? 4 / 3 : 3 / 4, sp = plotSpan();
+    const hView = Math.max(sp.d, sp.w / ar) * 1.22, decorVis = decor.visible;
+    anim = null; cam.target.set(sp.cx, 0, sp.cz); Object.assign(cam, { r: Math.min(hView / (2 * Math.tan(7 * Math.PI / 180)), camera.far * 0.8), theta: p.theta, phi: p.phi, fov: 14 });
+    scene.fog.near = 1e4; scene.fog.far = 2e4; shotNear = cam.r * 0.5; decor.visible = false;
     render4k({ plan: true, label: "Plan paysager" });
-    scene.fog.near = fog[0]; scene.fog.far = fog[1]; shotNear = 0;
+    scene.fog.near = fog[0]; scene.fog.far = fog[1]; shotNear = 0; decor.visible = decorVis;
     cam.target.copy(keep.t); Object.assign(cam, { r: keep.r, theta: keep.theta, phi: keep.phi, fov: keep.fov }); if (n0) setNight(true, true); requestRender();
     toast("Plan paysager lancé : il arrive dans les photos du projet dans 2 à 3 minutes.");
   });

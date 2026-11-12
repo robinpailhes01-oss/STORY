@@ -84,8 +84,8 @@ function buildPlanPrompt(lines, existing, hasHouse, counts, ambiance) {
     `There ${pools === 1 ? "is exactly ONE swimming pool" : pools ? "are exactly " + pools + " swimming pools" : "is NO swimming pool"} on the plan: never add another pool, basin or pond.`,
     `Draw each garden element of the mock-up as its real version seen from above, exactly where it is. There are exactly ${lines.length} of them; do not swap two of them, do not draw one twice and do not move one towards the centre:`,
     ...lines,
-    "The rest of the plot is a premium synthetic grass lawn drawn with a soft texture. Along the boundary, draw the hedges and walls that are in image 1. Everything outside the plot outline is left as clean off-white paper.",
-    ambiance === "dore" || ambiance === "soir" ? "Warm evening rendering: the LED light profiles of the paving and the garden lights glow softly on the plan." : "Clear daylight rendering with soft shadows.",
+    "The rest of the plot is a premium synthetic grass lawn drawn with a soft texture. Along the boundary, draw the hedges and walls that are in image 1. Everything outside the plot outline is left as clean off-white paper: no neighbouring building, no road, no tree and no shadow outside the plot. Paved areas keep exactly the extent and the number of slab rows of image 1: never extend a paving or add a paved strip.",
+    ambiance === "dore" || ambiance === "soir" ? "Warm evening rendering: the LED light profiles of the paving and the garden lights glow softly on the plan." : "Clear daylight rendering with soft shadows; no light glow and no coloured outline around the pavings.",
     "No text, no labels, no dimensions, no numbers, no north arrow, no legend, no watermark, no people.",
   ].filter(Boolean).join("\n");
 }
