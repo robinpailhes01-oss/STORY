@@ -266,7 +266,8 @@ export default async function handler(req, res) {
     if (mode === "real") {
       const { source } = req.body;
       if (typeof source !== "string" || !RENDER_HOSTS.test(source) || source.length > 500) return res.status(400).json({ error: "photo invalide" });
-      const t = await (await fetch(`${API}/api/v1/jobs/createTask`, { method: "POST", headers: H, body: JSON.stringify({ model: MODEL, input: { prompt: REAL_PASS, image_input: [source], aspect_ratio: ratio, resolution: "4K", output_format: "png" } }) })).json();
+      const panoNote = req.body.pano === true ? " Image 1 is a 360-degree equirectangular panorama rendered from a 3D model: keep this exact panoramic projection with its curved lines, the same horizon, and the left and right edges matching seamlessly. Keep the house, its roof shapes, windows and doors, the pool, the paving and every tree exactly where and as large as they are, with the same shapes; only their materials, foliage, light and realism change. The lawn is a premium synthetic grass lawn." : "";
+      const t = await (await fetch(`${API}/api/v1/jobs/createTask`, { method: "POST", headers: H, body: JSON.stringify({ model: MODEL, input: { prompt: REAL_PASS + panoNote, image_input: [source], aspect_ratio: ratio, resolution: "4K", output_format: "png" } }) })).json();
       if (t.code !== 200) return res.status(502).json({ error: kieMsg(t.msg) || "rendu refusé" });
       return res.json({ taskId: t.data.taskId });
     }

@@ -37,13 +37,15 @@
   try { const h = location.hash.slice(1); if (h) V = JSON.parse(decodeURIComponent(escape(atob(h.replace(/-/g, "+").replace(/_/g, "/"))))); } catch (e) { V = null; }
   if (!V || !Array.isArray(V.p) || !V.p.length) V = { n: "Jardin de démonstration", p: [{ u: "img/demo/pano-test.jpg", x: 0, z: 0, y: 0, l: "1" }] };
   V.p = V.p.filter(p => p && typeof p.u === "string" && (/^https:\/\//.test(p.u) || /^img\//.test(p.u))).slice(0, 6);
-  if (/[?&]demo=blender\b/.test(location.search)) V = { n: "Jardin de démonstration · rendu Blender", p: [1, 2, 3].map(i => ({ u: "img/demo/blender-" + i + ".jpg", e: 1, ...[{ x: -2.5, z: 12.5, y: 0.193 }, { x: 2.5, z: 3.5, y: -2.471 }, { x: 9.5, z: 2.5, y: -2.088 }][i - 1], l: String(i) })) };
+  const IA = /[?&]demo=blender-ia\b/.test(location.search);
+  if (/[?&]demo=blender/.test(location.search)) V = { n: "Jardin de démonstration · " + (IA ? "Blender + IA" : "rendu Blender"), p: [1, 2, 3].map(i => ({ u: "img/demo/blender-" + (IA ? "ia-" : "") + i + ".jpg", e: IA ? 2 : 1, ...[{ x: -2.5, z: 12.5, y: 0.193 }, { x: 2.5, z: 3.5, y: -2.471 }, { x: 9.5, z: 2.5, y: -2.088 }][i - 1], l: String(i) })) };
   document.getElementById("name").textContent = "Visite 360° · " + String(V.n || "votre jardin").slice(0, 80);
   const renderer = new T.WebGLRenderer({ antialias: true }); renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1)); renderer.outputEncoding = T.sRGBEncoding; document.body.prepend(renderer.domElement);
   const scene = new T.Scene(), camera = new T.PerspectiveCamera(62, 1, 0.01, 10);
   // two kinds of panoramas: cylindrical 21:9 (AI) or full-sphere 2:1 (Blender, "e": 1)
-  const mat = new T.MeshBasicMaterial({ side: T.BackSide }), cyl = new T.Mesh(new T.CylinderGeometry(1, 1, 2 * K, 120, 1, true), mat), sph = new T.Mesh(new T.SphereGeometry(1, 96, 64), mat);
-  scene.add(cyl, sph); sph.visible = false; let sphere = false;
+  const mat = new T.MeshBasicMaterial({ side: T.BackSide }), cyl = new T.Mesh(new T.CylinderGeometry(1, 1, 2 * K, 120, 1, true), mat), sph = new T.Mesh(new T.SphereGeometry(1, 96, 64), mat),
+    band = new T.Mesh(new T.SphereGeometry(1, 96, 64, 0, 2 * Math.PI, (Math.PI - 2 * Math.PI * 9 / 21 / 2) / 2, 2 * Math.PI * 9 / 21 / 2), mat);      // "e": 2, a 21:9 band of a sphere, ±77°
+  scene.add(cyl, sph, band); sph.visible = band.visible = false; let sphere = false;
   const loader = new T.TextureLoader(); loader.setCrossOrigin("anonymous");
   let cur = -1, yaw = 0, pitch = 0, fov = 62, vel = 0, last = 0;
   const hots = V.p.map((p, i) => { const b = document.createElement("button"); b.className = "hot"; b.innerHTML = "↑<span>" + (i + 1) + "</span>"; b.setAttribute("aria-label", "Aller au point " + (i + 1)); b.hidden = true; b.addEventListener("click", () => show(i)); document.body.appendChild(b); return b; });
@@ -57,7 +59,7 @@
     loader.load(src, tex => {
       tex.encoding = T.sRGBEncoding; tex.wrapS = T.RepeatWrapping; tex.repeat.x = -1; tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
       if (mat.map) mat.map.dispose(); mat.map = tex; mat.needsUpdate = true; cur = i;
-      sphere = !!V.p[i].e; sph.visible = sphere; cyl.visible = !sphere;
+      sphere = V.p[i].e === 1 ? 1 : V.p[i].e === 2 ? 2 : 0; sph.visible = sphere === 1; band.visible = sphere === 2; cyl.visible = !sphere;
       yaw = head == null ? 0 : (V.p[i].y || 0) - head;
       [...bar.children].forEach((b, k) => b.setAttribute("aria-pressed", String(k === i)));
       const l = document.getElementById("load"); l.style.opacity = 0; setTimeout(() => { l.hidden = true; }, 400); draw();
@@ -66,7 +68,7 @@
   const v3 = new T.Vector3();
   function draw() {
     const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.fov = fov; camera.updateProjectionMatrix();
-    const lim = sphere ? 1.45 : Math.max(0, Math.atan(K) - fov * Math.PI / 360 - 0.02); pitch = Math.max(-lim, Math.min(lim, pitch));
+    const lim = sphere === 1 ? 1.45 : sphere === 2 ? Math.max(0, 1.34 - fov * Math.PI / 360) : Math.max(0, Math.atan(K) - fov * Math.PI / 360 - 0.02); pitch = Math.max(-lim, Math.min(lim, pitch));
     camera.rotation.set(pitch, yaw, 0, "YXZ"); camera.updateMatrixWorld(); renderer.render(scene, camera);
     // arrows towards the other points, on the ground where they stand
     hots.forEach((b, i) => {
