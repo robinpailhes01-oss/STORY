@@ -89,6 +89,23 @@ function buildPlanPrompt(lines, existing, hasHouse, counts, ambiance) {
     "No text, no labels, no dimensions, no numbers, no north arrow, no legend, no watermark, no people.",
   ].filter(Boolean).join("\n");
 }
+// 360° visit: the panorama of the mock-up, from a standing point of the garden, becomes a photographic panorama with the same geometry
+function buildPanoPrompt(lines, nRefs, ambiance, existing, hasHouse, counts, staging) {
+  const ex = existing.filter(k => EXISTING[k]).map(k => EXISTING[k]), pools = (counts && counts.piscine) || 0;
+  return [
+    "Image 1 is a full 360-degree cylindrical panorama of a 3D mock-up of a garden" + (hasHouse ? " and its house" : "") + ", taken from one standing point inside the garden at eye height: it wraps all the way around, so its left edge and its right edge show the same direction and join." + (nRefs ? ` Image${nRefs > 1 ? "s 2 to " + (1 + nRefs) + " are real photographs" : " 2 is a real photograph"} of this same house.` : ""),
+    "Turn image 1 into one single photorealistic 360-degree panorama photograph in very high detail, as shot with a professional 360 camera from EXACTLY the same point. Keep EXACTLY the same panoramic projection and its curved lines, the same horizon height, and the same horizontal position and size of every object along the panorama: nothing shifts sideways, nothing is moved, resized, added or removed.",
+    "The left edge and the right edge must match seamlessly, in content, light and colour, so that the panorama loops without any visible seam.",
+    hasHouse ? "The house keeps exactly its volumes and its place in the panorama" + (nRefs ? ", and looks like the real house of the photographs: same render, windows, doors and frames." : ": a modern villa with smooth white render and dark grey window frames.") : "There is no house on this plot: do not add one.",
+    ex.length ? "Existing features already on the plot, kept exactly where they are and made photorealistic: " + ex.join("; ") + "." : "",
+    `There ${pools === 1 ? "is exactly ONE swimming pool" : pools ? "are exactly " + pools + " swimming pools" : "is NO swimming pool"} in the whole panorama: never add another pool, basin or pond.`,
+    "Replace each mock-up garden element by its real, photorealistic version, exactly where its mock-up is:",
+    ...lines,
+    "Each listed element appears exactly once. " + (staging ? STAGING : "Do not add any other garden element, tree, path, plant or furniture inside the plot.") + " The rest of the plot is a clean, flat premium synthetic grass lawn with crisp, sharp blades.",
+    "Around the plot: a low rendered wall or a hedge along the boundary, then a calm residential neighbourhood far away. The simple 3D shapes, flat colours and low-poly trees of the mock-up must NOT show in the result.",
+    LIGHT[ambiance] || LIGHT.jour,
+  ].filter(Boolean).join("\n");
+}
 function buildPrompt(lines, empty, lawn, ambiance, staging) {
   const keep = empty.length ? `These parts of the image contain no element and must stay plain lawn, exactly as in image 1: ${empty.join(", ")}.` : "";
   const evening = ambiance === "soir" || ambiance === "dore";
@@ -209,10 +226,10 @@ export default async function handler(req, res) {
     if (req.method !== "POST") return res.status(405).end();
 
     const { image, items, empty, mode, aspect, lawn, site, ambiance, refs: houseRefs, existing: exIn, house, counts, style, staging } = req.body || {};
-    const plan = mode === "free" && style === "plan", cnt = counts && typeof counts === "object" ? counts : {};
+    const plan = mode === "free" && style === "plan", pano = mode === "free" && style === "pano", cnt = counts && typeof counts === "object" ? counts : {};
     const existing = [...new Set((Array.isArray(exIn) ? exIn : []).filter(k => EXISTING[k]))];
     const free = mode === "free";
-    const RATIOS = ["1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9"], ratio = RATIOS.includes(aspect) ? aspect : "3:4";
+    const RATIOS = ["1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", "21:9"], ratio = RATIOS.includes(aspect) ? aspect : "3:4";
     if (mode === "video") {
       const { frames, kind, resolution } = req.body;
       const k = VIDEO[kind] ? kind : "glide";
@@ -259,7 +276,7 @@ export default async function handler(req, res) {
     const catPools = list.filter(it => it.no === "04").length;
     if (catPools) cnt.piscine = (Number(cnt.piscine) || 0) + catPools;
 
-    if (plan) list.forEach(it => { it.where = "exactly where its mock-up is in image 1"; });
+    if (plan || pano) list.forEach(it => { it.where = "exactly where its mock-up is in image 1"; });
     // the composition (photo + 3D layer, assembled on the tablet) becomes a hosted file for the model
     const imageUrl = await upload(image, `composition-${Date.now()}.jpg`, H);
     if (!imageUrl) return res.status(502).json({ error: "envoi de l'image refusé" });
@@ -285,7 +302,7 @@ export default async function handler(req, res) {
     const task = await (await fetch(`${API}/api/v1/jobs/createTask`, {
       method: "POST", headers: H,
       body: JSON.stringify({ model: MODEL, input: {
-        prompt: plan ? buildPlanPrompt(lines, existing, house !== false, cnt, ambiance) : free ? buildFreePrompt(lines, houseUrls.length, ambiance, existing, house !== false, cnt, staging === true) : buildPrompt(lines, emptyZones, lawn === true, ambiance, staging === true),
+        prompt: plan ? buildPlanPrompt(lines, existing, house !== false, cnt, ambiance) : pano ? buildPanoPrompt(lines, houseUrls.length, ambiance, existing, house !== false, cnt, staging === true) : free ? buildFreePrompt(lines, houseUrls.length, ambiance, existing, house !== false, cnt, staging === true) : buildPrompt(lines, emptyZones, lawn === true, ambiance, staging === true),
         image_input: [imageUrl, ...houseUrls, ...refUrls], aspect_ratio: ratio, resolution: "4K", output_format: "png" } }),
     })).json();
     if (task.code !== 200) return res.status(502).json({ error: kieMsg(task.msg) || "rendu refusé" });

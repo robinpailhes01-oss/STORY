@@ -2887,6 +2887,26 @@
     if (n0) setNight(true, true);
     return url;
   }
+  // 360° panorama from a standing point of the garden (cylindrical: narrow perspective slices side by side, 21:9, ±53° up and down)
+  function panoShot(x, z, yaw0, eye) {
+    const n0 = night; if (n0) setNight(false, true);
+    const sel = selected; select(null);
+    const W = 4032, N = 144, sw = W / N, H = Math.round(W * 9 / 21), k = Math.PI * 9 / 21, dth = 2 * Math.PI / N;
+    const size = renderer.getSize(new T.Vector2()), ratio = renderer.getPixelRatio();
+    const helpers = [measures, toolGroup, planMesh, handles, blockSel, dims, spotGroup].map(o => [o, o.visible]); helpers.forEach(([o]) => { o.visible = false; });
+    const out = document.createElement("canvas"); out.width = W; out.height = H; const g = out.getContext("2d");
+    const pc = new T.PerspectiveCamera(2 * Math.atan(k) * 180 / Math.PI, Math.tan(dth / 2) / k, 0.1, 400);
+    pc.position.set(x, eye || 1.6, z);
+    renderer.setPixelRatio(1); renderer.setSize(sw, H, false);
+    for (let i = 0; i < N; i++) {
+      const th = (yaw0 || 0) + (i + 0.5 - N / 2) * dth;
+      pc.lookAt(x + Math.sin(th), eye || 1.6, z - Math.cos(th)); renderer.render(scene, pc);
+      g.drawImage(renderer.domElement, 0, 0, sw, H, i * sw, 0, sw, H);
+    }
+    helpers.forEach(([o, v]) => { o.visible = v; });
+    renderer.setPixelRatio(ratio); renderer.setSize(size.x, size.y, false); if (sel) select(sel); if (n0) setNight(true, true); requestRender();
+    return out.toDataURL("image/jpeg", 0.9);
+  }
   let shotNear = 0;
   function freeShot() {
     const n0 = night; if (n0) setNight(false, true);
@@ -3674,6 +3694,7 @@
   }
 
   window.studio = { visibleItems: () => visibleItems(), visibleNos: () => visibleNos(), setView: id => setView(id), items: () => items.map(it => [it.no, +it.g.position.x.toFixed(2), +it.g.position.z.toFixed(2)]), addItem: (no, x, z, rot, spec) => { const it = addItem(no, x, z, rot, spec); changed(); return it.uid; }, go, exportLayer, recapText,
+    pano: (x, z, yaw, eye) => panoShot(x, z, yaw, eye),
     shotFrom: T0 => { const c = new THREE.PerspectiveCamera(T0.fov, 4 / 3, 0.1, 400); c.position.fromArray(T0.pos); c.lookAt(new THREE.Vector3().fromArray(T0.target)); const hide = [dims, spotGroup, handles, blockSel].map(o => [o, o.visible]); hide.forEach(([o]) => { o.visible = false; }); const sz = renderer.getSize(new THREE.Vector2()), pr = renderer.getPixelRatio(); renderer.setPixelRatio(1); renderer.setSize(1600, 1200, false); renderer.render(scene, c); const u = renderer.domElement.toDataURL("image/jpeg", 0.9); renderer.setPixelRatio(pr); renderer.setSize(sz.x, sz.y, false); hide.forEach(([o, v]) => { o.visible = v; }); requestRender(); return u; },
     toScreen: (x, y, z) => { const v = new THREE.Vector3(x, y, z).project(camera), r = renderer.domElement.getBoundingClientRect(); return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height]; },
     jobs: () => jobs.map(j => ({ label: j.label, t0: j.t0, state: j.state, now: Date.now() })), site: () => site, solvePose: (pts, W, H) => solvePose(pts, W, H), projector, garden: () => gardenArea(), loadSite: s2 => loadSite(s2), photos: () => Object.keys(PHOTOS) };
