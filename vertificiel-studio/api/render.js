@@ -255,6 +255,9 @@ export default async function handler(req, res) {
       return { no: it.no, spec, where: clean(it.where) || "as placed" };
     }).filter(Boolean);
     if (typeof image !== "string" || !image.startsWith("data:image/") || image.length > 12e6 || !list.length) return res.status(400).json({ error: "composition invalide" });
+    // a pool from the catalogue counts as a pool: the prompt states the exact number of pools in the picture
+    const catPools = list.filter(it => it.no === "04").length;
+    if (catPools) cnt.piscine = (Number(cnt.piscine) || 0) + catPools;
 
     // the composition (photo + 3D layer, assembled on the tablet) becomes a hosted file for the model
     const imageUrl = await upload(image, `composition-${Date.now()}.jpg`, H);
