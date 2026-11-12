@@ -70,20 +70,39 @@ const LIGHT = {
   soir: "Evening at blue hour: deep blue twilight sky, warm lights glowing inside the house, garden lights and the LED light profiles of the paving switched on and glowing, soft night shadows. It must look like an authentic photograph taken by a professional photographer with a full-frame camera, not a 3D rendering and not CGI: real materials with their natural texture and slight wear, real Mediterranean plants of the South of France (olive trees, Phoenix palms, lavender, rosemary, oleanders) with natural irregular foliage, premium synthetic grass with subtle natural colour variation and soft blade texture, natural depth of field, gentle lens vignetting, true-to-life colours, no oversaturation, no plastic look. No people, no text, no watermark.",
 };
 
-function buildPrompt(lines, empty, lawn, ambiance) {
+// golden hour: the look of the garden ads, lights already on
+LIGHT.dore = "Golden hour, just before sunset: a warm low sun, a glowing sky with a few soft clouds, long soft shadows and a gentle warm haze. The garden lights, the LED light profiles of the paving and the pool lights are already switched on and glow softly; if there is a house, warm light shows inside it through the windows. " + LIGHT.jour.slice(LIGHT.jour.indexOf("It must look"));
+// optional staging, as for a magazine shoot: furniture and planting are added, the layout is not touched
+const STAGING = "Dress the scene tastefully, as for a garden-design magazine shoot, WITHOUT changing the layout: one or two groups of quality outdoor furniture (a lounge set, a dining table with chairs or sun loungers) standing only on paved, decked or terrace areas that already exist in image 1, a few large planters, lush Mediterranean planting (lavender, grasses, agapanthus, olive, oleander) only along the walls, fences and hedges, and a few warm lanterns or string lights. Never put furniture on the lawn. Never add or enlarge a pool, terrace, deck, paving, path, pergola or building, and never hide, move or resize a listed element.";
+function buildPlanPrompt(lines, existing, hasHouse, counts, ambiance) {
+  const ex = existing.filter(k => EXISTING[k]).map(k => EXISTING[k]), pools = (counts && counts.piscine) || 0;
+  return [
+    "Image 1 is a 3D mock-up of a garden plot seen exactly from above (top-down plan view). Turn it into a landscape architect's presentation plan: a top-down rendered master plan of this garden, in a refined semi-realistic illustration style (as hand-finished with markers and watercolour over a precise drawing): rich natural textures seen from above, soft drop shadows giving relief, trees and shrubs drawn as detailed canopies seen from above.",
+    "This is a measured plan: keep EXACTLY the same top-down orthographic view, the same framing, the same outline of the plot and the same position, shape, proportions and orientation of every element of image 1. Nothing is moved, resized, rotated, added or removed.",
+    hasHouse ? "The house keeps exactly its footprint and position: draw it as roofs seen from above (flat roofs or tiles, in neutral tones), with no interior." : "There is no house on this plot: do not add one.",
+    ex.length ? "Existing features already on the plot, to keep exactly in place and in shape: " + ex.join("; ") + "." : "",
+    `There ${pools === 1 ? "is exactly ONE swimming pool" : pools ? "are exactly " + pools + " swimming pools" : "is NO swimming pool"} on the plan: never add another pool, basin or pond.`,
+    "Draw each garden element of the mock-up as its real version seen from above, exactly where it is:",
+    ...lines,
+    "The rest of the plot is a premium synthetic grass lawn drawn with a soft texture. Along the boundary, draw the hedges and walls that are in image 1. Everything outside the plot outline is left as clean off-white paper.",
+    ambiance === "dore" || ambiance === "soir" ? "Warm evening rendering: the LED light profiles of the paving and the garden lights glow softly on the plan." : "Clear daylight rendering with soft shadows.",
+    "No text, no labels, no dimensions, no numbers, no north arrow, no legend, no watermark, no people.",
+  ].filter(Boolean).join("\n");
+}
+function buildPrompt(lines, empty, lawn, ambiance, staging) {
   const keep = empty.length ? `These parts of the image contain no element and must stay plain lawn, exactly as in image 1: ${empty.join(", ")}.` : "";
-  const evening = ambiance === "soir";
+  const evening = ambiance === "soir" || ambiance === "dore";
   return [
     "Image 1 is a real photograph of a newly built house and its synthetic-grass garden, on which simple 3D mock-up objects have been pasted to show the planned garden layout. Turn image 1 into one single photorealistic photograph in very high detail.",
     "Replace each mock-up object by a real, photorealistic version at EXACTLY the same position, size, orientation and perspective as in image 1:",
     ...lines,
-    "Each listed element appears exactly once, only where its mock-up is in image 1, at the same size. Only these elements exist: do not add any other garden element, tree, path or plant, even if it would look natural. Do not move, enlarge, extend or remove anything, and do not change the layout. Keep exactly the same framing, lens and perspective.",
+    "Each listed element appears exactly once, only where its mock-up is in image 1, at the same size. " + (staging ? STAGING : "Only these elements exist: do not add any other garden element, tree, path or plant, even if it would look natural.") + " Do not move, enlarge, extend or remove anything, and do not change the layout. Keep exactly the same framing, lens and perspective.",
     keep,
     lawn ? "The green lawn area pasted on the plot is part of the mock-up: turn it into a real, clean, flat premium synthetic grass lawn that follows exactly its outline; the ground outside it stays exactly as in the photograph." : "",
     evening
       ? "Keep the house with every window and door, its terrace, the neighbouring houses and plots, trees, hedges, cars and street exactly in place and in shape; only the time of day changes. The rest of the lawn stays a clean, flat premium synthetic grass lawn."
       : "Keep completely unchanged, pixel for pixel: the house with every window and door, its terrace, the sky and clouds, the neighbouring houses and plots (including building sites, pallets, concrete strips, bare soil and materials outside the lawn), trees, hedges, cars, street, and any shadow already on the ground. The rest of the lawn stays a clean, flat premium synthetic grass lawn.",
-    LIGHT[evening ? "soir" : "jour"],
+    LIGHT[ambiance] || LIGHT.jour,
   ].filter(Boolean).join("\n");
 }
 
@@ -101,7 +120,7 @@ const EXISTING = {
   arbre: "the existing trees",
   zone: "the technical area (pool house or equipment area), in light grey concrete",
 };
-function buildFreePrompt(lines, nRefs, ambiance, existing, hasHouse, counts) {
+function buildFreePrompt(lines, nRefs, ambiance, existing, hasHouse, counts, staging) {
   const refs = nRefs === 1 ? "Image 2 is a real photograph" : `Images 2 to ${1 + nRefs} are real photographs`;
   const ex = existing.filter(k => EXISTING[k]).map(k => EXISTING[k]);
   const pools = (counts && counts.piscine) || 0;
@@ -115,10 +134,10 @@ function buildFreePrompt(lines, nRefs, ambiance, existing, hasHouse, counts) {
     !hasHouse ? "Everything outside the plot outline (the empty beige ground of the mock-up, including the foreground) becomes plain short grass or the low wall: no extra terrace, paving, pool, building or object there." : "",
     "Replace each mock-up garden element by a real, photorealistic version at EXACTLY the same position, size and orientation as in image 1:",
     ...lines,
-    "Each listed element appears exactly once, only where its mock-up is in image 1. Do not add any other garden element, tree, path, plant or furniture inside the plot, and do not move, enlarge or remove anything. The rest of the plot is a clean, flat premium synthetic grass lawn.",
+    "Each listed element appears exactly once, only where its mock-up is in image 1. " + (staging ? STAGING : "Do not add any other garden element, tree, path, plant or furniture inside the plot, and do not move, enlarge or remove anything.") + " The rest of the plot is a clean, flat premium synthetic grass lawn.",
     hasHouse ? "The surroundings stay simple and plausible as in image 1: light boundary strips, neighbouring white houses, a few trees, the street. No people, no cars in the garden." : "No people, no cars, no dimension labels or numbers.",
     "Image 1 only gives the layout, the positions and the sizes: its simple 3D shapes, flat colours and low-poly trees must NOT show in the result; every element is redrawn as the real thing, like its catalogue photo.",
-    ambiance === "soir" ? LIGHT.soir : LIGHT.jour,
+    LIGHT[ambiance] || LIGHT.jour,
   ].filter(Boolean).join("\n");
 }
 
@@ -143,6 +162,7 @@ const VIDEO_KEEP = "Keep everything in the garden exactly as in the image: the s
 const VIDEO = {
   glide: "Cinematic real-estate film of this exact garden, as filmed by a professional on a stabilised gimbal. One continuous, very slow and smooth camera move forward with a slight lateral arc, steady and level, no cut, no zoom jump. Only natural subtle motion: palm and leaves swaying gently in a light breeze, soft ripples and light reflections on the pool water. Photorealistic, natural light, real camera, shallow realistic depth of field. " + VIDEO_KEEP,
   daynight: "Cinematic time-lapse of this exact garden from daylight to night, camera almost still with a very slow push-in. The sun goes down, the sky turns golden, then deep blue dusk, then night. As it gets dark, the warm LED light strips along the paving and the garden and pool lights switch on progressively and glow, exactly as in the last image. Photorealistic, real camera. " + VIDEO_KEEP,
+  dive: "The first image is a landscape architect's top-down plan of a garden; the last image is a photograph of this same garden once built. One continuous cinematic camera move: the camera starts high above the plan, the drawing comes to life and becomes the real garden while the camera glides down and forward, to end exactly on the last image. Smooth, steady, no cut. No text, no people; only soft natural garden sounds.",
   move: "Cinematic real-estate film of this exact garden: one continuous, slow and smooth camera move from the first viewpoint to the second, like a stabilised gimbal walking through the garden, steady and level, no cut. " + VIDEO_KEEP,
 };
 async function frameUrl(f, i, H) {
@@ -188,7 +208,8 @@ export default async function handler(req, res) {
     }
     if (req.method !== "POST") return res.status(405).end();
 
-    const { image, items, empty, mode, aspect, lawn, site, ambiance, refs: houseRefs, existing: exIn, house, counts } = req.body || {};
+    const { image, items, empty, mode, aspect, lawn, site, ambiance, refs: houseRefs, existing: exIn, house, counts, style, staging } = req.body || {};
+    const plan = mode === "free" && style === "plan", cnt = counts && typeof counts === "object" ? counts : {};
     const existing = [...new Set((Array.isArray(exIn) ? exIn : []).filter(k => EXISTING[k]))];
     const free = mode === "free";
     const RATIOS = ["1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9"], ratio = RATIOS.includes(aspect) ? aspect : "3:4";
@@ -200,7 +221,7 @@ export default async function handler(req, res) {
       if (!urls.length || (k !== "glide" && urls.length < 2)) return res.status(400).json({ error: "photos manquantes" });
       const t = await (await fetch(`${API}/api/v1/jobs/createTask`, {
         method: "POST", headers: H,
-        body: JSON.stringify({ model: "veo-3-1", input: { prompt: VIDEO[k], model: "veo3_fast", generation_type: "FIRST_AND_LAST_FRAMES_2_VIDEO", image_urls: urls, aspect_ratio: aspect === "9:16" ? "9:16" : "16:9", resolution: ["720p", "1080p", "4k"].includes(resolution) ? resolution : "4k", duration: 8 } }),
+        body: JSON.stringify({ model: "veo-3-1", input: { prompt: VIDEO[k], model: "veo3_fast", generation_type: "FIRST_AND_LAST_FRAMES_2_VIDEO", image_urls: urls, aspect_ratio: aspect === "9:16" ? "9:16" : "16:9", resolution: ["720p", "1080p", "4k"].includes(resolution) ? resolution : "1080p", duration: 8 } }),
       })).json();
       if (t.code !== 200) return res.status(502).json({ error: kieMsg(t.msg) || "vidéo refusée" });
       return res.json({ taskId: t.data.taskId });
@@ -240,8 +261,8 @@ export default async function handler(req, res) {
     if (!imageUrl) return res.status(502).json({ error: "envoi de l'image refusé" });
 
     const houseUrls = [];
-    if (free && site !== "custom") houseUrls.push(await bundledUrl("face-base", H), await bundledUrl("droite-base", H));
-    if (free && site === "custom") for (const [i, r] of own.entries()) { const u = await upload(r, `maison-${Date.now()}-${i}.jpg`, H); if (u) houseUrls.push(u); }
+    if (free && !plan && site !== "custom") houseUrls.push(await bundledUrl("face-base", H), await bundledUrl("droite-base", H));
+    if (free && !plan && site === "custom") for (const [i, r] of own.entries()) { const u = await upload(r, `maison-${Date.now()}-${i}.jpg`, H); if (u) houseUrls.push(u); }
 
     // reference photos: catalogue photo of each element, or the motif and the slab of each paving, within the model's image limit
     const refKeys = [], room = MAX_IMAGES - 1 - houseUrls.length;
@@ -260,7 +281,7 @@ export default async function handler(req, res) {
     const task = await (await fetch(`${API}/api/v1/jobs/createTask`, {
       method: "POST", headers: H,
       body: JSON.stringify({ model: MODEL, input: {
-        prompt: free ? buildFreePrompt(lines, houseUrls.length, ambiance, existing, house !== false, counts && typeof counts === "object" ? counts : {}) : buildPrompt(lines, emptyZones, lawn === true, ambiance),
+        prompt: plan ? buildPlanPrompt(lines, existing, house !== false, cnt, ambiance) : free ? buildFreePrompt(lines, houseUrls.length, ambiance, existing, house !== false, cnt, staging === true) : buildPrompt(lines, emptyZones, lawn === true, ambiance, staging === true),
         image_input: [imageUrl, ...houseUrls, ...refUrls], aspect_ratio: ratio, resolution: "4K", output_format: "png" } }),
     })).json();
     if (task.code !== 200) return res.status(502).json({ error: kieMsg(task.msg) || "rendu refusé" });
