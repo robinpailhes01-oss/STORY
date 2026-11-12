@@ -82,7 +82,7 @@ function buildPlanPrompt(lines, existing, hasHouse, counts, ambiance) {
     hasHouse ? "The house keeps exactly its footprint and position: draw it as roofs seen from above (flat roofs or tiles, in neutral tones), with no interior." : "There is no house on this plot: do not add one.",
     ex.length ? "Existing features already on the plot, to keep exactly in place and in shape: " + ex.join("; ") + "." : "",
     `There ${pools === 1 ? "is exactly ONE swimming pool" : pools ? "are exactly " + pools + " swimming pools" : "is NO swimming pool"} on the plan: never add another pool, basin or pond.`,
-    "Draw each garden element of the mock-up as its real version seen from above, exactly where it is:",
+    `Draw each garden element of the mock-up as its real version seen from above, exactly where it is. There are exactly ${lines.length} of them; do not swap two of them, do not draw one twice and do not move one towards the centre:`,
     ...lines,
     "The rest of the plot is a premium synthetic grass lawn drawn with a soft texture. Along the boundary, draw the hedges and walls that are in image 1. Everything outside the plot outline is left as clean off-white paper.",
     ambiance === "dore" || ambiance === "soir" ? "Warm evening rendering: the LED light profiles of the paving and the garden lights glow softly on the plan." : "Clear daylight rendering with soft shadows.",
@@ -134,7 +134,7 @@ function buildFreePrompt(lines, nRefs, ambiance, existing, hasHouse, counts, sta
     !hasHouse ? "Everything outside the plot outline (the empty beige ground of the mock-up, including the foreground) becomes plain short grass or the low wall: no extra terrace, paving, pool, building or object there." : "",
     "Replace each mock-up garden element by a real, photorealistic version at EXACTLY the same position, size and orientation as in image 1:",
     ...lines,
-    "Each listed element appears exactly once, only where its mock-up is in image 1. " + (staging ? STAGING : "Do not add any other garden element, tree, path, plant or furniture inside the plot, and do not move, enlarge or remove anything.") + " The rest of the plot is a clean, flat premium synthetic grass lawn.",
+    "Each listed element appears exactly once, only where its mock-up is in image 1. " + (staging ? STAGING : "Do not add any other garden element, tree, path, plant or furniture inside the plot, and do not move, enlarge or remove anything.") + " The rest of the plot is a clean, flat premium synthetic grass lawn, photographed for real: individual blades visible near the camera, crisp and sharp, never a blurred or smeared texture.",
     hasHouse ? "The surroundings stay simple and plausible as in image 1: light boundary strips, neighbouring white houses, a few trees, the street. No people, no cars in the garden." : "No people, no cars, no dimension labels or numbers.",
     "Image 1 only gives the layout, the positions and the sizes: its simple 3D shapes, flat colours and low-poly trees must NOT show in the result; every element is redrawn as the real thing, like its catalogue photo.",
     LIGHT[ambiance] || LIGHT.jour,
@@ -259,6 +259,7 @@ export default async function handler(req, res) {
     const catPools = list.filter(it => it.no === "04").length;
     if (catPools) cnt.piscine = (Number(cnt.piscine) || 0) + catPools;
 
+    if (plan) list.forEach(it => { it.where = "exactly where its mock-up is in image 1"; });
     // the composition (photo + 3D layer, assembled on the tablet) becomes a hosted file for the model
     const imageUrl = await upload(image, `composition-${Date.now()}.jpg`, H);
     if (!imageUrl) return res.status(502).json({ error: "envoi de l'image refusé" });

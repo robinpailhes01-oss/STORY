@@ -418,6 +418,11 @@
   .aerial-pill select { max-width: min(62vw, 420px); text-overflow: ellipsis; }
   .aerial-pill[aria-busy="true"] select { opacity: .55; }
   .stage:not([data-step="1"]) .aerial-pill, .stage.viewing .aerial-pill { display: none; }
+  /* plan, staging, film */
+  .check { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: var(--muted); line-height: 1.35; min-height: 44px; padding: 6px 0; cursor: pointer; }
+  .check input { width: 22px; height: 22px; flex: none; margin: 0; accent-color: var(--accent); }
+  .photo-view video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #0b1410; z-index: 2; }
+  .gal button.film { display: grid; place-items: center; aspect-ratio: auto; background: var(--accent); color: var(--on-accent); font: 700 14px var(--font-display); padding: 10px; text-align: center; }
 </style>
 
 </head>
@@ -475,6 +480,7 @@
         <div class="rv-night" id="rvNightWrap" hidden><img id="rvNight" alt="Rendu 4K de nuit"></div>
         <div class="rv-handle" id="rvHandle" hidden><span>⟷</span></div>
       </div>
+      <video id="filmV" playsinline controls hidden></video>
       <div class="rv-bar" id="rvBar" hidden>
         <button type="button" id="rvPrev" aria-label="Angle précédent">◀</button>
         <span id="rvLabel"></span>
@@ -650,12 +656,18 @@
         <div class="gal" id="gal2"></div>
       </div>
       <div class="block">
-        <button type="button" class="btn secondary" id="tour4k">Visite 4K · 4 angles autour du jardin</button>
+        <div class="label">Présenter le projet</div>
+        <div class="chips">
+          <button type="button" class="chip" id="plan4k" title="Le plan du jardin vu de dessus, dessiné comme un plan de paysagiste">Plan paysager</button>
+          <button type="button" class="chip" id="tour4k" title="4 photos 4K autour du jardin">Visite 4K · 4 angles</button>
+          <button type="button" class="chip" id="filmBtn" title="Un film qui part du plan et traverse les photos 4K">▶ Visite immersive</button>
+        </div>
+        <label class="check"><input type="checkbox" id="staging"> Mise en scène : l'IA ajoute mobilier, plantes et lumières d'ambiance</label>
         <button type="button" class="linkbtn danger" id="clearAll">Vider le jardin</button>
       </div>
       <div class="dock">
         <button type="button" class="btn" id="render4kNow">Rendu 4K<small>de cette vue</small></button>
-        <div class="seg" role="group" aria-label="Ambiance du rendu"><button type="button" data-amb="journuit" aria-pressed="true" title="Jour et nuit">☀︎ ☾</button><button type="button" data-amb="jour" aria-pressed="false" title="Jour seulement">☀︎</button></div>
+        <div class="seg" role="group" aria-label="Ambiance du rendu"><button type="button" data-amb="journuit" aria-pressed="true" title="Jour et nuit">☀︎ ☾</button><button type="button" data-amb="jour" aria-pressed="false" title="Jour seulement">☀︎</button><button type="button" data-amb="dore" aria-pressed="false" title="Coucher de soleil, lumières allumées">🌇</button></div>
       </div>
     </section>
 
@@ -678,7 +690,7 @@
       <details class="more-box"><summary>Ajouter ou déplacer des éléments</summary><div id="catSlot3"></div></details>
       <div class="dock">
         <button type="button" class="btn" id="render4k">Rendu 4K<small>de cette photo</small></button>
-        <div class="seg" role="group" aria-label="Ambiance du rendu"><button type="button" data-amb="journuit" aria-pressed="true" title="Jour et nuit">☀︎ ☾</button><button type="button" data-amb="jour" aria-pressed="false" title="Jour seulement">☀︎</button></div>
+        <div class="seg" role="group" aria-label="Ambiance du rendu"><button type="button" data-amb="journuit" aria-pressed="true" title="Jour et nuit">☀︎ ☾</button><button type="button" data-amb="jour" aria-pressed="false" title="Jour seulement">☀︎</button><button type="button" data-amb="dore" aria-pressed="false" title="Coucher de soleil, lumières allumées">🌇</button></div>
         <button type="button" class="btn secondary" data-go="4">Récap →</button>
       </div>
     </section>
@@ -2874,6 +2886,7 @@
     if (n0) setNight(true, true);
     return url;
   }
+  let shotNear = 0;
   function freeShot() {
     const n0 = night; if (n0) setNight(false, true);
     const sel = selected; select(null);
@@ -2881,7 +2894,7 @@
     const w = land ? 2048 : 1536, h = land ? 1536 : 2048;
     updateCamera();
     Object.assign(PHOTOS.libre, { pos: camera.position.toArray(), target: cam.target.toArray(), up: [0, 1, 0], fov: camera.fov, w, h });
-    const pc = new T.PerspectiveCamera(camera.fov, w / h, 0.1, 400);
+    const pc = new T.PerspectiveCamera(camera.fov, w / h, shotNear || 0.1, shotNear ? shotNear * 4 : 400);     // far shots keep their depth precision
     pc.position.copy(camera.position); pc.lookAt(cam.target);
     const helpers = [measures, toolGroup, planMesh, handles, blockSel, dims, spotGroup].map(o => [o, o.visible]); helpers.forEach(([o]) => { o.visible = false; });
     renderer.setPixelRatio(1); renderer.setSize(w, h, false); renderer.render(scene, pc);
@@ -2906,6 +2919,7 @@
     ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.fillText("Aperçu · projection indicative, non contractuelle", W - 26, H - 28); ctx.shadowBlur = 0;
   }
   async function showShot(mode) {
+    const fv = $("filmV"); if (!fv.hidden) { fv.pause(); fv.onended = null; fv.hidden = true; }
     if (PHOTO.free && mode === "avant") mode = "apercu";
     if (PHOTO.free && mode === "rendu" && !shownRender) { toast("Pas encore de rendu pour cette vue : réglez l'angle puis lancez le rendu 4K."); mode = "apercu"; }
     shotMode = mode;
@@ -2974,7 +2988,7 @@
   function keepRenders() { site.renders = renders.filter(r => !r.test).slice(0, 60); save(); }
   function addRender(url, test, job) {
     const j = job || { view, w: PHOTO.w, h: PHOTO.h, label: PHOTO.name };
-    const e = { id: j.taskId || "r" + Date.now().toString(36), view: j.view, url, test, w: j.w, h: j.h, label: j.label, tour: j.tour || null, angle: j.angle != null ? j.angle : null, night: null };
+    const e = { id: j.taskId || "r" + Date.now().toString(36), view: j.view, url, test, w: j.w, h: j.h, label: j.label, tour: j.tour || null, angle: j.angle != null ? j.angle : null, night: null, plan: !!j.plan };
     renders.unshift(e);
     if (!test) keepRenders();
     drawGallery();
@@ -2998,6 +3012,8 @@
     renderGuide2();
     ["gal", "gal2"].forEach(id => { $(id).innerHTML = ""; });
     $("galBlock").hidden = $("galBlock2").hidden = !renders.length;
+    if ((site.film || []).length) for (const gal of [$("gal"), $("gal2")]) { const b = document.createElement("button"); b.type = "button"; b.className = "film"; b.textContent = "▶ Visite immersive"; b.addEventListener("click", () => playFilm(0)); gal.appendChild(b); }
+    $("galBlock").hidden = $("galBlock2").hidden = !renders.length && !(site.film || []).length;
     for (const gal of [$("gal"), $("gal2")]) renders.forEach(r => {
       const b = document.createElement("button"); b.type = "button";
       b.innerHTML = `<img src="${r.url}" alt="" loading="lazy"><span></span>` + (r.night ? '<b class="moon">☾ nuit</b>' : nightRunning(r) ? '<b class="moon">☾ …</b>' : "");
@@ -3132,7 +3148,8 @@
     const fmtT = ms => { const t = Math.round(ms / 1000); return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0"); };
     const queued = jobs.some(j => j.state === "waiting" || j.state === "queuing");
     const t0 = Math.min(...jobs.map(j => j.t0)), nights = jobs.filter(j => j.night).length;
-    progress(jobs.length > 1 ? jobs.length + " photos en préparation" : nights ? "Version de nuit" : "Photo 4K en préparation",
+    const films = jobs.filter(j => j.film).length;
+    progress(films === jobs.length ? "Visite immersive en préparation" : jobs.length > 1 ? jobs.length + " rendus en préparation" : nights ? "Version de nuit" : jobs[0].plan ? "Plan paysager en préparation" : "Photo 4K en préparation",
       fmtT(now - t0) + (queued && now - t0 > 150000 ? " · service chargé, ça arrive" : ""));
   }
   // renders already paid for are never lost: their task ids stay on the tablet until the image is back
@@ -3207,21 +3224,22 @@
     // everything that depends on the current view is taken now, before any wait
     const comp = shot ? null : collage();
     const job = { view, w: PHOTO.w, h: PHOTO.h, label: opts.label || (PHOTO.free ? "Vue " + (++freeCount) : PHOTO.name), t0: Date.now(), aspect: shot ? shot.aspect : nearRatio(PHOTO.w / PHOTO.h), custom: !!PHOTO.custom,
-      amb: "jour", withNight: ambiance === "journuit", tour: opts.tour || null, angle: opts.angle != null ? opts.angle : null };
+      amb: ambiance === "dore" ? "dore" : "jour", withNight: ambiance === "journuit" && !opts.plan, tour: opts.tour || null, angle: opts.angle != null ? opts.angle : null, plan: !!opts.plan };
     jobs.push(job); showJobs();
     try {
       let code = "";
       try { code = localStorage.getItem("studio-code") || ""; } catch (e) { /* no storage */ }
       if (!code) { code = (window.prompt("Code d'accès du studio (une seule fois sur cette tablette) :") || "").trim(); try { localStorage.setItem("studio-code", code); } catch (e) { /* no storage */ } }
-      const payload = shot ? { mode: "free", image: shot.image, aspect: job.aspect, items: vis, ambiance: job.amb, site: site.demo ? "demo" : "custom", refs: site.demo ? [] : await houseRefs(),
+      const staging = !job.plan && $("staging").checked;
+      const payload = shot ? { mode: "free", style: job.plan ? "plan" : undefined, staging, image: shot.image, aspect: job.aspect, items: vis, ambiance: job.amb, site: site.demo ? "demo" : "custom", refs: site.demo || job.plan ? [] : await houseRefs(),
           existing: [...new Set(site.blocks.filter(b => b.kind !== "maison" && !b.placeholder).map(b => b.kind))], house: site.demo || site.blocks.some(b => b.kind === "maison"),
           counts: site.blocks.filter(b => !b.placeholder).reduce((c, b) => Object.assign(c, { [b.kind]: (c[b.kind] || 0) + 1 }), {}) }
-        : Object.assign(await comp, { items: vis, ambiance: job.amb, aspect: job.aspect, lawn: job.custom });
+        : Object.assign(await comp, { items: vis, ambiance: job.amb, aspect: job.aspect, lawn: job.custom, staging });
       const r = await fetch(api, { method: "POST", headers: { "Content-Type": "application/json", "x-studio-code": code }, body: JSON.stringify(payload) });
       if (r.status === 401) { try { localStorage.removeItem("studio-code"); } catch (e) { /* no storage */ } throw new Error("code d'accès incorrect"); }
       const { taskId, error } = await r.json(); if (!taskId) throw new Error(error || "refus du serveur");
       job.taskId = taskId;
-      pendingWrite(pendingRead().concat([{ taskId, site: site.id, view: job.view, w: job.w, h: job.h, label: job.label, t0: job.t0, withNight: job.withNight, tour: job.tour, angle: job.angle }]));
+      pendingWrite(pendingRead().concat([{ taskId, site: site.id, view: job.view, w: job.w, h: job.h, label: job.label, t0: job.t0, withNight: job.withNight, tour: job.tour, angle: job.angle, plan: job.plan }]));
       const url = await pollJob(job, api, code);
       finishJob(job); addRender(url, false, job);
       status.textContent = "Rendu « " + job.label + " » prêt : il est dans la galerie. Changez de prise de vue ou d'angle pour en lancer d'autres, même pendant un rendu.";
@@ -3243,6 +3261,74 @@
     render4k();
   });
   $("closeShot").addEventListener("click", () => showShot("apercu"));
+  // the landscape plan: the garden seen from straight above, redrawn as a landscape architect's plan
+  $("plan4k").addEventListener("click", async () => {
+    if (!items.length) { toast("Ajoutez au moins un élément du catalogue."); return; }
+    shotMode = "apercu"; await setView("libre");
+    const keep = { t: cam.target.clone(), r: cam.r, theta: cam.theta, phi: cam.phi, fov: cam.fov }, p = preset("plan"), n0 = night;
+    if (n0) setNight(false, true);
+    // a long lens from far above: almost no perspective, the walls of the house do not show; the haze is pushed away for the shot
+    const kf = Math.tan(p.fov * Math.PI / 360) / Math.tan(14 * Math.PI / 360), fog = [scene.fog.near, scene.fog.far];
+    anim = null; cam.target.set(...p.t); Object.assign(cam, { r: Math.min(p.r * kf, camera.far * 0.8), theta: p.theta, phi: p.phi, fov: 14 });
+    scene.fog.near = 1e4; scene.fog.far = 2e4; shotNear = cam.r * 0.5;
+    render4k({ plan: true, label: "Plan paysager" });
+    scene.fog.near = fog[0]; scene.fog.far = fog[1]; shotNear = 0;
+    cam.target.copy(keep.t); Object.assign(cam, { r: keep.r, theta: keep.theta, phi: keep.phi, fov: keep.fov }); if (n0) setNight(true, true); requestRender();
+    toast("Plan paysager lancé : il arrive dans les photos du projet dans 2 à 3 minutes.");
+  });
+  // the immersive tour: short film clips between the 4K pictures (plan -> garden, one view to the next, day -> night)
+  function filmPlan() {
+    const real = renders.filter(r => !r.test), planR = real.find(r => r.plan), views = real.filter(r => !r.plan).slice(0, 3).reverse(), clips = [];
+    if (planR && views[0]) clips.push({ kind: "dive", frames: [planR.url, views[0].url], label: "Du plan au jardin" });
+    for (let i = 0; i + 1 < views.length; i++) clips.push({ kind: "move", frames: [views[i].url, views[i + 1].url], label: views[i].label + " → " + views[i + 1].label });
+    const nv = views.slice().reverse().find(v => v.night);
+    if (nv) clips.push({ kind: "daynight", frames: [nv.url, nv.night], label: "La nuit tombe" });
+    if (!clips.length && views[0]) clips.push({ kind: "glide", frames: [views[0].url], label: views[0].label });
+    return clips.slice(0, 4);
+  }
+  function playFilm(i) {
+    const f = site.film || []; if (!f.length) return;
+    const v = $("filmV"); i = ((i || 0) + f.length) % f.length;
+    if (selected) select(null);
+    $("photoView").hidden = false; $("rv").hidden = $("rvBar").hidden = true; $("shot").hidden = true; v.hidden = false;
+    stage.classList.add("viewing"); $("closeShot").hidden = false;
+    v.src = f[i].url; v.onended = () => playFilm(i + 1); v.play().catch(() => {});
+  }
+  $("filmBtn").addEventListener("click", async () => {
+    const meta = document.querySelector('meta[name="studio-render-api"]'), api = window.STUDIO_RENDER_API || (meta && meta.content);
+    if ((site.film || []).length && await ask("Visite immersive", "Une visite existe déjà pour ce projet.", [{ label: "La regarder", value: "play", primary: true }, { label: "En refaire une", value: "new" }]) === "play") { playFilm(0); return; }
+    const clips = filmPlan();
+    if (!api) { toast("La visite immersive se lance depuis la version en ligne du studio."); return; }
+    if (!clips.length) { toast("Faites d'abord au moins une photo 4K : la visite relie vos photos entre elles."); return; }
+    if (jobs.some(j => j.film)) { toast("Une visite immersive est déjà en préparation."); return; }
+    const tips = !renders.some(r => r.plan) ? " Astuce : avec un « Plan paysager », la visite commence par une plongée du plan vers le jardin." : "";
+    if (await ask("Lancer la visite immersive ?", clips.length + " séquence" + (clips.length > 1 ? "s" : "") + " de 8 secondes : " + clips.map(c => c.label).join(" · ") + ". Prête en 5 à 10 minutes, vous pouvez continuer pendant ce temps." + tips, [{ label: "Lancer la visite", value: true, primary: true }, { label: "Pas maintenant", value: false }]) !== true) return;
+    let code = ""; try { code = localStorage.getItem("studio-code") || ""; } catch (e) { /* no storage */ }
+    const sid = site.id, t0 = Date.now(), done = new Array(clips.length).fill(null);
+    let lastErr = "";
+    await Promise.all(clips.map(async (c, i) => {
+      const job = { film: true, label: c.label, t0, taskId: null }; jobs.push(job); showJobs();
+      try {
+        const r = await fetch(api, { method: "POST", headers: { "Content-Type": "application/json", "x-studio-code": code }, body: JSON.stringify({ mode: "video", kind: c.kind, frames: c.frames, aspect: "16:9", resolution: "1080p" }) });
+        const j = await r.json(); if (!j.taskId) throw new Error(j.error || "refus du serveur");
+        job.taskId = j.taskId;
+        for (;;) {
+          await new Promise(ok => setTimeout(ok, 8000));
+          let d = null; try { d = await (await fetch(api + "?task=" + encodeURIComponent(j.taskId), { headers: { "x-studio-code": code } })).json(); } catch (e) { d = null; }
+          if (d) job.state = d.state;
+          if (d && d.state === "success" && d.url) { done[i] = { url: d.url, label: c.label }; break; }
+          if (d && d.state === "fail") throw new Error(d.error || "échec de la séquence");
+          if (Date.now() - t0 > 25 * 60 * 1000) throw new Error("le service vidéo n'a pas répondu en 25 minutes");
+        }
+      } catch (e) { lastErr = e.message; }
+      if (jobs.includes(job)) jobs.splice(jobs.indexOf(job), 1); showJobs();
+    }));
+    const ok = done.filter(Boolean);
+    if (!ok.length) { toast("La visite immersive n'a pas abouti : " + lastErr, { ms: 8000 }); return; }
+    if (site.id !== sid) return;
+    site.film = ok; save(); drawGallery();
+    toast("Visite immersive prête" + (ok.length < clips.length ? " (" + ok.length + " séquences sur " + clips.length + ")" : "") + ".", { action: "▶ Regarder", onAction: () => playFilm(0), ms: 8000 });
+  });
   $("tour4k").addEventListener("click", async () => {
     if (!items.length) { toast("Ajoutez au moins un élément du catalogue."); return; }
     const n = ambiance === "journuit" ? 8 : 4;
@@ -3518,6 +3604,7 @@
     const who = $("client").value.trim();
     const text = "Bonjour" + (who ? " " + who : "") + ",\n\nVoici la projection de votre futur jardin, préparée ensemble avec le studio Vertificiel."
       + (photos.length ? "\n\nVos photos (de jour, et de nuit avec l'éclairage) :\n" + photos.join("\n") : "")
+      + ((site.film || []).length ? "\n\nLa visite immersive de votre jardin :\n" + site.film.map(f => "· " + f.label + " : " + f.url).join("\n") : "")
       + "\n\nLe détail du projet :\n" + recapText() + "\n\nÀ très vite,\nVertificiel";
     if (navigator.share) { try { await navigator.share({ title: "Projet jardin · " + ($("client").value.trim() || site.name), text }); return; } catch (e) { if (e && e.name === "AbortError") return; } }
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => toast("Récap et photos copiés : collez-les dans un message au client."), () => toast("Envoi impossible sur cet appareil."));
