@@ -277,7 +277,7 @@ export default async function handler(req, res) {
       const ledOk = [...new Set((Array.isArray(leds) ? leds : []).filter(l => LED_TXT[l]))];
       const t = await (await fetch(`${API}/api/v1/jobs/createTask`, {
         method: "POST", headers: H,
-        body: JSON.stringify({ model: MODEL, input: { prompt: buildNightPrompt(ledOk), image_input: [source], aspect_ratio: ratio, resolution: "4K", output_format: "png" } }),
+        body: JSON.stringify({ model: MODEL, input: { prompt: buildNightPrompt(ledOk) + (req.body.pano === true ? "\nImage 1 is a 360-degree panorama: keep exactly its panoramic projection with its curved lines and the same horizon, and make the left edge and the right edge match seamlessly in content, light and colour." : ""), image_input: [source], aspect_ratio: ratio, resolution: "4K", output_format: "png" } }),
       })).json();
       if (t.code !== 200) return res.status(502).json({ error: kieMsg(t.msg) || "rendu refusé" });
       return res.json({ taskId: t.data.taskId });

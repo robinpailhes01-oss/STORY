@@ -1235,12 +1235,26 @@
   // corner handles of the plot (step 1)
   const handles = new T.Group(); scene.add(handles);
   const handleMat = new T.MeshBasicMaterial({ color: 0xd4ab5f, depthTest: false }), handleGeo = new T.CylinderGeometry(0.42, 0.42, 0.12, 20);
+  // a plot found by its address knows where north is: the sun stands where the real late-afternoon sun is (west-south-west, 40° high),
+  // so the shadows of the mock-up, and of the renders made from it, fall the right way
+  function placeSun() {
+    const g = site.geo, sc = sun.shadow.camera;
+    if (!g || typeof g.a !== "number") { sun.position.set(-18, 26, 14); sun.target.position.set(0, 0, 4); Object.assign(sc, { left: -24, right: 24, top: 24, bottom: -24, far: 90 }); }
+    else {
+      const sp = plotSpan(), az = 245 * Math.PI / 180, el = 40 * Math.PI / 180, E = Math.sin(az), N = Math.cos(az), ca = Math.cos(g.a), sa = Math.sin(g.a);
+      const dx = E * ca + N * sa, dz = E * sa - N * ca, half = Math.max(24, Math.max(sp.w, sp.d) * 0.75), D = Math.max(34, half * 1.5);
+      sun.target.position.set(sp.cx, 0, sp.cz); sun.position.set(sp.cx + dx * Math.cos(el) * D, Math.sin(el) * D, sp.cz + dz * Math.cos(el) * D);
+      Object.assign(sc, { left: -half, right: half, top: half, bottom: -half, far: D * 2.6 });
+    }
+    sc.updateProjectionMatrix(); sun.target.updateMatrixWorld(); requestRender();
+  }
   function plotSpan() { const b = bbox(site.poly.concat(...site.blocks.map(blockPts))); return { cx: (b[0] + b[1]) / 2, cz: (b[2] + b[3]) / 2, w: b[1] - b[0], d: b[3] - b[2] }; }
   let gardenCache = null;
   function layoutPlot() {
     gardenCache = null;
     const span0 = (b => Math.max(b[1] - b[0], b[3] - b[2]))(bbox(site.poly));
     scene.fog.near = Math.max(60, span0 * 2.5); scene.fog.far = Math.max(140, span0 * 6); camera.far = Math.max(400, span0 * 8); camera.updateProjectionMatrix();
+    placeSun();
     const q = site.poly, shape = new T.Shape(q.map(([x, z]) => new T.Vector2(x, -z)));
     [lawn, shadowCatcher].forEach(m => { m.geometry.dispose(); m.geometry = new T.ShapeGeometry(shape); });
     dimLines.geometry.dispose(); dimLines.geometry = new T.BufferGeometry().setFromPoints(q.map(([x, z]) => new T.Vector3(x, 0.06, z)));
@@ -2646,7 +2660,7 @@
   const markGeo = new T.SphereGeometry(0.18, 16, 12), markMat = new T.MeshBasicMaterial({ color: 0xffd54a, depthTest: false });
   const lineMat = new T.LineBasicMaterial({ color: 0xffd54a, depthTest: false });
   let toolPts = [];
-  const TIPS = { spot: "Touchez l'endroit d'où prendre la photo", place: "Touchez l'emplacement sur le plan", parcel: "Touchez la bonne parcelle sur la photo aérienne", trace: "Touchez les angles du terrain, dans l'ordre", scale: "Touchez le premier point d'une cote connue du plan", measure: "Touchez deux points pour mesurer" };
+  const TIPS = { visit: "Touchez le sol là où le client se tiendra (4 points au plus) · touchez un point pour l'enlever", spot: "Touchez l'endroit d'où prendre la photo", place: "Touchez l'emplacement sur le plan", parcel: "Touchez la bonne parcelle sur la photo aérienne", trace: "Touchez les angles du terrain, dans l'ordre", scale: "Touchez le premier point d'une cote connue du plan", measure: "Touchez deux points pour mesurer" };
   function tip(text) { $("tip").hidden = !text; if (text) $("tip").textContent = text; }
   function clearGroup(g) { g.traverse(o => { if (o.isSprite) o.material.map.dispose(); if (o.geometry && o.geometry !== markGeo) o.geometry.dispose(); }); g.clear(); }
   function setTool(t) {
@@ -2668,6 +2682,7 @@
     if (!pt) return;
     if (tool !== "measure") pt.set(Math.round(pt.x * 20) / 20, 0.05, Math.round(pt.z * 20) / 20);
     toolPts.push(pt);
+    if (tool === "visit") { toolPts.pop(); visitTap(pt); return; }
     if (tool === "spot") { setTool(null); if (!inPoly(pt.x, pt.z, site.poly)) { toast("Choisissez un point dans le terrain."); return; } site.spots.push({ id: "s" + Date.now().toString(36), x: +pt.x.toFixed(2), z: +pt.z.toFixed(2), photo: null }); drawSpots(); save(); return; }
     if (tool === "place") { const k = placeKind; setTool(null); placeBlock(k, pt.x, pt.z); return; }
     if (tool === "parcel") {
@@ -3178,7 +3193,7 @@
     const now = Date.now();
     const fmtT = ms => { const t = Math.round(ms / 1000); return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0"); };
     const queued = jobs.some(j => j.state === "waiting" || j.state === "queuing");
-    const t0 = Math.min(...jobs.map(j => j.t0)), nights = jobs.filter(j => j.night).length;
+    const t0 = Math.min(...jobs.map(j => j.t0)), nights = jobs.filter(j => j.night && !j.visit).length;
     const films = jobs.filter(j => j.film).length;
     const visits = jobs.filter(j => j.visit).length;
     progress(visits === jobs.length ? "Visite 360° en préparation" : films === jobs.length ? "Film en préparation" : jobs.length > 1 ? jobs.length + " rendus en préparation" : nights ? "Version de nuit" : jobs[0].plan ? "Plan paysager en préparation" : "Photo 4K en préparation",
@@ -3314,17 +3329,39 @@
   const distSeg = (x, z, a, b) => { const dx = b[0] - a[0], dz = b[1] - a[1], t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / (dx * dx + dz * dz || 1))); return Math.hypot(x - a[0] - t * dx, z - a[1] - t * dz); };
   const distPoly = (x, z, q) => q.reduce((m, p, i) => Math.min(m, distSeg(x, z, p, q[(i + 1) % q.length])), Infinity);
   // up to 3 points on open ground: the first one close to the project, the others as far apart as the garden allows
-  function visitPoints() {
+  function visitCtx() {
     const WALK = ["terrasse", "mineral"], obs = site.blocks.filter(b => !b.placeholder && !WALK.includes(b.kind)).map(blockPts)
       .concat(items.filter(it => !it.spec).map(it => { const [a, b, c, d] = fpOf(it); return rectPts(it.g.position.x, it.g.position.z, a, b, c, d, it.g.rotation.y); }));
-    const bb = bbox(site.poly), free = [];
+    const bb = bbox(site.poly);
+    const foc = items.length ? [items.reduce((s, it) => s + it.g.position.x, 0) / items.length, items.reduce((s, it) => s + it.g.position.z, 0) / items.length] : [(bb[0] + bb[1]) / 2, (bb[2] + bb[3]) / 2];
+    const clear = (x, z) => (!inPoly(x, z, site.poly) || obs.some(q => inPoly(x, z, q)) ? -1 : Math.min(distPoly(x, z, site.poly), ...obs.map(q => distPoly(x, z, q))));
+    const point = (p, i) => { const dx = foc[0] - p.x, dz = foc[1] - p.z; return { x: +p.x.toFixed(2), z: +p.z.toFixed(2), yaw: Math.hypot(dx, dz) > 0.8 ? +Math.atan2(dx, -dz).toFixed(3) : 0, label: String(i + 1) }; };
+    return { obs, bb, foc, clear, point };
+  }
+  // the points the salesperson placed himself, if any are still on open ground
+  const chosenPoints = () => { const c = visitCtx(); return (site.visitPts || []).filter(p => c.clear(p.x, p.z) >= 0.5).slice(0, 4).map(c.point); };
+  function drawVisitMarks() {
+    clearGroup(toolGroup);
+    (site.visitPts || []).forEach((p, i) => { mark(new T.Vector3(p.x, 0.08, p.z), toolGroup); const lab = makeLabel(toolGroup); setLabel(lab, "Point " + (i + 1), true); lab.position.set(p.x, 1.1, p.z); });
+    requestRender();
+  }
+  function visitTap(pt) {
+    const v = site.visitPts = site.visitPts || [], near = v.findIndex(p => Math.hypot(p.x - pt.x, p.z - pt.z) < 1.2);
+    if (near >= 0) v.splice(near, 1);
+    else if (visitCtx().clear(pt.x, pt.z) < 0.5) { toast("Choisissez un endroit dégagé du jardin : ni dans la maison, ni dans la piscine ou un massif."); return; }
+    else if (v.length >= 4) { toast("4 points au plus : touchez un point pour l'enlever."); return; }
+    else v.push({ x: +pt.x.toFixed(2), z: +pt.z.toFixed(2) });
+    save(); drawVisitMarks();
+    tip(v.length ? v.length + " point" + (v.length > 1 ? "s" : "") + " · touchez encore, ou « Visite 360° » pour lancer" : TIPS.visit);
+  }
+  function visitPoints() {
+    const { obs, bb, foc, point } = visitCtx(), free = [];
     for (let x = bb[0] + 0.5; x < bb[1]; x += 1) for (let z = bb[2] + 0.5; z < bb[3]; z += 1) {
       if (!inPoly(x, z, site.poly) || obs.some(q => inPoly(x, z, q))) continue;
       const c = Math.min(distPoly(x, z, site.poly), ...obs.map(q => distPoly(x, z, q)));
       if (c >= 1.3) free.push({ x, z, c });
     }
     if (!free.length) return [];
-    const foc = items.length ? [items.reduce((s, it) => s + it.g.position.x, 0) / items.length, items.reduce((s, it) => s + it.g.position.z, 0) / items.length] : [(bb[0] + bb[1]) / 2, (bb[2] + bb[3]) / 2];
     // a point must see the project: no building between it and the middle of the composition
     const tall = site.blocks.filter(b => !b.placeholder && ["maison", "abri", "kiosque"].includes(b.kind)).map(blockPts);
     const cross = (a, b, c, d) => { const o = (p, q, r) => Math.sign((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])); return o(a, b, c) !== o(a, b, d) && o(c, d, a) !== o(c, d, b); };
@@ -3337,13 +3374,13 @@
       const far = pool.map(f => { const d = Math.min(...pts.map(p => Math.hypot(p.x - f.x, p.z - f.z))); return { f, d, s: Math.min(d, 6) + Math.min(f.c, 4) * 0.6 - Math.hypot(f.x - foc[0], f.z - foc[1]) * 0.3 }; }).filter(o => o.d >= 4).sort((p, q) => q.s - p.s)[0];
       if (!far) break; pts.push(far.f);
     }
-    return pts.map((p, i) => { const dx = foc[0] - p.x, dz = foc[1] - p.z; return { x: +p.x.toFixed(2), z: +p.z.toFixed(2), yaw: Math.hypot(dx, dz) > 0.8 ? +Math.atan2(dx, -dz).toFixed(3) : 0, label: String(i + 1) }; });
+    return pts.map(point);
   }
   const b64url = t => btoa(unescape(encodeURIComponent(t))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   function visitLink() {
     const v = site.visit; if (!v) return "";
     const name = ($("client").value.trim() || site.name || "votre jardin").slice(0, 60);
-    return new URL("visite.html", location.href).href.split("#")[0] + "#" + b64url(JSON.stringify({ n: name, p: v.points.map(p => ({ u: p.url, x: p.x, z: p.z, y: p.yaw, l: p.label })) }));
+    return new URL("visite.html", location.href).href.split("#")[0] + "#" + b64url(JSON.stringify({ n: name, p: v.points.map(p => Object.assign({ u: p.url, x: p.x, z: p.z, y: p.yaw, l: p.label }, p.night ? { n: p.night } : {})) }));
   }
   function openVisit() { if (!site.visit) return; $("visitFrame").src = visitLink(); $("visitOv").hidden = false; }
   $("visitClose").addEventListener("click", () => { $("visitOv").hidden = true; $("visitFrame").src = "about:blank"; });
@@ -3369,9 +3406,15 @@
     if (!api) { toast("La visite 360° se lance depuis la version en ligne du studio."); return; }
     if (!items.length) { toast("Ajoutez au moins un élément du catalogue."); return; }
     if (jobs.some(j => j.visit)) { toast("Une visite 360° est déjà en préparation."); return; }
-    const pts = visitPoints();
+    if (tool === "visit") setTool(null);
+    const mine = chosenPoints(), pts = mine.length ? mine : visitPoints();
     if (!pts.length) { toast("Pas assez de place libre dans le jardin pour s'y tenir : dégagez un peu la pelouse."); return; }
-    if (await ask("Lancer la visite 360° ?", pts.length + " point" + (pts.length > 1 ? "s" : "") + " de vue dans le jardin, où le client regarde tout autour de lui. Prête en 3 à 5 minutes, vous pouvez continuer pendant ce temps.", [{ label: "Lancer la visite", value: true, primary: true }, { label: "Pas maintenant", value: false }]) !== true) return;
+    const withNight = ambiance === "journuit", light = ambiance === "dore" ? "au coucher du soleil" : withNight ? "de jour et de nuit, LED allumées" : "de jour";
+    const go = await ask("Lancer la visite 360° ?", pts.length + " point" + (pts.length > 1 ? "s" : "") + " de vue " + (mine.length ? "que vous avez placés" : "choisis par le studio") + ", " + light + " : le client regarde tout autour de lui. Prête en " + (withNight ? "5 à 8" : "3 à 5") + " minutes, vous pouvez continuer pendant ce temps.",
+      [{ label: "Lancer la visite", value: true, primary: true }, { label: mine.length ? "Modifier mes points" : "Choisir les points moi-même", value: "pick" }].concat(mine.length ? [{ label: "Laisser le studio choisir", value: "auto" }] : [], [{ label: "Pas maintenant", value: false }]));
+    if (go === "auto") { site.visitPts = []; save(); toast("Points effacés : le studio choisira. Touchez « Visite 360° » pour lancer."); return; }
+    if (go === "pick") { goTo("plan"); setTool("visit"); drawVisitMarks(); if ((site.visitPts || []).length) tip((site.visitPts.length) + " point" + (site.visitPts.length > 1 ? "s" : "") + " · touchez encore, ou « Visite 360° » pour lancer"); return; }
+    if (go !== true) return;
     let code = ""; try { code = localStorage.getItem("studio-code") || ""; } catch (e) { /* no storage */ }
     const H = { "Content-Type": "application/json", "x-studio-code": code }, sid = site.id, t0 = Date.now(), amb = ambiance === "dore" ? "dore" : "jour";
     const base = { mode: "free", style: "pano", aspect: "21:9", ambiance: amb, site: site.demo ? "demo" : "custom", refs: site.demo ? [] : await houseRefs(),
@@ -3393,23 +3436,34 @@
       }
       g.putImageData(L, 0, 0); g.putImageData(R, W - B, 0);
     };
-    const onePoint = async (p, i, look) => {
+    const onePoint = async (p, i, look, onDay) => {
       const job = { visit: true, label: "Point " + p.label, t0, taskId: null }; jobs.push(job); showJobs();
       let rawUrl = null;
       try {
         job.taskId = (await post(Object.assign({ image: shots[i] }, base, look ? { look } : {}))).taskId;
-        rawUrl = await pollTask(job, api, code, t0, 15);
+        rawUrl = await pollTask(job, api, code, t0, 20);
         const raw = await corsImage(rawUrl), c = document.createElement("canvas"); c.width = W; c.height = Hh; c.getContext("2d", { willReadFrequently: true }).drawImage(raw, 0, 0, W, Hh);
         try { blendJoin(c); } catch (e) { /* the join stays as it is */ }
         const st = await post({ mode: "store", image: c.toDataURL("image/jpeg", 0.86) });
         done[i] = Object.assign({ url: st.url }, p);
       } catch (e) { lastErr = e.message; }
+      if (onDay) onDay(rawUrl);      // the other points can start: they do not wait for this one's night
+      // the night version of the same panorama, LED switched on (the day picture stays if it fails)
+      if (withNight && done[i] && rawUrl) {
+        try {
+          job.night = true; job.taskId = (await post({ mode: "night", source: rawUrl, leds: ledList(), aspect: "21:9", pano: true })).taskId;
+          const nraw = await corsImage(await pollTask(job, api, code, t0, 20)), c = document.createElement("canvas"); c.width = W; c.height = Hh; c.getContext("2d", { willReadFrequently: true }).drawImage(nraw, 0, 0, W, Hh);
+          try { blendJoin(c); } catch (e) { /* the join stays as it is */ }
+          done[i].night = (await post({ mode: "store", image: c.toDataURL("image/jpeg", 0.86) })).url;
+        } catch (e) { /* day only for this point */ }
+      }
       if (jobs.includes(job)) jobs.splice(jobs.indexOf(job), 1); showJobs();
       return rawUrl;
     };
     // the first point sets the look of the garden (house, walls, light): the others are rendered with its picture as a reference
-    const first = await onePoint(pts[0], 0, null);
-    await Promise.all(pts.slice(1).map((p, k) => onePoint(p, k + 1, first)));
+    let firstAll = null;
+    const first = await new Promise(res => { firstAll = onePoint(pts[0], 0, null, res); });
+    await Promise.all([firstAll].concat(pts.slice(1).map((p, k) => onePoint(p, k + 1, first))));
     const ok = done.filter(Boolean);
     if (!ok.length) { toast("La visite 360° n'a pas abouti : " + lastErr, { ms: 8000 }); return; }
     if (site.id !== sid) return;
