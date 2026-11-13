@@ -427,10 +427,13 @@
   /* 360° visit */
   .visit-ov { position: fixed; inset: 0; z-index: 60; background: #0b1410; }
   .visit-ov iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
-  .visit-acts { position: absolute; right: 12px; top: calc(44px + env(safe-area-inset-top, 0px)); display: flex; gap: 8px; }
+  .visit-acts { position: absolute; right: 12px; top: calc(12px + env(safe-area-inset-top, 0px)); display: flex; gap: 8px; }
   .visit-acts button { min-height: 44px; padding: 0 16px; border: 0; border-radius: 999px; background: rgba(16,24,20,.7); color: #ffffff; font: 700 14px var(--font-body); cursor: pointer; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
   .visit-acts #visitShare { background: #ffffff; color: #16392c; }
   .gal button.film.v360 { background: var(--gold); color: var(--on-gold); }
+  @media (max-width: 699px) { .dock .btn { white-space: nowrap; } }
+  @media (min-width: 700px) { .dock .btn { min-width: 0; } .dock .seg { flex: none; } }
+  @media (max-width: 400px) { .dock { gap: 6px; } .dock .seg button { min-width: 34px; padding-inline: 3px; } .dock .btn { padding-inline: 10px; } }
 </style>
 
 </head>
@@ -663,7 +666,7 @@
         <div class="label">Photos du projet</div>
         <div class="gal" id="gal2"></div>
       </div>
-      <div class="block">
+      <div id="presentSlot2"><div class="block" id="presentBlock">
         <div class="label">Présenter le projet</div>
         <div class="chips">
           <button type="button" class="chip" id="plan4k" title="Le plan du jardin vu de dessus, dessiné comme un plan de paysagiste">Plan paysager</button>
@@ -672,8 +675,8 @@
           <button type="button" class="chip" id="filmBtn" title="Un film qui part du plan et traverse les photos 4K">▶ Film</button>
         </div>
         <label class="check"><input type="checkbox" id="staging"> Mise en scène : l'IA ajoute mobilier, plantes et lumières d'ambiance</label>
-        <button type="button" class="linkbtn danger" id="clearAll">Vider le jardin</button>
-      </div>
+      </div></div>
+      <div class="block"><button type="button" class="linkbtn danger" id="clearAll">Vider le jardin</button></div>
       <div class="dock">
         <button type="button" class="btn" id="render4kNow">Rendu 4K<small>de cette vue</small></button>
         <div class="seg" role="group" aria-label="Ambiance du rendu"><button type="button" data-amb="journuit" aria-pressed="true" title="Jour et nuit">☀︎ ☾</button><button type="button" data-amb="jour" aria-pressed="false" title="Jour seulement">☀︎</button><button type="button" data-amb="dore" aria-pressed="false" title="Coucher de soleil, lumières allumées">🌇</button></div>
@@ -685,6 +688,7 @@
       <h2>Photos du projet</h2>
       <p class="lead">Touchez une photo pour l'agrandir, glissez pour passer du jour à la nuit.</p>
       <div id="galSlot3"></div>
+      <div id="presentSlot3"></div>
       <div class="block">
         <div class="label">Nouvelle photo depuis</div>
         <div class="chips" id="viewChips" role="group" aria-label="Prise de vue"></div>
@@ -3382,7 +3386,7 @@
     const name = ($("client").value.trim() || site.name || "votre jardin").slice(0, 60);
     return new URL("visite.html", location.href).href.split("#")[0] + "#" + b64url(JSON.stringify({ n: name, p: v.points.map(p => Object.assign({ u: p.url, x: p.x, z: p.z, y: p.yaw, l: p.label }, p.night ? { n: p.night } : {})) }));
   }
-  function openVisit() { if (!site.visit) return; $("visitFrame").src = visitLink(); $("visitOv").hidden = false; }
+  function openVisit() { if (!site.visit) return; $("visitFrame").src = visitLink().replace("visite.html#", "visite.html?e=1#"); $("visitOv").hidden = false; }
   $("visitClose").addEventListener("click", () => { $("visitOv").hidden = true; $("visitFrame").src = "about:blank"; });
   $("visitShare").addEventListener("click", async () => {
     const url = visitLink(), title = "Visite 360° · " + ($("client").value.trim() || site.name);
@@ -3407,13 +3411,14 @@
     if (!items.length) { toast("Ajoutez au moins un élément du catalogue."); return; }
     if (jobs.some(j => j.visit)) { toast("Une visite 360° est déjà en préparation."); return; }
     if (tool === "visit") setTool(null);
+    if (!PHOTO.free || shotMode !== "apercu") { shotMode = "apercu"; await setView("libre"); }
     const mine = chosenPoints(), pts = mine.length ? mine : visitPoints();
     if (!pts.length) { toast("Pas assez de place libre dans le jardin pour s'y tenir : dégagez un peu la pelouse."); return; }
     const withNight = ambiance === "journuit", light = ambiance === "dore" ? "au coucher du soleil" : withNight ? "de jour et de nuit, LED allumées" : "de jour";
     const go = await ask("Lancer la visite 360° ?", pts.length + " point" + (pts.length > 1 ? "s" : "") + " de vue " + (mine.length ? "que vous avez placés" : "choisis par le studio") + ", " + light + " : le client regarde tout autour de lui. Prête en " + (withNight ? "5 à 8" : "3 à 5") + " minutes, vous pouvez continuer pendant ce temps.",
       [{ label: "Lancer la visite", value: true, primary: true }, { label: mine.length ? "Modifier mes points" : "Choisir les points moi-même", value: "pick" }].concat(mine.length ? [{ label: "Laisser le studio choisir", value: "auto" }] : [], [{ label: "Pas maintenant", value: false }]));
     if (go === "auto") { site.visitPts = []; save(); toast("Points effacés : le studio choisira. Touchez « Visite 360° » pour lancer."); return; }
-    if (go === "pick") { goTo("plan"); setTool("visit"); drawVisitMarks(); if ((site.visitPts || []).length) tip((site.visitPts.length) + " point" + (site.visitPts.length > 1 ? "s" : "") + " · touchez encore, ou « Visite 360° » pour lancer"); return; }
+    if (go === "pick") { select(null); goTo("plan"); setTool("visit"); if (innerWidth < 700) window.scrollTo(0, 0); drawVisitMarks(); if ((site.visitPts || []).length) tip((site.visitPts.length) + " point" + (site.visitPts.length > 1 ? "s" : "") + " · touchez encore, ou « Visite 360° » pour lancer"); return; }
     if (go !== true) return;
     let code = ""; try { code = localStorage.getItem("studio-code") || ""; } catch (e) { /* no storage */ }
     const H = { "Content-Type": "application/json", "x-studio-code": code }, sid = site.id, t0 = Date.now(), amb = ambiance === "dore" ? "dore" : "jour";
@@ -3817,6 +3822,7 @@
   function go(n) {
     if (cal) closeCalib();
     const prevStep = step; step = n; setTool(null);
+    if (n === 2 || n === 3) $("presentSlot" + n).appendChild($("presentBlock"));      // the same buttons, where the salesperson is
     stage.dataset.step = n; if (n === 1 && night) setNight(false);
     document.querySelectorAll("[data-panel]").forEach(p => { p.hidden = p.dataset.panel !== String(n); });
     document.querySelectorAll(".step").forEach(b => {

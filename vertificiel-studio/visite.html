@@ -22,6 +22,12 @@
   .hot { position: fixed; transform: translate(-50%, -50%); width: 58px; height: 58px; border-radius: 50%; border: 2px solid #fff; background: rgba(22,57,44,.72); color: #fff; font: 800 18px inherit; cursor: pointer; box-shadow: 0 0 0 6px rgba(255,255,255,.22); }
   .hot span { display: block; font-size: 10px; font-weight: 600; margin-top: -2px; }
   [hidden] { display: none !important; }
+  /* phones: the legal mention sits under the title instead of running into it */
+  @media (max-width: 600px) { .legal { right: auto; left: 16px; top: calc(52px + env(safe-area-inset-top, 0px)); font-size: 10.5px; } .brand { max-width: calc(100vw - 32px); } }
+  /* inside the studio: the studio's own buttons take the top of the screen */
+  body.embed .brand { display: none; }
+  body.embed .legal { right: auto; left: 16px; top: calc(70px + env(safe-area-inset-top, 0px)); }
+  @media (min-width: 601px) { body.embed .legal { top: calc(22px + env(safe-area-inset-top, 0px)); } }
   .load { position: fixed; inset: 0; display: grid; place-items: center; background: #0b1410; font-size: 15px; transition: opacity .4s; }
   .legal { position: fixed; right: 12px; top: calc(16px + env(safe-area-inset-top, 0px)); font-size: 11px; opacity: .8; text-shadow: 0 1px 4px rgba(0,0,0,.6); pointer-events: none; }
 </style>
@@ -36,6 +42,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 (() => {
+  if (/[?&]e=1\b/.test(location.search)) document.body.classList.add("embed");
   const T = THREE, K = Math.PI * 9 / 21, EYE = 1.6;          // cylindrical panoramas, 21:9: they reach atan(K) = 53° up and down
   // the visit travels in the link itself: #<base64url of {n: name, p: [{u: image, x, z, y: heading of the image centre, l: label}]}>
   let V = null;
