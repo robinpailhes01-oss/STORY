@@ -456,6 +456,13 @@
   .trace-done { min-height: 44px; padding: 0 16px; border: 0; border-radius: 999px; background: #ffd59a; color: #1c1407; font: 700 14.5px var(--font-body); cursor: pointer; }
   .geo-row { flex-wrap: wrap; }
   @media (max-width: 400px) { .ov.cams button { padding-inline: 8px; min-width: 36px; } .ov.cams { max-width: calc(100vw - 20px); } }
+  .chip.photo-quick { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 700; }
+  .qphotos { display: flex; gap: 6px; flex-wrap: wrap; }
+  .qphotos:empty { display: none; }
+  .qphotos button { width: 64px; height: 64px; padding: 0; border: 0; border-radius: 10px; overflow: hidden; cursor: pointer; background: var(--soft); }
+  .qphotos img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #guide1 li.done:not(.open) .gb > .qphotos, #guide1 li[data-g="photos"].done:not(.open) .gb > .chips { display: flex; }
+  #guide1 li[data-g="photos"].done:not(.open) #spotAdd { display: none; }
 </style>
 
 </head>
@@ -538,7 +545,7 @@
         <li data-g="terrain"><span class="gn">1</span><div class="gb">
           <b>Trouver le terrain<button type="button" class="more" data-open>Mes terrains</button></b><span class="gs" id="g1s">Tapez l'adresse : contour, maison et piscine arrivent tout seuls.</span>
           <div class="sub geo">
-            <div class="geo-row"><input id="geoQ" type="search" placeholder="N°, rue, ville" autocomplete="off" aria-label="Adresse du terrain"><button type="button" class="chip" id="geoMe">📍 Je suis sur place</button><button type="button" class="chip" id="bigBtn" title="Golf, parc, résidence, collectivité : une large photo aérienne où vous tracez la zone à aménager">Grand terrain : tracer ma zone</button></div>
+            <div class="geo-row"><input id="geoQ" type="search" placeholder="Adresse, ou nom du lieu (golf, parc…)" autocomplete="off" aria-label="Adresse du terrain"><button type="button" class="chip" id="geoMe">📍 Je suis sur place</button><button type="button" class="chip" id="bigBtn" title="Golf, parc, résidence, collectivité : une large photo aérienne où vous tracez la zone à aménager">Grand terrain : tracer ma zone</button></div>
             <ul class="geo-list" id="geoList" hidden></ul>
             <p class="note" id="geoMsg">Le contour vient du cadastre et la maison des données de l'IGN, avec la photo aérienne en fond.</p>
           </div>
@@ -556,7 +563,9 @@
         <li data-g="photos"><span class="gn">4</span><div class="gb">
           <b>Photographier le jardin<button type="button" class="more" data-open>Ajouter</button></b><span class="gs" id="g4s">Touchez un point 📷 du plan, aux angles de la maison : l'appareil photo s'ouvre.</span>
           <p class="note">Tablette à l'horizontale, dans le sens de la flèche, la clôture du fond dans l'image.</p>
-          <div class="chips"><button type="button" class="chip" id="spotAdd">+ Point photo sur le plan</button></div>
+          <div class="chips"><button type="button" class="chip photo-quick" id="photoQuick">📷 Prendre une photo du lieu</button><button type="button" class="chip" id="spotAdd">+ Point photo sur le plan</button></div>
+          <div class="qphotos" id="quickPhotos"></div>
+          <input type="file" id="fileQuick" accept="image/*" hidden>
           <p class="note" id="spotMsg" hidden></p>
           <input type="file" id="fileCam" accept="image/*" capture="environment" hidden>
         </div></li>
@@ -1914,11 +1923,12 @@
     const ex = site.blocks.filter(b => !b.placeholder), cnt = {}; ex.forEach(b => { cnt[b.kind] = (cnt[b.kind] || 0) + 1; });
     const exTxt = Object.keys(cnt).map(k => cnt[k] + " " + (NAMES[k] || [k, k])[cnt[k] > 1 ? 1 : 0]).join(" · ");
     const d3 = site.demo || !!site.checked;
-    const shots = site.photos.filter(p => p.pose).length + (site.demo ? 2 : 0), nSpots = (site.spots || []).length, d4 = shots >= 2;
+    const shots = site.photos.filter(p => p.pose).length + (site.demo ? 2 : 0), nSpots = (site.spots || []).length, nFree = site.photos.filter(p => !p.pose).length, d4 = shots + nFree >= 2;
     set("terrain", d1, d1 ? site.name + " · " + area + (site.geo && site.geo.section ? " · cadastre " + site.geo.section + " " + site.geo.numero : site.geo && site.geo.big ? " · zone tracée sur la photo aérienne" : "") : null, !d1);
     set("mesure", d2, d2 ? "Relevé importé : contour mesuré, " + area + "." : null, false);
     set("existant", d3, (exTxt || "Aucun élément") + (d3 ? " · vérifié" : " · à vérifier sur le plan"), d1 && !d3);
-    set("photos", d4, shots + " photo" + (shots > 1 ? "s" : "") + " calée" + (shots > 1 ? "s" : "") + (nSpots ? " · " + nSpots + " points sur le plan" : "") + (d4 ? " : prêtes pour les rendus exacts." : " · 2 au minimum conseillées."), d1 && d3 && !d4);
+    drawQuickPhotos();
+    set("photos", d4, (nFree && !shots ? nFree + " photo" + (nFree > 1 ? "s" : "") + " du lieu" : shots + " photo" + (shots > 1 ? "s" : "") + " calée" + (shots > 1 ? "s" : "") + (nFree ? " · " + nFree + " du lieu" : "")) + (nSpots ? " · " + nSpots + " point" + (nSpots > 1 ? "s" : "") + " sur le plan" : "") + (d4 ? " : prêtes pour les rendus exacts." : " · 2 au minimum conseillées."), d1 && d3 && !d4);
     renderAerial();
   }
   $("client").addEventListener("change", () => refreshSites());
@@ -2260,7 +2270,7 @@
   // public French data (IGN Géoplateforme): no key, called straight from the tablet
   const IGN = {
     orthoL: (layer, b, w, h) => `https://data.geopf.fr/wms-r?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=${layer}&STYLES=&CRS=EPSG:4326&BBOX=${b[1]},${b[0]},${b[3]},${b[2]}&WIDTH=${w}&HEIGHT=${h}&FORMAT=image/jpeg`,
-    geocode: q => `https://data.geopf.fr/geocodage/search?q=${encodeURIComponent(q)}&limit=5&index=address`,
+    geocode: q => `https://data.geopf.fr/geocodage/search?q=${encodeURIComponent(q)}&limit=6&index=address,poi`,
     reverse: (lon, lat) => `https://data.geopf.fr/geocodage/reverse?lon=${lon}&lat=${lat}&limit=1`,
     parcel: geom => `https://apicarto.ign.fr/api/cadastre/parcelle?geom=${encodeURIComponent(JSON.stringify(geom))}`,
     buildings: b => `https://data.geopf.fr/wfs/ows?service=WFS&version=2.0.0&request=GetFeature&typeNames=BDTOPO_V3:batiment&outputFormat=application/json&srsName=EPSG:4326&count=60&bbox=${b[0]},${b[1]},${b[2]},${b[3]},EPSG:4326`,
@@ -2521,15 +2531,21 @@
         const pc = (q.match(/\b(\d{5})\b/) || [])[1];
         if (pc && !feats.some(f => f.properties.postcode === pc)) {
           const q2 = q.replace(pc, " ").replace(/\s+/g, " ").trim(), diff = c => [...c].reduce((n, ch, i) => n + (ch !== pc[i]), 0);
-          const near = ((await getJSON(IGN.geocode(q2).replace("limit=5", "limit=50"))).features || []).filter(f => f.properties.postcode && f.properties.postcode.slice(0, 2) === pc.slice(0, 2))
+          const near = ((await getJSON(IGN.geocode(q2).replace("limit=6", "limit=50"))).features || []).filter(f => f.properties.postcode && f.properties.postcode.slice(0, 2) === pc.slice(0, 2))
             .sort((a, b) => diff(a.properties.postcode) - diff(b.properties.postcode) || b.properties.score - a.properties.score);
           if (near.length) { feats = near.slice(0, 5).concat(feats.filter(f => !near.includes(f))).slice(0, 6); hint = "Code postal " + pc + " introuvable pour cette rue : voici les plus proches."; }
         }
         geoMsg(hint || "Touchez la bonne adresse dans la liste.");
         ul.innerHTML = "";
         feats.forEach(f => {
-          const li = document.createElement("li"), b = document.createElement("button"); b.type = "button"; b.textContent = f.properties.label;
-          b.addEventListener("click", () => { ul.hidden = true; $("geoQ").value = f.properties.label; siteFromGeo(f.geometry.coordinates[0], f.geometry.coordinates[1], f.properties.label).catch(err => geoMsg("Recherche impossible : " + err.message)); });
+          const pr = f.properties, poi = pr._type === "poi", city = Array.isArray(pr.city) ? pr.city[0] : pr.city;
+          const cat = poi && Array.isArray(pr.category) ? pr.category[0] : "", name = poi ? (pr.toponym || pr.name || pr.label || "Lieu") + (city ? ", " + city : "") : pr.label;
+          if (poi && /habitation|quartier|lieu-dit|commune|département|région|voie|rue/i.test((pr.category || []).join(" "))) return;      // only real places to lay out
+          const li = document.createElement("li"), b = document.createElement("button"); b.type = "button"; b.textContent = poi ? name + " · " + (cat || "lieu") + " (grand terrain)" : name;
+          b.addEventListener("click", () => {
+            ul.hidden = true; $("geoQ").value = name;
+            (poi ? siteFromZone(f.geometry.coordinates[0], f.geometry.coordinates[1], name) : siteFromGeo(f.geometry.coordinates[0], f.geometry.coordinates[1], name)).catch(err => geoMsg("Recherche impossible : " + err.message));
+          });
           li.appendChild(b); ul.appendChild(li);
         });
         ul.hidden = !ul.children.length;
@@ -2602,6 +2618,29 @@
     try { await analysePhoto(f, sp); } catch (err) { spotMsg("La photo n'a pas pu être analysée : " + err.message); }
   });
   function openCamera(sp) { camSpot = sp; $("fileCam").click(); }
+  // photos of the place, taken freely: no point on the plan, no calibration; they show the AI what the place really looks like
+  function drawQuickPhotos() {
+    const box = $("quickPhotos"); box.innerHTML = "";
+    (site.photos || []).forEach(ph => {
+      const b = document.createElement("button"); b.type = "button"; b.title = "Retirer cette photo"; b.innerHTML = `<img src="${ph.thumb || ph.image}" alt="${ph.name || "Photo du lieu"}">`;
+      b.addEventListener("click", async () => {
+        if (await ask("Retirer cette photo ?", "Elle ne servira plus de référence pour les rendus.", [{ label: "Retirer", value: true, primary: true, danger: true }, { label: "Garder", value: false }]) !== true) return;
+        site.photos = site.photos.filter(x => x !== ph); (site.spots || []).forEach(sp => { if (sp.photo === ph.id) sp.photo = null; }); save(); renderGuide();
+      });
+      box.appendChild(b);
+    });
+  }
+  $("photoQuick").addEventListener("click", () => $("fileQuick").click());
+  $("fileQuick").addEventListener("change", async e => {
+    const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+    try {
+      const image = await fileToImage(f, 1600, 0.86), img = await loadImg(image), k = 200 / Math.max(img.naturalWidth, img.naturalHeight), c = document.createElement("canvas");
+      c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      site.photos.push({ id: Date.now().toString(36), name: "Photo " + (site.photos.length + 1), image, thumb: c.toDataURL("image/jpeg", 0.7), w: img.naturalWidth, h: img.naturalHeight, pts: [], pose: null, err: null, ref: true });
+      save(); renderGuide();
+      toast(site.photos.length < 2 ? "Photo ajoutée. Prenez-en une deuxième, d'un autre côté : l'IA s'en sert pour reproduire le lieu." : "Photo ajoutée : " + site.photos.length + " photos du lieu serviront de référence aux rendus.");
+    } catch (err) { toast("Cette photo n'a pas pu être lue. Réessayez."); }
+  });
 
   // a 3D sketch of the house from the expected place, corners numbered: Gemini finds the same corners in the photo
   function poseCam(pose, w, h) {
