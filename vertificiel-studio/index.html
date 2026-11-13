@@ -452,6 +452,9 @@
   .home .sites button span span { display: block; }
   @media (min-width: 900px) and (min-height: 600px) { .home-in { padding-top: 6vh; } }
   @media (max-height: 480px) and (orientation: landscape) { .home-hero { aspect-ratio: 5 / 1; } }
+  @media (max-width: 699px) { .stage.tracing .aerial-pill, .stage.tracing .cams { display: none; } }
+  .trace-done { min-height: 44px; padding: 0 16px; border: 0; border-radius: 999px; background: #ffd59a; color: #1c1407; font: 700 14.5px var(--font-body); cursor: pointer; }
+  .geo-row { flex-wrap: wrap; }
 </style>
 
 </head>
@@ -470,6 +473,7 @@
 <div class="main">
   <div class="stage" id="stage">
     <div class="stage-top" id="stageTop">
+        <button type="button" class="trace-done" id="traceDone2" hidden>✓ Terminer le contour</button>
         <label class="ov aerial-pill" id="aerialBox" hidden title="Une photo prise en hiver montre le sol sous les arbres ; l'infrarouge montre la végétation en rouge"><span class="lg">Photo aérienne</span><select id="aerialSel" aria-label="Photo aérienne"></select><small id="aerialCredit" hidden>© Esri, Maxar</small></label>
       <button type="button" class="close-shot" id="closeShot" hidden aria-label="Fermer la photo">✕<span class="lg"> Fermer</span></button>
       <div class="ov" role="group" aria-label="Image affichée" id="shotBar" hidden>
@@ -533,7 +537,7 @@
         <li data-g="terrain"><span class="gn">1</span><div class="gb">
           <b>Trouver le terrain<button type="button" class="more" data-open>Mes terrains</button></b><span class="gs" id="g1s">Tapez l'adresse : contour, maison et piscine arrivent tout seuls.</span>
           <div class="sub geo">
-            <div class="geo-row"><input id="geoQ" type="search" placeholder="N°, rue, ville" autocomplete="off" aria-label="Adresse du terrain"><button type="button" class="chip" id="geoMe">📍 Je suis sur place</button></div>
+            <div class="geo-row"><input id="geoQ" type="search" placeholder="N°, rue, ville" autocomplete="off" aria-label="Adresse du terrain"><button type="button" class="chip" id="geoMe">📍 Je suis sur place</button><button type="button" class="chip" id="bigBtn" title="Golf, parc, résidence, collectivité : une large photo aérienne où vous tracez la zone à aménager">Grand terrain : tracer ma zone</button></div>
             <ul class="geo-list" id="geoList" hidden></ul>
             <p class="note" id="geoMsg">Le contour vient du cadastre et la maison des données de l'IGN, avec la photo aérienne en fond.</p>
           </div>
@@ -561,6 +565,7 @@
       <p class="note">À faire une fois par terrain, avant le rendez-vous : importez le plan de masse ou un fichier de mesures, ou saisissez les cotes.</p>
       <label class="field" for="siteSel">Terrain<select id="siteSel"></select></label>
       <label class="field" for="siteName">Nom du lot<input id="siteName" type="text" autocomplete="off"></label>
+      <label class="field" for="siteCtx">Décor autour du terrain<select id="siteCtx"><option value="">Jardin de maison (murs, haies, voisins)</option><option value="open">Grand espace ouvert (golf, parc, résidence)</option></select></label>
       <div class="block">
         <div class="label">Importer</div>
         <div class="chips">
@@ -1294,6 +1299,11 @@
     gardenCache = null;
     const span0 = (b => Math.max(b[1] - b[0], b[3] - b[2]))(bbox(site.poly));
     scene.fog.near = Math.max(60, span0 * 2.5); scene.fog.far = Math.max(140, span0 * 6); camera.far = Math.max(400, span0 * 8); camera.updateProjectionMatrix();
+    const wide = !!(site.geo && site.geo.big);      // a large site: the camera can rise high above the aerial photo, without haze
+    R_MAX = wide ? 420 : Math.max(70, span0 * 2.5);
+    camera.near = wide ? 1 : 0.1;      // seen from high above, the aerial photo and the ground need more depth precision
+    if (wide) { scene.fog.near = 900; scene.fog.far = 2600; camera.far = 2600; }
+    camera.updateProjectionMatrix();
     placeSun();
     const q = site.poly, shape = new T.Shape(q.map(([x, z]) => new T.Vector2(x, -z)));
     [lawn, shadowCatcher].forEach(m => { m.geometry.dispose(); m.geometry = new T.ShapeGeometry(shape); });
@@ -1688,7 +1698,7 @@
     [...items].forEach(removeItem); select(null); setTool(null);
     site = s; selBlock = null;
     s.photos = s.photos || []; s.blocks = s.blocks || []; s.items = s.items || [];
-    $("siteName").value = s.name || ""; $("client").value = s.client || "";
+    $("siteName").value = s.name || ""; $("client").value = s.client || ""; $("siteCtx").value = s.context || "";
     $("parcelPick").hidden = !s.geo;
     updProj();
     decor.visible = !!s.demo; $("siteDel").hidden = !!s.demo;
@@ -1904,7 +1914,7 @@
     const exTxt = Object.keys(cnt).map(k => cnt[k] + " " + (NAMES[k] || [k, k])[cnt[k] > 1 ? 1 : 0]).join(" · ");
     const d3 = site.demo || !!site.checked;
     const shots = site.photos.filter(p => p.pose).length + (site.demo ? 2 : 0), nSpots = (site.spots || []).length, d4 = shots >= 2;
-    set("terrain", d1, d1 ? site.name + " · " + area + (site.geo ? " · cadastre " + site.geo.section + " " + site.geo.numero : "") : null, !d1);
+    set("terrain", d1, d1 ? site.name + " · " + area + (site.geo && site.geo.section ? " · cadastre " + site.geo.section + " " + site.geo.numero : site.geo && site.geo.big ? " · zone tracée sur la photo aérienne" : "") : null, !d1);
     set("mesure", d2, d2 ? "Relevé importé : contour mesuré, " + area + "." : null, false);
     set("existant", d3, (exTxt || "Aucun élément") + (d3 ? " · vérifié" : " · à vérifier sur le plan"), d1 && !d3);
     set("photos", d4, shots + " photo" + (shots > 1 ? "s" : "") + " calée" + (shots > 1 ? "s" : "") + (nSpots ? " · " + nSpots + " points sur le plan" : "") + (d4 ? " : prêtes pour les rendus exacts." : " · 2 au minimum conseillées."), d1 && d3 && !d4);
@@ -1974,7 +1984,9 @@
     if (toolPts.length < 3) { toast("Touchez au moins 3 angles du terrain."); return; }
     const pts = toolPts.map(p => [+p.x.toFixed(3), +p.z.toFixed(3)]); setTool(null);
     if (traceFor === "shape") { traceFor = "plot"; const b = blockFromOutline("zone", pts, { src: "trace" }); site.blocks.push(b); buildHouse(); selBlock = b; showBlockSel(); siteChanged(); toast("Forme ajoutée : choisissez son type dans la barre du bas"); return; }
-    site.poly = pts; siteChanged();
+    if (site.geo && site.geo.big) site.traced = true;
+    site.poly = pts; siteChanged(); goTo("plan");
+    if (site.geo && site.geo.big) { geoMsg("Zone tracée : " + fmt.format(polyArea(pts)) + " m². Ajoutez l'existant (bâtiment, arbres, allées) dans « Outils du terrain », prenez 2 photos sur place, puis commencez le projet."); renderGuide(); }
   });
   $("traceCancel").addEventListener("click", () => setTool(null));
 
@@ -2309,7 +2321,42 @@
     const plots = scored.filter(x => x.plot).sort((p, q) => p.dist - q.dist);
     return (plots[0] || scored.sort((p, q) => p.dist - q.dist)[0]).f;
   }
+  let lastGeo = null;
+  async function siteFromZone(lon, lat, label) {
+    geoMsg("Grand terrain : chargement de la photo aérienne autour de l'adresse…");
+    const HALF = 200, mLat = HALF / 110574, mLon = HALF / (111320 * Math.cos(lat * Math.PI / 180)), bb = [lon - mLon, lat - mLat, lon + mLon, lat + mLat];
+    const s2 = NEW_SITE(); s2.name = label || "Grand terrain"; s2.items = []; s2.photos = []; s2.blocks = []; s2.spots = null; s2.context = "open";
+    s2.poly = [[-15, -15], [15, -15], [15, 15], [-15, 15]];
+    let flight = null;
+    try { const fl = (await getJSON(IGN.flight(bb))).features || []; flight = fl.map(f => f.properties.date_vol).filter(Boolean).sort().pop() || null; } catch (e) { flight = null; }
+    s2.geo = { lon0: lon, lat0: lat, a: 0, flight: flight && flight.slice(0, 10), big: true, bb: bb.map(v => +v.toFixed(7)), commune: "" };
+    s2.plan = null;
+    for (let k = 0; k < 3 && !s2.plan; k++) {      // the wide photo is heavy for the IGN server: a second try usually gets it
+      try {
+        const W = k < 2 ? 2048 : 1024, img = await corsImg(IGN.orthoL(AERIAL_NOW, bb, W, W)), c = document.createElement("canvas"); c.width = c.height = W; c.getContext("2d").drawImage(img, 0, 0, W, W);
+        s2.plan = { image: c.toDataURL("image/jpeg", 0.85), ar: 1, w: 2 * HALF, x: 0, z: 0, rot: 0, op: 1, aerial: true, layer: AERIAL_NOW, px: [W, W] };
+      } catch (e) { await new Promise(ok => setTimeout(ok, 1200)); }
+    }
+    if (!s2.plan) { geoMsg("La photo aérienne n'a pas pu être chargée (réseau ou service IGN). Touchez « Grand terrain : tracer ma zone » pour réessayer."); toast("Photo aérienne indisponible : réessayez dans un instant."); return; }
+    await loadSite(s2); save(); go(1); goTo("plan", true);
+    traceHere("plot");
+    anim = null; cam.target.set(0, 0, 0); cam.r = 170; requestRender();      // high above the address: the whole neighbourhood, to find the area
+    geoMsg("Grand terrain : la photo aérienne couvre 400 m autour de l'adresse" + (flight ? " (prise le " + flight.slice(8, 10) + "/" + flight.slice(5, 7) + "/" + flight.slice(0, 4) + ")" : "") + ". Écartez deux doigts pour zoomer, touchez les angles de la zone à aménager, puis « Terminer le contour ».");
+    tip("Zoomez sur la zone à aménager, touchez ses angles dans l'ordre, puis « ✓ Terminer le contour »");
+  }
+  $("bigBtn").addEventListener("click", () => {
+    const g = lastGeo || (site.geo ? { lon: site.geo.lon0, lat: site.geo.lat0, label: site.name } : null);
+    if (!g) { toast("Tapez d'abord l'adresse, ou touchez « Je suis sur place »."); $("geoQ").focus(); return; }
+    siteFromZone(g.lon, g.lat, g.label).catch(err => geoMsg("Recherche impossible : " + err.message));
+  });
+  $("traceDone2").addEventListener("click", () => $("traceDone").click());
+  $("siteCtx").addEventListener("change", e => { site.context = e.target.value || ""; save(); });
   async function siteFromGeo(lon, lat, label, keep) {
+    if (!keep) {
+      lastGeo = { lon, lat, label };
+      // the address stands on a very large parcel (golf, park, estate): no garden to outline, the salesperson traces the area
+      try { const c = await parcelAt(lon, lat, true); if (c) { const F0 = geoFrame(lon, lat, 0), r = outerRing(c.geometry).map(p => F0.to(p[0], p[1])); if (polyArea(r) > 6000) return siteFromZone(lon, lat, label); } } catch (e) { /* the usual search goes on */ }
+    }
     geoMsg("Recherche de la parcelle au cadastre…");
     const parcel = await parcelAt(lon, lat, !!keep);
     if (!parcel) { geoMsg("Aucune parcelle trouvée à cet endroit. Essayez l'adresse exacte du terrain."); return; }
@@ -2732,7 +2779,7 @@
     if (tool === "measure" && t !== "measure") clearGroup(measures);
     tool = t; toolPts = []; clearGroup(toolGroup);
     $("measureBtn").setAttribute("aria-pressed", String(t === "measure"));
-    $("traceBox").hidden = t !== "trace"; $("traceCount").textContent = "0 angle";
+    $("traceBox").hidden = t !== "trace"; $("traceCount").textContent = "0 angle"; $("traceDone2").hidden = t !== "trace"; stage.classList.toggle("tracing", t === "trace");
     tip(t ? TIPS[t] : null);
     handles.visible = step === 1 && !t && prepOpen; showBlockSel(); requestRender();
   }
@@ -2765,7 +2812,7 @@
     } else if (tool === "trace") {
       mark(pt, toolGroup); if (toolPts.length > 1) segment(toolPts[toolPts.length - 2], pt, toolGroup);
       const n = toolPts.length; $("traceCount").textContent = n + (n > 1 ? " angles" : " angle");
-      tip(n >= 3 ? "Angle suivant, ou « Terminer le contour » dans le panneau" : TIPS.trace);
+      tip(n >= 3 ? "Angle suivant, ou « ✓ Terminer le contour » en haut à gauche" : TIPS.trace);
     } else if (tool === "scale") {
       mark(pt, toolGroup);
       if (toolPts.length === 1) { tip("Touchez le second point de la cote"); requestRender(); return; }
@@ -2844,9 +2891,10 @@
     return { t: P.target, r, theta: Math.atan2(o.x, o.z), phi: Math.acos(clamp(o.y / r, -1, 1)), fov: P.fov };
   }
   const cam = { target: new T.Vector3(), r: 20, theta: 0.5, phi: 1.3, fov: 55 };
-  const R_MIN = 6, R_MAX = 70, PHI_MIN = 0.05, PHI_MAX = 1.75;
+  const R_MIN = 6, PHI_MIN = 0.05, PHI_MAX = 1.75; let R_MAX = 70;
   function preset(name) {
-    const sp = plotSpan(), cx = sp.cx, cz = sp.cz, span = Math.max(sp.w, sp.d, 12);
+    // a large site whose area is not traced yet is seen from high above its aerial photo
+    const sp = site.geo && site.geo.big && !site.traced ? { cx: 0, cz: 0, w: 220, d: 220 } : plotSpan(), cx = sp.cx, cz = sp.cz, span = Math.max(sp.w, sp.d, 12);
     if (name === "photo" && photoSph()) return photoSph();
     // as seen by someone standing at the edge of the garden, eyes a little above a person (2.4 m): the most believable 4K photos
     if (name === "client") {
@@ -3345,7 +3393,7 @@
       const staging = !job.plan && $("staging").checked;
       const payload = shot ? { mode: "free", style: job.plan ? "plan" : undefined, staging, image: shot.image, aspect: job.aspect, items: vis, ambiance: job.amb, site: site.demo ? "demo" : "custom", refs: site.demo || job.plan ? [] : await houseRefs(),
           existing: [...new Set(site.blocks.filter(b => b.kind !== "maison" && !b.placeholder).map(b => b.kind))], house: site.demo || site.blocks.some(b => b.kind === "maison"),
-          counts: site.blocks.filter(b => !b.placeholder).reduce((c, b) => Object.assign(c, { [b.kind]: (c[b.kind] || 0) + 1 }), {}) }
+          counts: site.blocks.filter(b => !b.placeholder).reduce((c, b) => Object.assign(c, { [b.kind]: (c[b.kind] || 0) + 1 }), {}), context: site.context || "" }
         : Object.assign(await comp, { items: vis, ambiance: job.amb, aspect: job.aspect, lawn: job.custom, staging });
       const r = await fetch(api, { method: "POST", headers: { "Content-Type": "application/json", "x-studio-code": code }, body: JSON.stringify(payload) });
       if (r.status === 401) { try { localStorage.removeItem("studio-code"); } catch (e) { /* no storage */ } throw new Error("code d'accès incorrect"); }
@@ -3483,7 +3531,7 @@
     if (go !== true) return;
     let code = ""; try { code = localStorage.getItem("studio-code") || ""; } catch (e) { /* no storage */ }
     const H = { "Content-Type": "application/json", "x-studio-code": code }, sid = site.id, t0 = Date.now(), amb = ambiance === "dore" ? "dore" : "jour";
-    const base = { mode: "free", style: "pano", aspect: "21:9", ambiance: amb, site: site.demo ? "demo" : "custom", refs: site.demo ? [] : await houseRefs(),
+    const base = { mode: "free", style: "pano", aspect: "21:9", ambiance: amb, context: site.context || "", site: site.demo ? "demo" : "custom", refs: site.demo ? [] : await houseRefs(),
       items: items.slice(0, 12).map(it => Object.assign({ no: it.no, where: "" }, it.spec ? { spec: it.spec } : {})),
       existing: [...new Set(site.blocks.filter(b => b.kind !== "maison" && !b.placeholder).map(b => b.kind))], house: site.demo || site.blocks.some(b => b.kind === "maison"),
       counts: site.blocks.filter(b => !b.placeholder).reduce((c, b) => Object.assign(c, { [b.kind]: (c[b.kind] || 0) + 1 }), {}) };
