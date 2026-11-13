@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="robots" content="noindex, nofollow">
+<title>Promenade dans votre projet · Vertificiel</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0b1410; overflow: hidden; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #fff; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  canvas { display: block; width: 100vw; height: 100dvh; touch-action: none; }
+  .glass { background: rgba(16,24,20,.62); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+  .brand { position: fixed; left: 16px; top: calc(14px + env(safe-area-inset-top, 0px)); font-weight: 800; font-size: 17px; text-shadow: 0 1px 6px rgba(0,0,0,.55); pointer-events: none; max-width: calc(100vw - 32px); }
+  .brand small { display: block; font-weight: 500; font-size: 12.5px; opacity: .9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .brand em { display: block; font-style: normal; font-weight: 400; font-size: 10.5px; opacity: .8; }
+  .tip { position: fixed; left: 50%; bottom: calc(132px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); padding: 10px 16px; border-radius: 999px; font-size: 14px; font-weight: 600; white-space: nowrap; pointer-events: none; transition: opacity .6s; }
+  .joy { position: fixed; left: 18px; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); width: 112px; height: 112px; border-radius: 50%; touch-action: none; box-shadow: inset 0 0 0 2px rgba(255,255,255,.35); }
+  .joy i { position: absolute; left: 50%; top: 50%; width: 50px; height: 50px; margin: -25px 0 0 -25px; border-radius: 50%; background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,.4); pointer-events: none; }
+  .dn { position: fixed; right: 14px; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 4px; padding: 4px; border-radius: 999px; }
+  .dn button { min-width: 52px; min-height: 52px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: #fff; font: 700 18px inherit; cursor: pointer; }
+  .dn button[aria-pressed="true"] { background: #ffd59a; color: #1c1407; }
+  .load { position: fixed; inset: 0; display: grid; place-items: center; background: #0b1410; font-size: 15px; transition: opacity .4s; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="brand">Vertificiel<small id="name">Promenade dans votre projet</small><em>Maquette 3D indicative, non contractuelle</em></div>
+<div class="tip glass" id="tip">Joystick pour marcher · glissez pour regarder</div>
+<div class="joy glass" id="joy" role="application" aria-label="Joystick pour marcher"><i></i></div>
+<div class="dn glass"><button type="button" id="day" aria-pressed="true" aria-label="Voir de jour">☀︎</button><button type="button" id="night" aria-pressed="false" aria-label="Voir de nuit, LED allumées">☾</button></div>
+<div class="load" id="load">Construction de la maquette…</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+  const T = THREE, EYE = 1.65, SLAB = 0.8, JOINT = 0.1, CELL = SLAB + JOINT;
+  // The whole world travels in the link: #<base64url of the description>. Distances in metres, x to the east, z to the south.
+  // { n: name, o: [lon, lat] + r: half-width of the aerial photo laid on the ground, da: angle of the slab pattern (degrees),
+  //   z: zones [{ t: "d" slabs | "g" lawn | "p" putting green, p: outline [[x, z]…], h: holes }], tr: pines [[x, z, height, crown radius]],
+  //   b: buildings [{ k: 0 house | 1 open shelter | 2 low wall, p: four corners, h: height }], s: start [x, z, heading in degrees] }
+  let W = null;
+  try { const h = location.hash.slice(1); if (h) W = JSON.parse(decodeURIComponent(escape(atob(h.replace(/-/g, "+").replace(/_/g, "/"))))); } catch (e) { W = null; }
+  if (!W || !Array.isArray(W.z)) W = {      // demonstration garden
+    n: "Jardin de démonstration", r: 0, lim: 26, da: 45, s: [0, 17, 0],
+    z: [{ t: "g", p: [[-16, -14], [16, -14], [16, 20], [-16, 20]] }, { t: "d", p: [[-3, 20], [3, 20], [3, 2], [11, 2], [11, -6], [-11, -6], [-11, 2], [-3, 2]] }, { t: "p", p: [[6, 6], [14, 6], [14, 16], [6, 16]] }],
+    tr: [[-12, 12, 9, 3.4], [-13, 4, 11, 4], [13, -10, 10, 3.6], [-6, -11, 8, 3]],
+    b: [{ k: 0, p: [[-9, -13.5], [9, -13.5], [9, -6.5], [-9, -6.5]], h: 3 }, { k: 1, p: [[-15, 14], [-9, 14], [-9, 19], [-15, 19]], h: 2.4 }]
+  };
+  document.getElementById("name").textContent = "Promenade · " + String(W.n || "votre projet").slice(0, 80);
+  const R = W.r > 20 ? Math.min(400, W.r) : 0, LIM = W.lim || (R ? R - 12 : 40);
+  const renderer = new T.WebGLRenderer({ antialias: true }); renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1)); renderer.outputEncoding = T.sRGBEncoding;
+  renderer.toneMapping = T.ACESFilmicToneMapping; renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap; renderer.shadowMap.autoUpdate = false;
+  document.body.prepend(renderer.domElement); const cv = renderer.domElement;
+  const scene = new T.Scene(), camera = new T.PerspectiveCamera(68, 1, 0.3, 1500), ANI = renderer.capabilities.getMaxAnisotropy();
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+  // ---- textures drawn here: the same slab everywhere, by construction
+  const canvas = (n, f) => { const c = document.createElement("canvas"); c.width = c.height = n; f(c.getContext("2d"), n); const t = new T.CanvasTexture(c); t.wrapS = t.wrapT = T.RepeatWrapping; t.anisotropy = ANI; return t; };
+  const speckle = (g, n, k, cols, len) => { for (let i = 0; i < k; i++) { g.strokeStyle = cols[(rnd() * cols.length) | 0]; g.globalAlpha = 0.25 + rnd() * 0.5; const x = rnd() * n, y = rnd() * n, a = rnd() * 6.3; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * len, y + Math.sin(a) * len); g.stroke(); } g.globalAlpha = 1; };
+  const blotch = (g, n, k, cols) => { for (let i = 0; i < k; i++) { const x = rnd() * n, y = rnd() * n, r = n * (0.05 + rnd() * 0.12), gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, cols[(rnd() * cols.length) | 0]); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; for (const dx of [-n, 0, n]) for (const dy of [-n, 0, n]) { g.setTransform(1, 0, 0, 1, dx, dy); g.fillRect(x - r, y - r, 2 * r, 2 * r); } } g.setTransform(1, 0, 0, 1, 0, 0); };
+  // lawn: a living green, lighter and darker in places; putting green: finer, with its mowing bands
+  const lawn = canvas(1024, (g, n) => { g.fillStyle = "#496b34"; g.fillRect(0, 0, n, n); blotch(g, n, 46, ["rgba(110,140,70,.30)", "rgba(40,70,30,.30)", "rgba(130,140,80,.18)"]); g.lineWidth = 1.3; speckle(g, n, 30000, ["#3d5c2a", "#57783c", "#638644", "#476a31"], 6); });
+  const green = canvas(512, (g, n) => { g.fillStyle = "#3a7742"; g.fillRect(0, 0, n, n); g.fillStyle = "rgba(255,255,255,.07)"; g.fillRect(0, 0, n / 2, n); g.lineWidth = 1; speckle(g, n, 9000, ["#35703c", "#418349", "#3b7a43"], 3); });
+  lawn.encoding = green.encoding = T.sRGBEncoding;
+  const N4 = 4, PXS = 1024 / N4, JPX = PXS * JOINT / CELL;      // one tile = 4 x 4 slabs with their grass joints
+  const slab = canvas(1024, (g, n) => {
+    g.fillStyle = "#3f6a2b"; g.fillRect(0, 0, n, n); g.lineWidth = 1.4; speckle(g, n, 16000, ["#33591f", "#4d7a33", "#5a873a"], 6);
+    for (let i = 0; i < N4; i++) for (let j = 0; j < N4; j++) {
+      const x = i * PXS + JPX / 2, y = j * PXS + JPX / 2, s = PXS - JPX, v = 204 + ((rnd() * 16) | 0) - 8;
+      g.fillStyle = "rgb(" + v + "," + (v - 12) + "," + (v - 34) + ")"; g.fillRect(x, y, s, s);
+      g.save(); g.beginPath(); g.rect(x, y, s, s); g.clip();      // travertine: soft lighter and darker veins
+      for (let k = 0; k < 9; k++) { const cx = x + rnd() * s, cy = y + rnd() * s, rr = 20 + rnd() * 60, gr = g.createRadialGradient(cx, cy, 0, cx, cy, rr); gr.addColorStop(0, rnd() < 0.5 ? "rgba(255,246,225,.30)" : "rgba(150,125,90,.22)"); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(cx - rr, cy - rr * 0.45, 2 * rr, rr * 0.9); }
+      g.restore();
+      for (let k = 0; k < 700; k++) { g.fillStyle = rnd() < 0.5 ? "rgba(255,255,255,.22)" : "rgba(120,100,70,.16)"; g.fillRect(x + rnd() * s, y + rnd() * s, 1 + rnd() * 3, 1 + rnd() * 2); }
+      g.strokeStyle = "rgba(90,75,50,.35)"; g.lineWidth = 2; g.strokeRect(x + 1, y + 1, s - 2, s - 2);
+    }
+  });
+  slab.encoding = T.sRGBEncoding;
+  const led = canvas(1024, (g, n) => {      // the LED lines in the joints, with the light they spill on the slab edges
+    g.fillStyle = "#000"; g.fillRect(0, 0, n, n);
+    const line = (w, col, blur) => { g.strokeStyle = col; g.lineWidth = w; g.shadowColor = "#ffb44d"; g.shadowBlur = blur; g.beginPath(); for (let k = 0; k <= N4; k++) { g.moveTo(k * PXS, 0); g.lineTo(k * PXS, n); g.moveTo(0, k * PXS); g.lineTo(n, k * PXS); } g.stroke(); };
+    line(JPX * 2.6, "rgba(255,170,70,.20)", 30); line(JPX * 1.1, "rgba(255,190,100,.55)", 18); line(5, "#fff1d0", 8);
+  });
+  led.encoding = T.sRGBEncoding;
+  const grain = canvas(256, (g, n) => { g.fillStyle = "#e9e9e9"; g.fillRect(0, 0, n, n); for (let k = 0; k < 5000; k++) { const v = 170 + ((rnd() * 85) | 0); g.fillStyle = "rgb(" + v + "," + v + "," + v + ")"; g.fillRect(rnd() * n, rnd() * n, 1 + rnd() * 2, 1 + rnd() * 2); } });
+
+  // ---- ground: the aerial photo of the place (IGN), then the project laid on it
+  const AVG = 0x6c7d55, ground = new T.Mesh(new T.PlaneGeometry(R ? 2 * R : 3000, R ? 2 * R : 3000), new T.MeshLambertMaterial({ color: R ? 0xffffff : 0x5d8440 }));
+  ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+  if (R) {
+    const far = new T.Mesh(new T.PlaneGeometry(3000, 3000), new T.MeshLambertMaterial({ color: AVG })); far.rotation.x = -Math.PI / 2; far.position.y = -0.06; scene.add(far);
+    const lat = W.o[1], lon = W.o[0], dla = R / 110574, dlo = R / (111320 * Math.cos(lat * Math.PI / 180));
+    const url = "https://data.geopf.fr/wms-r?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=HR.ORTHOIMAGERY.ORTHOPHOTOS&STYLES=&CRS=EPSG:4326&BBOX=" + [lat - dla, lon - dlo, lat + dla, lon + dlo].map(v => v.toFixed(7)).join(",") + "&WIDTH=2048&HEIGHT=2048&FORMAT=image/jpeg";
+    const ld = new T.TextureLoader(); ld.setCrossOrigin("anonymous");
+    ld.load(url, t => { t.encoding = T.sRGBEncoding; t.anisotropy = ANI; ground.material.map = t; ground.material.needsUpdate = true; need = true; }, undefined, () => { ground.material.color.set(AVG); need = true; });
+    grain.repeat.set(2 * R / 1.5, 2 * R / 1.5);      // fine grain over the photo, so the ground does not look blurred at one's feet
+    const det = new T.Mesh(new T.PlaneGeometry(2 * R, 2 * R), new T.MeshBasicMaterial({ map: grain, blending: T.MultiplyBlending, transparent: true, depthWrite: false })); det.rotation.x = -Math.PI / 2; det.position.y = 0.012; scene.add(det);
+  }
+  const DA = (W.da || 0) * Math.PI / 180, mats = [], lines = [];
+  const zoneMat = t => {
+    if (t === "d") { const m = new T.MeshStandardMaterial({ map: slab, emissiveMap: led, emissive: 0xffffff, emissiveIntensity: 0, roughness: 0.92, metalness: 0 }); mats.push(m); return m; }
+    return new T.MeshStandardMaterial({ map: t === "p" ? green : lawn, roughness: 1, metalness: 0 });
+  };
+  const ribbon = (pts, w, y, mat) => {      // a thin strip of light along an outline
+    const pos = [], idx = []; let k = 0;
+    for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length], dx = b[0] - a[0], dz = b[1] - a[1], l = Math.hypot(dx, dz) || 1, nx = -dz / l * w / 2, nz = dx / l * w / 2;
+      pos.push(a[0] + nx, y, a[1] + nz, a[0] - nx, y, a[1] - nz, b[0] - nx, y, b[1] - nz, b[0] + nx, y, b[1] + nz); idx.push(k, k + 1, k + 2, k, k + 2, k + 3); k += 4; }
+    const g = new T.BufferGeometry(); g.setAttribute("position", new T.Float32BufferAttribute(pos, 3)); g.setIndex(idx); const m = new T.Mesh(g, mat); m.visible = false; lines.push(m); scene.add(m);
+  };
+  const glowCore = new T.MeshBasicMaterial({ color: 0xfff1d0, side: T.DoubleSide }), glowSoft = new T.MeshBasicMaterial({ color: 0xffb04a, transparent: true, opacity: 0.28, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide });
+  (W.z || []).slice(0, 40).forEach(z => {
+    if (!Array.isArray(z.p) || z.p.length < 3) return;
+    const sh = new T.Shape(z.p.map(p => new T.Vector2(p[0], -p[1]))); (z.h || []).forEach(h => { if (h.length > 2) sh.holes.push(new T.Path(h.map(p => new T.Vector2(p[0], -p[1])))); });
+    const g = new T.ShapeGeometry(sh), pos = g.attributes.position, uv = g.attributes.uv, per = z.t === "d" ? N4 * CELL : z.t === "p" ? 2.4 : 6, a = z.t === "d" ? DA : 0.5;
+    for (let i = 0; i < pos.count; i++) { const x = pos.getX(i), zz = -pos.getY(i); uv.setXY(i, (x * Math.cos(a) + zz * Math.sin(a)) / per, (-x * Math.sin(a) + zz * Math.cos(a)) / per); }
+    const m = new T.Mesh(g, zoneMat(z.t)); m.rotation.x = -Math.PI / 2; m.position.y = z.t === "d" ? 0.05 : z.t === "p" ? 0.035 : 0.02; m.receiveShadow = true; scene.add(m);
+    if (z.t === "p") { ribbon(z.p, 0.05, 0.06, glowCore); ribbon(z.p, 0.4, 0.058, glowSoft); }
+  });
+
+  // ---- stone pines
+  const trunkM = new T.MeshLambertMaterial({ color: 0x6a4a36 }), crownM = [0x2f5a2c, 0x3a6a33, 0x345f2e].map(c => new T.MeshLambertMaterial({ color: c })), ico = new T.IcosahedronGeometry(1, 2), solid = [], pines = [];
+  (W.tr || []).slice(0, 80).forEach(t => {
+    const [x, z, h = 10, r = 3.5] = t, g = new T.Group(), th = h * 0.74, tr = new T.Mesh(new T.CylinderGeometry(0.15 + r * 0.012, 0.24 + r * 0.02, th, 10), trunkM);
+    tr.position.y = th / 2; tr.castShadow = true; g.add(tr);
+    for (let k = 0; k < 7; k++) { const a = k * 0.9 + rnd() * 0.6, d = k ? r * (0.3 + rnd() * 0.3) : 0, c = new T.Mesh(ico, crownM[k % 3]); c.scale.set(r * (0.5 + rnd() * 0.25), r * (0.2 + rnd() * 0.1), r * (0.5 + rnd() * 0.25)); c.position.set(Math.cos(a) * d, th + r * 0.12 + rnd() * r * 0.14, Math.sin(a) * d); c.castShadow = true; g.add(c); }
+    g.position.set(x, 0, z); g.rotation.y = rnd() * 6.3; scene.add(g); solid.push([x, z, 0.5]); pines.push([x, z, h]);
+  });
+  const SPR = [["img/arbres/pin-1.webp", 641 / 1024, 0.514], ["img/arbres/pin-2.webp", 601 / 1024, 0.424]], cards = [], cardM = [], tl = new T.TextureLoader(); let got = 0;
+  SPR.forEach((sp, k) => tl.load(sp[0], t => {
+    t.encoding = T.sRGBEncoding; t.anisotropy = ANI; cardM[k] = new T.MeshBasicMaterial({ map: t, alphaTest: 0.5, side: T.DoubleSide });
+    if (++got < SPR.length) return;
+    [trunkM, ...crownM].forEach(m => { m.colorWrite = false; m.depthWrite = false; });
+    pines.forEach(([x, z, h], i) => { const s = SPR[i % 2], w = h * s[1], g = new T.PlaneGeometry(w, h); g.translate(w * (0.5 - s[2]), h / 2, 0); const m = new T.Mesh(g, cardM[i % 2]); m.position.set(x, 0, z); if ((i >> 1) % 2) m.scale.x = -1; scene.add(m); cards.push(m); });
+    setNight(night);
+  }));
+
+  // ---- buildings
+  const wallM = new T.MeshLambertMaterial({ color: 0xe6dfcf, side: T.DoubleSide }), roofM = new T.MeshLambertMaterial({ color: 0xa2664a, side: T.DoubleSide }), woodM = new T.MeshLambertMaterial({ color: 0x8a6a4a }), winM = new T.MeshBasicMaterial({ color: 0x27323a, side: T.DoubleSide }), boxes = [];
+  const tri = (v, mat) => { const g = new T.BufferGeometry(); g.setAttribute("position", new T.Float32BufferAttribute(v, 3)); g.computeVertexNormals(); const m = new T.Mesh(g, mat); m.castShadow = true; m.receiveShadow = true; scene.add(m); return m; };
+  (W.b || []).slice(0, 30).forEach(b => {
+    if (!Array.isArray(b.p) || b.p.length !== 4) return; const p = b.p, h = b.h || 3;
+    if (b.k === 1) {      // open shelter: four posts and a roof
+      p.forEach(q => { const m = new T.Mesh(new T.BoxGeometry(0.2, h, 0.2), woodM); m.position.set(q[0], h / 2, q[1]); m.castShadow = true; scene.add(m); solid.push([q[0], q[1], 0.35]); });
+      tri([p[0][0], h, p[0][1], p[1][0], h, p[1][1], p[2][0], h, p[2][1], p[0][0], h, p[0][1], p[2][0], h, p[2][1], p[3][0], h, p[3][1]], new T.MeshLambertMaterial({ color: 0xa8845f, side: T.DoubleSide })); return;
+    }
+    const sh = new T.Shape(p.map(q => new T.Vector2(q[0], -q[1]))), w = new T.Mesh(new T.ExtrudeGeometry(sh, { depth: h, bevelEnabled: false }), wallM); w.rotation.x = -Math.PI / 2; w.castShadow = true; w.receiveShadow = true; scene.add(w); boxes.push(p);
+    if (b.k === 2) return;
+    // gable roof, ridge along the first side
+    const mid = (a, c) => [(a[0] + c[0]) / 2, (a[1] + c[1]) / 2], m0 = mid(p[0], p[3]), m1 = mid(p[1], p[2]), rh = h + Math.hypot(p[3][0] - p[0][0], p[3][1] - p[0][1]) * 0.17, V = (q, y) => [q[0], y, q[1]];
+    tri([...V(p[0], h), ...V(p[1], h), ...V(m1, rh), ...V(p[0], h), ...V(m1, rh), ...V(m0, rh), ...V(p[3], h), ...V(m1, rh), ...V(p[2], h), ...V(p[3], h), ...V(m0, rh), ...V(m1, rh)], roofM);
+    tri([...V(p[0], h), ...V(m0, rh), ...V(p[3], h), ...V(p[1], h), ...V(p[2], h), ...V(m1, rh)], wallM);
+    // windows along the two long walls: dark by day, lit at night
+    [[p[0], p[1]], [p[3], p[2]]].forEach(([a, c], s) => { const L = Math.hypot(c[0] - a[0], c[1] - a[1]), n = Math.max(2, Math.floor(L / 3.2)), ang = Math.atan2(c[1] - a[1], c[0] - a[0]), ox = Math.sin(ang) * 0.04 * (s ? -1 : 1), oz = -Math.cos(ang) * 0.04 * (s ? -1 : 1);
+      for (let i = 0; i < n; i++) for (const sg of [1, -1]) { const f = (i + 0.5) / n, m = new T.Mesh(new T.PlaneGeometry(1.3, 1.5), winM); m.position.set(a[0] + (c[0] - a[0]) * f + ox * sg, h * 0.52, a[1] + (c[1] - a[1]) * f + oz * sg); m.rotation.y = -ang; scene.add(m); } });
+  });
+
+  // ---- sky and light
+  const skyTex = (top, mid, low, stars) => { const c = document.createElement("canvas"); c.width = 16; c.height = 512; const g = c.getContext("2d"), gr = g.createLinearGradient(0, 0, 0, 512); gr.addColorStop(0, top); gr.addColorStop(0.42, mid); gr.addColorStop(0.5, low); gr.addColorStop(1, low); g.fillStyle = gr; g.fillRect(0, 0, 16, 512); const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; return t; };
+  const skyDay = skyTex("#2f6fd0", "#8fc0f0", "#dbe9f4"), skyNight = skyTex("#050b1f", "#0f1f47", "#1d2c55"), sky = new T.Mesh(new T.SphereGeometry(1200, 24, 16), new T.MeshBasicMaterial({ map: skyDay, side: T.BackSide, fog: false })); scene.add(sky);
+  const stars = new T.Points(new T.BufferGeometry(), new T.PointsMaterial({ color: 0xffffff, size: 2.2, sizeAttenuation: false, fog: false })), sp = [];
+  for (let i = 0; i < 500; i++) { const a = rnd() * 6.283, e = 0.12 + rnd() * 1.4; sp.push(1100 * Math.cos(e) * Math.cos(a), 1100 * Math.sin(e), 1100 * Math.cos(e) * Math.sin(a)); }
+  stars.geometry.setAttribute("position", new T.Float32BufferAttribute(sp, 3)); stars.visible = false; scene.add(stars);
+  scene.fog = new T.Fog(0xdbe9f4, 120, 900);
+  // far away: a line of trees and hedges all around, as around most grounds
+  const hedgeT = canvas(2048, (g, n) => { g.clearRect(0, 0, n, n); for (let pass = 0; pass < 3; pass++) { g.fillStyle = ["#3a5a3a", "#2f4f30", "#28452b"][pass]; for (let x = -60; x < n + 60; x += 14 + rnd() * 30) { const w = 50 + rnd() * 110, h = n * (0.16 + rnd() * (pass ? 0.22 : 0.5)) * (rnd() < 0.12 ? 1.5 : 1); g.beginPath(); g.ellipse(x, n, w, h, 0, Math.PI, 0); g.fill(); if (x < 60) { g.beginPath(); g.ellipse(x + n, n, w, h, 0, Math.PI, 0); g.fill(); } } } });
+  hedgeT.encoding = T.sRGBEncoding; hedgeT.repeat.set(5, 1); hedgeT.wrapT = T.ClampToEdgeWrapping;
+  const HR = Math.max(140, Math.min(330, LIM + 120)), hedgeM = new T.MeshBasicMaterial({ map: hedgeT, alphaTest: 0.5, side: T.BackSide }), hedge = new T.Mesh(new T.CylinderGeometry(HR, HR, 26, 64, 1, true), hedgeM); hedge.position.y = 12.6; scene.add(hedge);
+  const hemi = new T.HemisphereLight(0xd6e6ff, 0x6a7a4c, 0.62), sun = new T.DirectionalLight(0xfff0d8, 1.05); scene.add(hemi, sun, sun.target);
+  const SE = Math.max(60, Math.min(170, LIM + 10)); sun.position.set(-SE * 0.9, SE * 0.62, SE * 0.55); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.05;
+  Object.assign(sun.shadow.camera, { left: -SE, right: SE, top: SE, bottom: -SE, near: 1, far: SE * 4 }); sun.shadow.camera.updateProjectionMatrix();
+  let night = false;
+  function setNight(on) {
+    night = on; sky.material.map = on ? skyNight : skyDay; stars.visible = on; scene.fog.color.set(on ? 0x1d2c55 : 0xdbe9f4);
+    hemi.intensity = on ? 0.3 : 0.62; hemi.color.set(on ? 0x5570c0 : 0xd6e6ff); hemi.groundColor.set(on ? 0x1a2018 : 0x6a7a4c); sun.intensity = on ? 0.12 : 1.05; sun.color.set(on ? 0x8fa8ff : 0xfff0d8); sun.castShadow = !on;
+    mats.forEach(m => { m.emissiveIntensity = on ? 1.5 : 0; }); lines.forEach(l => { l.visible = on; }); renderer.toneMappingExposure = on ? 1.25 : 0.95;
+    trunkM.emissive.set(on ? 0x4a3018 : 0); crownM.forEach(m => m.emissive.set(on ? 0x2a2408 : 0)); cardM.forEach(m => m && m.color.set(on ? 0x8a7448 : 0xffffff)); hedgeM.color.set(on ? 0x1c2540 : 0xffffff); winM.color.set(on ? 0xffd28a : 0x27323a); wallM.emissive.set(on ? 0x2a2218 : 0);      // pines lit from below, windows lit
+    document.getElementById("day").setAttribute("aria-pressed", String(!on)); document.getElementById("night").setAttribute("aria-pressed", String(on)); renderer.shadowMap.needsUpdate = true; need = true;
+  }
+  document.getElementById("day").addEventListener("click", () => setNight(false)); document.getElementById("night").addEventListener("click", () => setNight(true));
+
+  // ---- walking
+  const P = { x: (W.s || [0, 0])[0], z: (W.s || [0, 0])[1] }; let yaw = -((W.s || [])[2] || 0) * Math.PI / 180, pitch = -0.04, vx = 0, vz = 0, bob = 0, need = true, last = performance.now();
+  const inside = (q, x, z) => { let c = false; for (let i = 0, j = q.length - 1; i < q.length; j = i++) if ((q[i][1] > z) !== (q[j][1] > z) && x < (q[j][0] - q[i][0]) * (z - q[i][1]) / (q[j][1] - q[i][1]) + q[i][0]) c = !c; return c; };
+  const blocked = (x, z) => Math.hypot(x, z) > LIM || solid.some(s => Math.hypot(x - s[0], z - s[1]) < s[2]) || boxes.some(q => [[0, 0], [0.45, 0], [-0.45, 0], [0, 0.45], [0, -0.45]].some(d => inside(q, x + d[0], z + d[1])));
+  const joy = document.getElementById("joy"), knob = joy.firstElementChild, keys = {}; let jx = 0, jy = 0, jid = null;
+  const aim = e => { const r = joy.getBoundingClientRect(), Rr = r.width / 2, dx = e.clientX - r.left - Rr, dy = e.clientY - r.top - Rr, d = Math.hypot(dx, dy), k = d > Rr ? Rr / d : 1; jx = dx * k / Rr; jy = dy * k / Rr; knob.style.transform = "translate(" + (jx * (Rr - 25)) + "px," + (jy * (Rr - 25)) + "px)"; };
+  const hush = () => { document.getElementById("tip").style.opacity = 0; };
+  joy.addEventListener("pointerdown", e => { e.preventDefault(); e.stopPropagation(); joy.setPointerCapture(e.pointerId); jid = e.pointerId; aim(e); hush(); });
+  joy.addEventListener("pointermove", e => { if (e.pointerId === jid) aim(e); });
+  const rest = e => { if (e.pointerId !== jid) return; jid = null; jx = jy = 0; knob.style.transform = ""; };
+  joy.addEventListener("pointerup", rest); joy.addEventListener("pointercancel", rest);
+  const look = new Map();
+  cv.addEventListener("pointerdown", e => { cv.setPointerCapture(e.pointerId); look.set(e.pointerId, [e.clientX, e.clientY]); hush(); });
+  cv.addEventListener("pointermove", e => { const p = look.get(e.pointerId); if (!p) return; const k = 0.0052 * Math.min(1, 700 / innerHeight + 0.35); yaw -= (e.clientX - p[0]) * k; pitch = Math.max(-1.1, Math.min(1.1, pitch - (e.clientY - p[1]) * k)); look.set(e.pointerId, [e.clientX, e.clientY]); need = true; });
+  const up = e => look.delete(e.pointerId); cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
+  addEventListener("keydown", e => { keys[e.key.toLowerCase()] = true; if (/^arrow/i.test(e.key)) e.preventDefault(); hush(); }); addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    const kx = (keys.d || keys.e ? 1 : 0) - (keys.q || keys.a ? 1 : 0), ky = (keys.s || keys.arrowdown ? 1 : 0) - (keys.z || keys.w || keys.arrowup ? 1 : 0), turn = (keys.arrowright ? 1 : 0) - (keys.arrowleft ? 1 : 0);
+    if (turn) { yaw -= turn * 1.6 * dt; need = true; }
+    let mx = jx || kx, my = jy || ky; const ml = Math.hypot(mx, my); if (ml > 1) { mx /= ml; my /= ml; }
+    const SP = 3.4, fx = -Math.sin(yaw), fz = -Math.cos(yaw), tx = (fx * -my + Math.cos(yaw) * mx) * SP, tz = (fz * -my - Math.sin(yaw) * mx) * SP, k = 1 - Math.exp(-dt * 9);      // forward = where one looks
+    vx += (tx - vx) * k; vz += (tz - vz) * k; const sp = Math.hypot(vx, vz);
+    if (sp > 0.02) {
+      const nx = P.x + vx * dt, nz = P.z + vz * dt;      // slide along what blocks the way
+      if (!blocked(nx, nz)) { P.x = nx; P.z = nz; } else if (!blocked(nx, P.z)) { P.x = nx; vz = 0; } else if (!blocked(P.x, nz)) { P.z = nz; vx = 0; } else { vx = vz = 0; }
+      bob += sp * dt * 2.1; need = true;
+    } else { vx = vz = 0; }
+    if (need) {
+      need = false; const w = innerWidth, h = innerHeight; if (cv.width !== Math.round(w * renderer.getPixelRatio()) || cv.height !== Math.round(h * renderer.getPixelRatio())) { renderer.setSize(w, h, false); camera.aspect = w / h; camera.fov = w < h ? 74 : 62; camera.updateProjectionMatrix(); }
+      cards.forEach(m => { m.rotation.y = Math.atan2(P.x - m.position.x, P.z - m.position.z); });
+      camera.position.set(P.x, EYE + Math.sin(bob * 2) * 0.022 * Math.min(1, sp / 2), P.z); camera.rotation.set(pitch, yaw, 0, "YXZ"); sky.position.copy(camera.position); stars.position.copy(camera.position); renderer.render(scene, camera);
+    }
+    requestAnimationFrame(frame);
+  }
+  addEventListener("resize", () => { need = true; });
+  renderer.shadowMap.needsUpdate = true; requestAnimationFrame(frame);
+  setTimeout(() => { const l = document.getElementById("load"); l.style.opacity = 0; setTimeout(() => { l.hidden = true; }, 400); }, 300);
+  window.__go = (x, z, deg, p) => { P.x = x; P.z = z; if (deg != null) yaw = -deg * Math.PI / 180; if (p != null) pitch = p; need = true; };
+  window.__night = setNight; window.__joy = (x, y) => { jx = x; jy = y; }; window.__pos = () => [P.x, P.z, yaw];
+})();
+</script>
+</body>
+</html>
