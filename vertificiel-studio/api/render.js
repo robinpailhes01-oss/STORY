@@ -181,6 +181,7 @@ function buildFreePrompt(lines, nRefs, ambiance, existing, hasHouse, counts, sta
 
 // night version of a finished day render: same picture, only the light changes, LED profiles switched on
 const REAL_PASS = "Image 1 is a picture of a garden that still looks partly computer-generated. Produce the very same picture as an authentic photograph: keep EXACTLY the same framing, perspective, layout, shapes, sizes, positions and number of every element (pool, paving, trees, walls, lawn outline); nothing is added, moved, enlarged or removed. Only the realism changes: " + "It must look like an authentic photograph taken by a professional photographer with a full-frame camera, not a 3D rendering and not CGI: real materials with their natural texture and slight wear, real Mediterranean plants of the South of France (olive trees, Phoenix palms, lavender, rosemary, oleanders) with natural irregular foliage, premium synthetic grass with subtle natural colour variation and soft blade texture, natural depth of field, gentle lens vignetting, true-to-life colours, no oversaturation, no plastic look." + " Keep the same time of day and the same light.";
+const RETOUCHE = "Image 1 is a real photograph of a place, taken on site. Produce this very same photograph as it will look once the landscaping project described below is built: an authentic photograph, in very high detail, taken from EXACTLY the same viewpoint, with the same framing, lens and perspective. Everything the project does not mention stays exactly as in image 1: the buildings, the existing trees with their exact shapes and positions, the background, the fences, the signs and the sky. No people, no added text, no watermark. Real materials with natural texture, true-to-life colours, not a 3D rendering.";
 const RENDER_HOSTS = /^https:\/\/([a-z0-9-]+\.)*(aiquickdraw\.com|redpandaai\.co|kie\.ai)\//i;
 function buildNightPrompt(leds) {
   const led = leds.length
@@ -282,6 +283,16 @@ export default async function handler(req, res) {
       if (typeof img !== "string" || !/^data:image\/jpeg;base64,/.test(img) || img.length > 4.4e6) return res.status(400).json({ error: "image invalide" });
       const url = await upload(img, `visite-360-${Date.now()}.jpg`, H);
       return url ? res.json({ url }) : res.status(502).json({ error: "envoi de l'image refusé" });
+    }
+    // a project drawn straight on a real photograph of the place: image 1 is the photo, the next ones show the products to lay
+    if (mode === "retouche") {
+      const { sources, prompt: text } = req.body;
+      const urls = (Array.isArray(sources) ? sources : []).filter(u => typeof u === "string" && RENDER_HOSTS.test(u) && u.length <= 500).slice(0, 4);
+      const ask = String(text || "").replace(/[<>{}]/g, " ").slice(0, 3000).trim();
+      if (!urls.length || ask.length < 20) return res.status(400).json({ error: "photo ou description manquante" });
+      const t = await (await fetch(`${API}/api/v1/jobs/createTask`, { method: "POST", headers: H, body: JSON.stringify({ model: MODEL, input: { prompt: RETOUCHE + "\n" + ask, image_input: urls, aspect_ratio: ratio, resolution: "4K", output_format: "png" } }) })).json();
+      if (t.code !== 200) return res.status(502).json({ error: kieMsg(t.msg) || "rendu refusé" });
+      return res.json({ taskId: t.data.taskId });
     }
     if (mode === "real") {
       const { source } = req.body;
