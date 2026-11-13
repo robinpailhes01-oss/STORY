@@ -22,6 +22,12 @@
   @media (max-width: 520px) { .pts { left: 12px; transform: none; } .pts button { padding: 0 11px; font-size: 14px; } .dn { right: 12px; bottom: calc(76px + env(safe-area-inset-bottom, 0px)); } .tip { bottom: calc(140px + env(safe-area-inset-bottom, 0px)); } }
   .hot { position: fixed; transform: translate(-50%, -50%); width: 58px; height: 58px; border-radius: 50%; border: 2px solid #fff; background: rgba(22,57,44,.72); color: #fff; font: 800 18px inherit; cursor: pointer; box-shadow: 0 0 0 6px rgba(255,255,255,.22); }
   .hot span { display: block; font-size: 10px; font-weight: 600; margin-top: -2px; }
+  /* joystick: push sideways to turn, forward to walk to the next viewpoint */
+  .joy { position: fixed; left: 16px; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); width: 96px; height: 96px; border-radius: 50%; touch-action: none; cursor: grab; box-shadow: inset 0 0 0 2px rgba(255,255,255,.35); }
+  .joy::before { content: "▲"; position: absolute; left: 0; right: 0; top: 5px; text-align: center; font-size: 11px; opacity: .75; pointer-events: none; }
+  .joy i { position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%; background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,.4); pointer-events: none; }
+  @media (max-width: 520px) { .joy { left: 12px; bottom: calc(80px + env(safe-area-inset-bottom, 0px)); width: 88px; height: 88px; } .tip { bottom: calc(184px + env(safe-area-inset-bottom, 0px)) !important; } }
+  @media (min-width: 521px) and (max-width: 900px) { .joy { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); } }
   [hidden] { display: none !important; }
   /* phones: the legal mention sits under the title instead of running into it */
   @media (max-width: 600px) { body .legal { right: auto; left: 16px; top: calc(54px + env(safe-area-inset-top, 0px)); font-size: 10.5px; } .brand { max-width: calc(100vw - 32px); } }
@@ -36,7 +42,8 @@
 <body>
 <div class="brand">Vertificiel<small id="name">Visite 360° de votre jardin</small></div>
 <span class="legal">Projection indicative, non contractuelle</span>
-<div class="tip glass" id="tip">Glissez pour regarder autour de vous</div>
+<div class="tip glass" id="tip">Glissez pour regarder, joystick pour avancer</div>
+<div class="joy glass" id="joy" role="application" aria-label="Joystick : à gauche et à droite pour tourner, vers le haut pour avancer"><i></i></div>
 <div class="pts glass" id="pts" hidden></div>
 <div class="dn glass" id="dn" hidden><button type="button" id="dnBefore" aria-pressed="false" aria-label="Voir le lieu aujourd'hui" hidden>Avant</button><button type="button" id="dnDay" aria-pressed="true" aria-label="Voir le projet de jour">☀︎</button><button type="button" id="dnNight" aria-pressed="false" aria-label="Voir le projet de nuit">☾</button></div>
 <div class="load" id="load">Chargement de la visite…</div>
@@ -97,6 +104,7 @@
       [...bar.children].forEach((b, k) => b.setAttribute("aria-pressed", String(k === i)));
       document.getElementById("dnDay").setAttribute("aria-pressed", String(m === "day")); document.getElementById("dnNight").setAttribute("aria-pressed", String(m === "night")); document.getElementById("dnBefore").setAttribute("aria-pressed", String(m === "before"));
       document.getElementById("dnNight").disabled = !V.p[i].n; document.getElementById("dnBefore").disabled = !V.p[i].b;
+      walk = 0; hold = busy; busy = false; cv.style.transform = ""; cv.style.opacity = 1;
       const l = document.getElementById("load"); l.style.opacity = 0; setTimeout(() => { l.hidden = true; }, 400); draw();
     }, undefined, () => { document.getElementById("load").textContent = "Cette visite n'est plus disponible. Demandez un nouveau lien à votre conseiller Vertificiel."; document.getElementById("load").hidden = false; document.getElementById("load").style.opacity = 1; });
   }
@@ -136,6 +144,42 @@
   cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
   function glide() { if (pts.size || Math.abs(vel) < 0.0004) return; yaw += vel; vel *= 0.94; draw(); requestAnimationFrame(glide); }
   cv.addEventListener("wheel", e => { e.preventDefault(); fov = Math.max(35, Math.min(75, fov + e.deltaY * 0.03)); zoom = Math.max(1, Math.min(3, zoom * (1 - e.deltaY * 0.001))); draw(); }, { passive: false });
+  // ---- joystick: a small game pad. Sideways turns the view; forward walks to the viewpoint ahead (the next one when the points have no position), backward goes back.
+  const joy = document.getElementById("joy"), knob = joy.firstElementChild, keys = {}; let jx = 0, jy = 0, jid = null, walk = 0, busy = false, hold = false, jt = 0, running = false;
+  function ahead(sign) {
+    const p = V.p[cur], placed = V.p.some(q => Math.hypot((q.x || 0) - (p.x || 0), (q.z || 0) - (p.z || 0)) > 0.5);
+    if (!placed || part) { const k = cur + sign; return k >= 0 && k < V.p.length ? k : -1; }
+    let best = -1, bd = 1.3;      // the viewpoint that lies in the direction looked at (or behind, when walking back), within 75°
+    V.p.forEach((q, k) => {
+      const dx = q.x - p.x, dz = q.z - p.z; if (k === cur || Math.hypot(dx, dz) < 0.5) return;
+      let d = Math.atan2(dx, -dz) - (p.y || 0) + yaw + (sign < 0 ? Math.PI : 0); d = Math.abs(Math.atan2(Math.sin(d), Math.cos(d)));
+      if (d < bd) { bd = d; best = k; }
+    });
+    return best;
+  }
+  function step(now) {
+    const dt = Math.min(0.05, (now - jt) / 1000); jt = now;
+    const x = jx || ((keys.ArrowRight ? 1 : 0) - (keys.ArrowLeft ? 1 : 0)), y = jy || ((keys.ArrowDown ? 1 : 0) - (keys.ArrowUp ? 1 : 0));
+    if (cur >= 0 && !busy) {
+      if (Math.abs(x) > 0.15) { yaw -= x * 1.5 * dt; draw(); }
+      if (Math.abs(y) < 0.5) hold = false;      // one push, one step: release before walking on
+      const sign = hold ? 0 : y < -0.5 ? 1 : y > 0.5 ? -1 : 0, to = sign ? ahead(sign) : -1;
+      if (sign) walk = Math.min(to < 0 ? 0.22 : 1, walk + dt / 0.75); else walk = Math.max(0, walk - dt * 3);
+      // walking: the picture comes closer, then the next viewpoint takes its place
+      cv.style.transform = walk > 0 ? "scale(" + (1 + 0.5 * walk * (sign < 0 ? 0.3 : 1)) + ")" : ""; cv.style.opacity = 1 - 0.75 * walk * walk;
+      if (walk >= 1 && to >= 0) { busy = true; show(to); }
+    }
+    if (jid !== null || Object.values(keys).some(Boolean) || walk > 0) requestAnimationFrame(step); else running = false;
+  }
+  const run = () => { if (!running) { running = true; jt = performance.now(); requestAnimationFrame(step); } document.getElementById("tip").style.opacity = 0; };
+  const aim = e => { const r = joy.getBoundingClientRect(), R = r.width / 2, dx = e.clientX - r.left - R, dy = e.clientY - r.top - R, d = Math.hypot(dx, dy), k = d > R ? R / d : 1; jx = dx * k / R; jy = dy * k / R; knob.style.transform = "translate(" + (jx * (R - 22)) + "px," + (jy * (R - 22)) + "px)"; };
+  joy.addEventListener("pointerdown", e => { e.preventDefault(); e.stopPropagation(); joy.setPointerCapture(e.pointerId); jid = e.pointerId; aim(e); run(); });
+  joy.addEventListener("pointermove", e => { if (e.pointerId === jid) aim(e); });
+  const rest = e => { if (e.pointerId !== jid) return; jid = null; jx = jy = 0; knob.style.transform = ""; };
+  joy.addEventListener("pointerup", rest); joy.addEventListener("pointercancel", rest);
+  addEventListener("keydown", e => { if (/^Arrow/.test(e.key)) { keys[e.key] = true; e.preventDefault(); run(); } });
+  addEventListener("keyup", e => { if (/^Arrow/.test(e.key)) keys[e.key] = false; });
+  window.__joy = (x, y) => { jx = x; jy = y; jid = x || y ? -1 : null; if (jid !== null) run(); };
   addEventListener("resize", draw); show(0);
   window.__view = (y, p) => { yaw = y; pitch = p || 0; vc = p || 0; draw(); };
 })();
