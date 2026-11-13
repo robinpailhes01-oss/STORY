@@ -434,12 +434,30 @@
   @media (max-width: 699px) { .dock .btn { white-space: nowrap; } }
   @media (min-width: 700px) { .dock .btn { min-width: 0; } .dock .seg { flex: none; } }
   @media (max-width: 400px) { .dock { gap: 6px; } .dock .seg button { min-width: 34px; padding-inline: 3px; } .dock .btn { padding-inline: 10px; } }
+  /* home screen: the first page, before any site */
+  button.brand { background: none; border: 0; padding: 0; margin: 0; text-align: left; color: inherit; font: inherit; cursor: pointer; min-height: 44px; }
+  .home { position: fixed; inset: 0; z-index: 55; background: var(--bg); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .home-in { max-width: 620px; margin: 0 auto; padding: max(20px, env(safe-area-inset-top, 0px)) 20px calc(28px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 18px; }
+  .home-hero { position: relative; border-radius: 22px; overflow: hidden; aspect-ratio: 25 / 13; background: var(--accent); }
+  .home-hero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .home-hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,22,17,.05) 35%, rgba(10,22,17,.78)); }
+  .home-title { position: absolute; left: 20px; bottom: 16px; z-index: 1; color: #ffffff; display: grid; }
+  .home-title b { font: 800 34px/1 var(--font-display); letter-spacing: -.01em; }
+  .home-title span { font: 600 15px var(--font-body); opacity: .92; margin-top: 4px; }
+  .home-lead { margin: 0; font-size: 16.5px; line-height: 1.45; color: var(--muted); text-wrap: balance; }
+  .home-new { min-height: 62px; font-size: 18px; border-radius: 18px; }
+  .home-sec { display: grid; gap: 8px; }
+  .home-foot { display: flex; flex-wrap: wrap; gap: 6px 22px; justify-content: center; padding-top: 4px; }
+  .home-foot .linkbtn { min-height: 44px; display: inline-flex; align-items: center; }
+  .home .sites button span span { display: block; }
+  @media (min-width: 900px) and (min-height: 600px) { .home-in { padding-top: 6vh; } }
+  @media (max-height: 480px) and (orientation: landscape) { .home-hero { aspect-ratio: 5 / 1; } }
 </style>
 
 </head>
 <body>
 <div class="top">
-  <div class="brand"><b>Vertificiel</b><span id="projLine">Studio jardin</span></div>
+  <button type="button" class="brand" id="brandHome" title="Retour à l'accueil" aria-label="Vertificiel, retour à l'accueil"><b>Vertificiel</b><span id="projLine">Studio jardin</span></button>
   <nav class="steps" aria-label="Étapes du projet">
     <button type="button" class="step" data-step="1"><i>1</i><span>Terrain</span></button>
     <button type="button" class="step" data-step="2"><i>2</i><span>Jardin</span></button>
@@ -741,6 +759,24 @@
 </div>
 <div class="toast" id="toast" role="status" hidden><span id="toastMsg"></span><button type="button" id="toastAct" hidden></button></div>
 <div class="visit-ov" id="visitOv" hidden><iframe id="visitFrame" title="Visite 360° du jardin" allowfullscreen></iframe><div class="visit-acts"><button type="button" id="visitShare">Envoyer le lien au client</button><button type="button" id="visitClose">✕ Fermer</button></div></div>
+<div class="home" id="home" hidden>
+  <div class="home-in">
+    <div class="home-hero">
+      <img src="img/demo/accueil.jpg" alt="" decoding="async">
+      <div class="home-title"><b>Vertificiel</b><span>Studio jardin</span></div>
+    </div>
+    <p class="home-lead">Le jardin de votre client en 3D, en photos 4K et en visite à 360°, avant les travaux.</p>
+    <button type="button" class="btn home-new" id="homeNew"><span>＋ Nouveau chantier</span></button>
+    <div class="home-sec" id="homeSaved" hidden>
+      <div class="label">Reprendre un chantier</div>
+      <div class="sites" id="homeList"></div>
+    </div>
+    <div class="home-foot">
+      <button type="button" class="linkbtn" id="homeDemo">Voir le jardin de démonstration</button>
+      <a class="linkbtn" href="guide-studio-vertificiel.pdf" target="_blank" rel="noopener">Guide du studio</a>
+    </div>
+  </div>
+</div>
 <div class="sheet-bg" id="sheet" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle"><h3 id="sheetTitle"></h3><p id="sheetBody"></p><div class="sheet-acts" id="sheetActs"></div></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -1617,6 +1653,7 @@
   }
   function save() {
     if (!site) return;
+    site.t = Date.now();
     site.items = items.map(it => [it.no, +it.g.position.x.toFixed(2), +it.g.position.z.toFixed(2), +it.g.rotation.y.toFixed(3)].concat(it.spec ? [Object.assign({}, it.spec)] : []));
     site.client = $("client").value; site.name = $("siteName").value.trim() || site.name;
     clearTimeout(saveTimer); saveTimer = setTimeout(() => { saveTimer = 1; flushSave(); }, 300);
@@ -1665,10 +1702,34 @@
   $("siteSel").addEventListener("change", e => switchSite(e.target.value));
   async function switchSite(v) {
     save(); flushSave();
-    if (v === "+") { await loadSite(NEW_SITE()); save(); toast("Nouveau terrain : importez le plan de masse ou saisissez les cotes."); return; }
+    if (v === "+") { await loadSite(NEW_SITE()); save(); toast("Nouveau chantier : tapez l'adresse du client pour trouver son terrain."); return; }
     let s2 = null; try { s2 = await DB.get(v); } catch (err) { s2 = null; }
     await loadSite(s2 || siteList.find(x => x.id === v) || DEMO());
   }
+  // ---------------------------------------------------------------- home screen: start a new site, or go back to one
+  async function showHome() {
+    save(); flushSave(); await refreshSites();
+    const list = $("homeList"), saved = siteList.filter(x => !x.demo && !(x.name === "Nouveau terrain" && !x.geo && !(x.items || []).length)).sort((a, b) => (b.t || 0) - (a.t || 0));
+    list.innerHTML = ""; $("homeSaved").hidden = !saved.length;
+    saved.forEach(x => {
+      const b = document.createElement("button"); b.type = "button";
+      const thumb = x.photos && x.photos[0] ? x.photos[0].thumb : null, nPh = (x.renders || []).length;
+      b.innerHTML = (thumb ? `<img src="${thumb}" alt="">` : '<span class="ph">' + ((x.client || x.name || "?").trim()[0] || "?").toUpperCase() + "</span>") + "<span><b></b><span></span></span>";
+      b.querySelector("b").textContent = x.client ? x.client + " · " + x.name : x.name;
+      b.querySelector("span span").textContent = [fmt.format(polyArea(x.poly || [[0, 0], [1, 0], [1, 1]])) + " m²", nPh ? nPh + " photo" + (nPh > 1 ? "s" : "") + " 4K" : null, x.visit ? "visite 360°" : null].filter(Boolean).join(" · ");
+      b.addEventListener("click", async () => { if (x.id !== site.id) await switchSite(x.id); go((site.items || []).length ? 2 : 1); hideHome(); });
+      list.appendChild(b);
+    });
+    $("home").hidden = false; $("home").scrollTop = 0;
+  }
+  function hideHome() { $("home").hidden = true; }
+  $("homeNew").addEventListener("click", async () => {
+    await switchSite("+"); go(1); hideHome();
+    const li = document.querySelector('#guide1 [data-g="terrain"]'); if (li) li.classList.remove("open");
+    if (innerWidth >= 700) setTimeout(() => $("geoQ").focus(), 250);
+  });
+  $("homeDemo").addEventListener("click", async () => { if (!site.demo) await switchSite("demo"); go(1); hideHome(); });
+  $("brandHome").addEventListener("click", showHome);
   // the preparation (outline, house, photos) is hidden during a meeting, so nothing moves by mistake
   let prepOpen = false;
   function setPrep(on) {
@@ -3898,6 +3959,9 @@
     }
     renderCatalogue(); await loadSite(cur); go(1); goTo("plan", true); requestAnimationFrame(loop);
     resumeRenders();
+    // the studio opens on its home screen (a link with ?studio=1 goes straight to the current site)
+    let direct = false; try { direct = new URLSearchParams(location.search).has("studio"); } catch (e) { direct = false; }
+    if (!direct) showHome();
   })();
   setTimeout(() => { loadingEl.hidden = true; }, 6000);
 })();
