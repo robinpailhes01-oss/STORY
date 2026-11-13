@@ -288,9 +288,9 @@ export default async function handler(req, res) {
     if (mode === "retouche") {
       const { sources, prompt: text } = req.body;
       const urls = (Array.isArray(sources) ? sources : []).filter(u => typeof u === "string" && RENDER_HOSTS.test(u) && u.length <= 500).slice(0, 4);
-      const ask = String(text || "").replace(/[<>{}]/g, " ").slice(0, 3000).trim();
+      const ask = String(text || "").replace(/[<>{}]/g, " ").slice(0, 4000).trim();
       if (!urls.length || ask.length < 20) return res.status(400).json({ error: "photo ou description manquante" });
-      const t = await (await fetch(`${API}/api/v1/jobs/createTask`, { method: "POST", headers: H, body: JSON.stringify({ model: MODEL, input: { prompt: RETOUCHE + "\n" + ask, image_input: urls, aspect_ratio: ratio, resolution: "4K", output_format: "png" } }) })).json();
+      const t = await (await fetch(`${API}/api/v1/jobs/createTask`, { method: "POST", headers: H, body: JSON.stringify({ model: MODEL, input: { prompt: (req.body.raw === true ? "" : RETOUCHE + "\n") + ask, image_input: urls, aspect_ratio: ratio, resolution: "4K", output_format: "png" } }) })).json();
       if (t.code !== 200) return res.status(502).json({ error: kieMsg(t.msg) || "rendu refusé" });
       return res.json({ taskId: t.data.taskId });
     }

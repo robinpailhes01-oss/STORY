@@ -16,9 +16,10 @@
   .pts button { min-width: 48px; min-height: 48px; padding: 0 16px; border: 0; border-radius: 999px; background: transparent; color: #fff; font: 700 15px inherit; cursor: pointer; }
   .pts button[aria-pressed="true"] { background: #fff; color: #16392c; }
   .dn { position: fixed; right: 12px; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 4px; padding: 4px; border-radius: 999px; }
+  .dn button[hidden] { display: none; }
   .dn button { min-width: 48px; min-height: 48px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: #fff; font: 700 17px inherit; cursor: pointer; }
   .dn button[aria-pressed="true"] { background: #ffd59a; color: #1c1407; }
-  @media (max-width: 520px) { .pts { left: 16px; transform: none; } }
+  @media (max-width: 520px) { .pts { left: 12px; transform: none; } .pts button { padding: 0 11px; font-size: 14px; } .dn { right: 12px; bottom: calc(76px + env(safe-area-inset-bottom, 0px)); } .tip { bottom: calc(140px + env(safe-area-inset-bottom, 0px)); } }
   .hot { position: fixed; transform: translate(-50%, -50%); width: 58px; height: 58px; border-radius: 50%; border: 2px solid #fff; background: rgba(22,57,44,.72); color: #fff; font: 800 18px inherit; cursor: pointer; box-shadow: 0 0 0 6px rgba(255,255,255,.22); }
   .hot span { display: block; font-size: 10px; font-weight: 600; margin-top: -2px; }
   [hidden] { display: none !important; }
@@ -37,7 +38,7 @@
 <span class="legal">Projection indicative, non contractuelle</span>
 <div class="tip glass" id="tip">Glissez pour regarder autour de vous</div>
 <div class="pts glass" id="pts" hidden></div>
-<div class="dn glass" id="dn" hidden><button type="button" id="dnDay" aria-pressed="true" aria-label="Voir de jour">☀︎</button><button type="button" id="dnNight" aria-pressed="false" aria-label="Voir de nuit">☾</button></div>
+<div class="dn glass" id="dn" hidden><button type="button" id="dnBefore" aria-pressed="false" aria-label="Voir le lieu aujourd'hui" hidden>Avant</button><button type="button" id="dnDay" aria-pressed="true" aria-label="Voir le projet de jour">☀︎</button><button type="button" id="dnNight" aria-pressed="false" aria-label="Voir le projet de nuit">☾</button></div>
 <div class="load" id="load">Chargement de la visite…</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -59,27 +60,32 @@
     band = new T.Mesh(new T.SphereGeometry(1, 96, 64, 0, 2 * Math.PI, (Math.PI - 2 * Math.PI * 9 / 21 / 2) / 2, 2 * Math.PI * 9 / 21 / 2), mat);      // "e": 2, a 21:9 band of a sphere, ±77°
   scene.add(cyl, sph, band); sph.visible = band.visible = false; let sphere = false;
   const loader = new T.TextureLoader(); loader.setCrossOrigin("anonymous");
-  let cur = -1, yaw = 0, pitch = 0, fov = 62, vel = 0, last = 0, nightOn = false;
+  let cur = -1, yaw = 0, pitch = 0, fov = 62, vel = 0, last = 0, mode = "day";
   const relay = u => (/^https:\/\/tempfile\.redpandaai\.co\//.test(u) ? "api/render?img=" + encodeURIComponent(u) : u);
   V.p.forEach(p => { if (typeof p.n !== "string" || !/^https:\/\//.test(p.n)) delete p.n; });
   const dn = document.getElementById("dn"); dn.hidden = !V.p.some(p => p.n);
-  document.getElementById("dnDay").addEventListener("click", () => { if (nightOn) { nightOn = false; show(cur); } });
-  document.getElementById("dnNight").addEventListener("click", () => { if (!nightOn && V.p[cur] && V.p[cur].n) { nightOn = true; show(cur); } });
+  V.p.forEach(p => { if (typeof p.b !== "string" || !/^https:\/\//.test(p.b)) delete p.b; });
+  dn.hidden = !V.p.some(p => p.n || p.b); document.getElementById("dnBefore").hidden = !V.p.some(p => p.b); document.getElementById("dnNight").hidden = !V.p.some(p => p.n);
+  const setMode = m => { if (m !== mode && cur >= 0) { mode = m; show(cur); } };
+  document.getElementById("dnDay").addEventListener("click", () => setMode("day"));
+  document.getElementById("dnNight").addEventListener("click", () => { if (V.p[cur] && V.p[cur].n) setMode("night"); });
+  document.getElementById("dnBefore").addEventListener("click", () => { if (V.p[cur] && V.p[cur].b) setMode("before"); });
   const hots = V.p.map((p, i) => { const b = document.createElement("button"); b.className = "hot"; b.innerHTML = "↑<span>" + (i + 1) + "</span>"; b.setAttribute("aria-label", "Aller au point " + (i + 1)); b.hidden = true; b.addEventListener("click", () => show(i)); document.body.appendChild(b); return b; });
   const bar = document.getElementById("pts");
-  if (V.p.length > 1) { bar.hidden = false; V.p.forEach((p, i) => { const b = document.createElement("button"); b.textContent = i + 1; b.setAttribute("aria-label", "Point de vue " + (i + 1)); b.addEventListener("click", () => show(i)); bar.appendChild(b); }); }
+  if (V.p.length > 1) { bar.hidden = false; V.p.forEach((p, i) => { const b = document.createElement("button"); b.textContent = /^\d*$/.test(String(p.l || "")) ? i + 1 : String(p.l).slice(0, 14); b.setAttribute("aria-label", "Point de vue " + (i + 1)); b.addEventListener("click", () => show(i)); bar.appendChild(b); }); }
   function show(i) {
     // keep looking in the same direction of the garden when moving to another point
-    const head = cur >= 0 ? (V.p[cur].y || 0) - yaw : null, night = nightOn && !!V.p[i].n;
+    const head = cur >= 0 ? (V.p[cur].y || 0) - yaw : null, m = mode === "night" && V.p[i].n ? "night" : mode === "before" && V.p[i].b ? "before" : "day";
     // our stored panoramas come through the studio's relay (their host sends no CORS header, which a 3D view needs)
-    const src = relay(night ? V.p[i].n : V.p[i].u);
+    const src = relay(m === "night" ? V.p[i].n : m === "before" ? V.p[i].b : V.p[i].u);
     loader.load(src, tex => {
       tex.encoding = T.sRGBEncoding; tex.wrapS = T.RepeatWrapping; tex.repeat.x = -1; tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
       if (mat.map) mat.map.dispose(); mat.map = tex; mat.needsUpdate = true; cur = i;
       sphere = V.p[i].e === 1 ? 1 : V.p[i].e === 2 ? 2 : 0; sph.visible = sphere === 1; band.visible = sphere === 2; cyl.visible = !sphere;
       yaw = head == null ? 0 : (V.p[i].y || 0) - head;
       [...bar.children].forEach((b, k) => b.setAttribute("aria-pressed", String(k === i)));
-      document.getElementById("dnDay").setAttribute("aria-pressed", String(!night)); document.getElementById("dnNight").setAttribute("aria-pressed", String(night)); document.getElementById("dnNight").disabled = !V.p[i].n;
+      document.getElementById("dnDay").setAttribute("aria-pressed", String(m === "day")); document.getElementById("dnNight").setAttribute("aria-pressed", String(m === "night")); document.getElementById("dnBefore").setAttribute("aria-pressed", String(m === "before"));
+      document.getElementById("dnNight").disabled = !V.p[i].n; document.getElementById("dnBefore").disabled = !V.p[i].b;
       const l = document.getElementById("load"); l.style.opacity = 0; setTimeout(() => { l.hidden = true; }, 400); draw();
     }, undefined, () => { document.getElementById("load").textContent = "Cette visite n'est plus disponible. Demandez un nouveau lien à votre conseiller Vertificiel."; document.getElementById("load").hidden = false; document.getElementById("load").style.opacity = 1; });
   }
