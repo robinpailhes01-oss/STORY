@@ -302,7 +302,7 @@ export default async function handler(req, res) {
       if (t.code !== 200) return res.status(502).json({ error: kieMsg(t.msg) || "rendu refusé" });
       return res.json({ taskId: t.data.taskId });
     }
-    const own = (Array.isArray(houseRefs) ? houseRefs : []).filter(r => typeof r === "string" && r.startsWith("data:image/") && r.length < 3e6).slice(0, 2);
+    const own = (Array.isArray(houseRefs) ? houseRefs : []).filter(r => typeof r === "string" && r.startsWith("data:image/") && r.length < 3e6).slice(0, 3);
     const zones = ["middle-left", "middle-centre", "middle-right", "bottom-left", "bottom-centre", "bottom-right"];
     const emptyZones = (Array.isArray(empty) ? empty : []).filter(z => zones.includes(z)).map(z => "the " + z.replace("-", " ") + " of the image");
     const clean = s => String(s || "").replace(/[^a-z ,-]/gi, "").slice(0, 120);

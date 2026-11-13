@@ -463,6 +463,7 @@
   .qphotos img { width: 100%; height: 100%; object-fit: cover; display: block; }
   #guide1 li.done:not(.open) .gb > .qphotos, #guide1 li[data-g="photos"].done:not(.open) .gb > .chips { display: flex; }
   #guide1 li[data-g="photos"].done:not(.open) #spotAdd { display: none; }
+  #videoQuick[aria-busy="true"] { opacity: .6; pointer-events: none; }
 </style>
 
 </head>
@@ -563,9 +564,10 @@
         <li data-g="photos"><span class="gn">4</span><div class="gb">
           <b>Photographier le jardin<button type="button" class="more" data-open>Ajouter</button></b><span class="gs" id="g4s">Touchez un point 📷 du plan, aux angles de la maison : l'appareil photo s'ouvre.</span>
           <p class="note">Tablette à l'horizontale, dans le sens de la flèche, la clôture du fond dans l'image.</p>
-          <div class="chips"><button type="button" class="chip photo-quick" id="photoQuick">📷 Prendre une photo du lieu</button><button type="button" class="chip" id="spotAdd">+ Point photo sur le plan</button></div>
+          <div class="chips"><button type="button" class="chip photo-quick" id="photoQuick">📷 Prendre une photo du lieu</button><button type="button" class="chip" id="videoQuick">🎬 Ajouter une vidéo du lieu</button><button type="button" class="chip" id="spotAdd">+ Point photo sur le plan</button></div>
           <div class="qphotos" id="quickPhotos"></div>
-          <input type="file" id="fileQuick" accept="image/*" hidden>
+          <input type="file" id="fileQuick" accept="image/*" multiple hidden>
+          <input type="file" id="fileVideo" accept="video/*" hidden>
           <p class="note" id="spotMsg" hidden></p>
           <input type="file" id="fileCam" accept="image/*" capture="environment" hidden>
         </div></li>
@@ -2631,15 +2633,41 @@
     });
   }
   $("photoQuick").addEventListener("click", () => $("fileQuick").click());
+  async function addRefPhoto(image, name) {
+    const img = await loadImg(image), k = 200 / Math.max(img.naturalWidth, img.naturalHeight), c = document.createElement("canvas");
+    c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    site.photos.push({ id: Date.now().toString(36) + site.photos.length, name: name || "Photo " + (site.photos.length + 1), image, thumb: c.toDataURL("image/jpeg", 0.7), w: img.naturalWidth, h: img.naturalHeight, pts: [], pose: null, err: null, ref: true });
+  }
   $("fileQuick").addEventListener("change", async e => {
+    const files = [...e.target.files].slice(0, 6); e.target.value = ""; if (!files.length) return;
+    let ok = 0;
+    for (const f of files) { try { await addRefPhoto(await fileToImage(f, 1600, 0.86)); ok++; } catch (err) { /* unreadable file */ } }
+    save(); renderGuide();
+    toast(!ok ? "Cette photo n'a pas pu être lue. Réessayez." : site.photos.length < 2 ? "Photo ajoutée. Prenez-en une deuxième, d'un autre côté : l'IA s'en sert pour reproduire le lieu." : site.photos.length + " photos du lieu : elles serviront de référence aux rendus.");
+  });
+  // a video filmed while walking around: 5 pictures are taken along its length and kept as photos of the place
+  $("videoQuick").addEventListener("click", () => $("fileVideo").click());
+  $("fileVideo").addEventListener("change", async e => {
     const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+    const btn = $("videoQuick"), url = URL.createObjectURL(f), v = document.createElement("video");
+    btn.setAttribute("aria-busy", "true"); toast("Lecture de la vidéo…");
+    v.muted = true; v.playsInline = true; v.preload = "auto"; v.src = url;
+    const wait = (ev, ms) => new Promise((ok, ko) => { const t = setTimeout(() => ko(new Error("délai")), ms); v.addEventListener(ev, () => { clearTimeout(t); ok(); }, { once: true }); });
+    let n = 0;
     try {
-      const image = await fileToImage(f, 1600, 0.86), img = await loadImg(image), k = 200 / Math.max(img.naturalWidth, img.naturalHeight), c = document.createElement("canvas");
-      c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-      site.photos.push({ id: Date.now().toString(36), name: "Photo " + (site.photos.length + 1), image, thumb: c.toDataURL("image/jpeg", 0.7), w: img.naturalWidth, h: img.naturalHeight, pts: [], pose: null, err: null, ref: true });
-      save(); renderGuide();
-      toast(site.photos.length < 2 ? "Photo ajoutée. Prenez-en une deuxième, d'un autre côté : l'IA s'en sert pour reproduire le lieu." : "Photo ajoutée : " + site.photos.length + " photos du lieu serviront de référence aux rendus.");
-    } catch (err) { toast("Cette photo n'a pas pu être lue. Réessayez."); }
+      await wait("loadeddata", 20000);
+      const dur = isFinite(v.duration) && v.duration > 0 ? v.duration : 0, N = 5, W0 = v.videoWidth, H0 = v.videoHeight, k = Math.min(1, 1600 / Math.max(W0, H0));
+      const c = document.createElement("canvas"); c.width = Math.round(W0 * k); c.height = Math.round(H0 * k);
+      for (let i = 0; i < N; i++) {
+        const t = dur ? dur * (0.08 + 0.84 * i / (N - 1)) : 0;
+        if (dur) { v.currentTime = t; await wait("seeked", 12000); }
+        c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
+        await addRefPhoto(c.toDataURL("image/jpeg", 0.86), "Vidéo · image " + (i + 1)); n++;
+        if (!dur) break;
+      }
+    } catch (err) { /* keeps the pictures already taken */ }
+    URL.revokeObjectURL(url); btn.removeAttribute("aria-busy"); save(); renderGuide();
+    toast(n ? n + " image" + (n > 1 ? "s" : "") + " tirée" + (n > 1 ? "s" : "") + " de la vidéo : elles montrent le lieu à l'IA pour les rendus." : "Cette vidéo n'a pas pu être lue sur cet appareil. Prenez plutôt 3 ou 4 photos.", { ms: 7000 });
   });
 
   // a 3D sketch of the house from the expected place, corners numbered: Gemini finds the same corners in the photo
@@ -3396,7 +3424,8 @@
   const nearRatio = r => RATIOS.reduce((b, x) => Math.abs(Math.log(x[1] / r)) < Math.abs(Math.log(b[1] / r)) ? x : b)[0];
   async function houseRefs() {
     const out = [];
-    for (const ph of site.photos.slice(0, 2)) {
+    const all = site.photos, pick = all.length <= 3 ? all : [all[0], all[Math.floor((all.length - 1) / 2)], all[all.length - 1]];
+    for (const ph of pick) {
       const img = await loadImg(ph.image), k = Math.min(1, 1024 / Math.max(ph.w, ph.h)), c = document.createElement("canvas");
       c.width = Math.round(ph.w * k); c.height = Math.round(ph.h * k); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); out.push(c.toDataURL("image/jpeg", 0.85));
     }
