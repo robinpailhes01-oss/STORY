@@ -61,6 +61,10 @@
   scene.add(cyl, sph, band); sph.visible = band.visible = false; let sphere = false;
   const loader = new T.TextureLoader(); loader.setCrossOrigin("anonymous");
   let cur = -1, yaw = 0, pitch = 0, fov = 62, vel = 0, last = 0, mode = "day";
+  // "c" + "t": a real photo strip that covers only part of the turn (c radians wide, from tan(elevation) t[0] up to t[1]).
+  // The view then never leaves the photographed part: nothing is invented around it.
+  let part = null, pmesh = null, vc = 0, zoom = 1, hfNow = 0.5, hhNow = 0.5;
+  V.p.forEach(p => { if (!(p.c > 0.3 && p.c < 6.2 && Array.isArray(p.t) && p.t[1] - p.t[0] > 0.2)) { delete p.c; delete p.t; } });
   const relay = u => (/^https:\/\/tempfile\.redpandaai\.co\//.test(u) ? "api/render?img=" + encodeURIComponent(u) : u);
   V.p.forEach(p => { if (typeof p.n !== "string" || !/^https:\/\//.test(p.n)) delete p.n; });
   const dn = document.getElementById("dn"); dn.hidden = !V.p.some(p => p.n);
@@ -82,6 +86,12 @@
       tex.encoding = T.sRGBEncoding; tex.wrapS = T.RepeatWrapping; tex.repeat.x = -1; tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
       if (mat.map) mat.map.dispose(); mat.map = tex; mat.needsUpdate = true; cur = i;
       sphere = V.p[i].e === 1 ? 1 : V.p[i].e === 2 ? 2 : 0; sph.visible = sphere === 1; band.visible = sphere === 2; cyl.visible = !sphere;
+      const same = part && part === V.p[i]; if (pmesh) { scene.remove(pmesh); pmesh.geometry.dispose(); pmesh = null; }
+      part = V.p[i].c ? V.p[i] : null;
+      if (part) {
+        pmesh = new T.Mesh(new T.CylinderGeometry(1, 1, part.t[1] - part.t[0], 96, 1, true, Math.PI - part.c / 2, part.c), mat); pmesh.position.y = (part.t[0] + part.t[1]) / 2; scene.add(pmesh);
+        cyl.visible = sph.visible = band.visible = false; if (!same) { yaw = 0; vc = 0; zoom = 1; }
+      } else
       yaw = head == null ? 0 : (V.p[i].y || 0) - head;
       [...bar.children].forEach((b, k) => b.setAttribute("aria-pressed", String(k === i)));
       document.getElementById("dnDay").setAttribute("aria-pressed", String(m === "day")); document.getElementById("dnNight").setAttribute("aria-pressed", String(m === "night")); document.getElementById("dnBefore").setAttribute("aria-pressed", String(m === "before"));
@@ -92,6 +102,13 @@
   const v3 = new T.Vector3();
   function draw() {
     const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.fov = fov; camera.updateProjectionMatrix();
+    if (part) {
+      // the window slides over the strip: sideways by turning, up and down by shifting the frame (the camera stays level, so the edges stay straight)
+      const a = w / h, hh = Math.min((part.t[1] - part.t[0]) / 2, Math.tan(Math.min(part.c / 2 - 0.005, 0.87)) / a) / zoom, hw = hh * a, hf = Math.atan(hw), ym = Math.max(0, part.c / 2 - hf), n = camera.near;
+      vc = Math.max(part.t[0] + hh, Math.min(part.t[1] - hh, vc)); yaw = Math.max(-ym, Math.min(ym, yaw)); hfNow = hf; hhNow = hh;
+      camera.projectionMatrix.makePerspective(-hw * n, hw * n, (vc + hh) * n, (vc - hh) * n, n, camera.far); camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
+      camera.rotation.set(0, yaw, 0, "YXZ"); camera.updateMatrixWorld(); renderer.render(scene, camera); hots.forEach(b => { b.hidden = true; }); return;
+    }
     const lim = sphere === 1 ? 1.45 : sphere === 2 ? Math.max(0, 1.34 - fov * Math.PI / 360) : Math.max(0, Math.atan(K) - fov * Math.PI / 360 - 0.02); pitch = Math.max(-lim, Math.min(lim, pitch));
     camera.rotation.set(pitch, yaw, 0, "YXZ"); camera.updateMatrixWorld(); renderer.render(scene, camera);
     // arrows towards the other points, on the ground where they stand
@@ -110,15 +127,16 @@
   cv.addEventListener("pointermove", e => {
     if (!pts.has(e.pointerId)) return;
     const p = pts.get(e.pointerId), dx = e.clientX - p[0], dy = e.clientY - p[1]; pts.set(e.pointerId, [e.clientX, e.clientY]);
-    if (pts.size === 2) { const [a, b] = [...pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (pinch) fov = Math.max(35, Math.min(75, fov * pinch / d)); pinch = d; draw(); return; }
+    if (pts.size === 2) { const [a, b] = [...pts.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (pinch) { fov = Math.max(35, Math.min(75, fov * pinch / d)); zoom = Math.max(1, Math.min(3, zoom * d / pinch)); } pinch = d; draw(); return; }
+    if (part) { const ky = 2 * hfNow / innerWidth; yaw += dx * ky; vc += dy * 2 * hhNow / innerHeight; vel = dx * ky; last = performance.now(); draw(); return; }
     const k = fov * Math.PI / 180 / innerHeight; yaw += dx * k; pitch += dy * k; vel = dx * k; last = performance.now(); draw();
   });
   const up = e => { pts.delete(e.pointerId); pinch = 0; if (performance.now() - last < 60 && Math.abs(vel) > 0.002) requestAnimationFrame(glide); };
   cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
   function glide() { if (pts.size || Math.abs(vel) < 0.0004) return; yaw += vel; vel *= 0.94; draw(); requestAnimationFrame(glide); }
-  cv.addEventListener("wheel", e => { e.preventDefault(); fov = Math.max(35, Math.min(75, fov + e.deltaY * 0.03)); draw(); }, { passive: false });
+  cv.addEventListener("wheel", e => { e.preventDefault(); fov = Math.max(35, Math.min(75, fov + e.deltaY * 0.03)); zoom = Math.max(1, Math.min(3, zoom * (1 - e.deltaY * 0.001))); draw(); }, { passive: false });
   addEventListener("resize", draw); show(0);
-  window.__view = (y, p) => { yaw = y; pitch = p || 0; draw(); };
+  window.__view = (y, p) => { yaw = y; pitch = p || 0; vc = p || 0; draw(); };
 })();
 </script>
 </body>
