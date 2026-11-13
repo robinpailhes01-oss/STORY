@@ -24,10 +24,10 @@
   .hot span { display: block; font-size: 10px; font-weight: 600; margin-top: -2px; }
   [hidden] { display: none !important; }
   /* phones: the legal mention sits under the title instead of running into it */
-  @media (max-width: 600px) { .legal { right: auto; left: 16px; top: calc(52px + env(safe-area-inset-top, 0px)); font-size: 10.5px; } .brand { max-width: calc(100vw - 32px); } }
+  @media (max-width: 600px) { body .legal { right: auto; left: 16px; top: calc(54px + env(safe-area-inset-top, 0px)); font-size: 10.5px; } .brand { max-width: calc(100vw - 32px); } }
   /* inside the studio: the studio's own buttons take the top of the screen */
   body.embed .brand { display: none; }
-  body.embed .legal { right: auto; left: 16px; top: calc(70px + env(safe-area-inset-top, 0px)); }
+  body.embed .legal { right: auto; left: 16px; top: calc(70px + env(safe-area-inset-top, 0px)) !important; }
   @media (min-width: 601px) { body.embed .legal { top: calc(22px + env(safe-area-inset-top, 0px)); } }
   .load { position: fixed; inset: 0; display: grid; place-items: center; background: #0b1410; font-size: 15px; transition: opacity .4s; }
   .legal { position: fixed; right: 12px; top: calc(16px + env(safe-area-inset-top, 0px)); font-size: 11px; opacity: .8; text-shadow: 0 1px 4px rgba(0,0,0,.6); pointer-events: none; }
