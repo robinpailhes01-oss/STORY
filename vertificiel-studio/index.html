@@ -455,6 +455,7 @@
   @media (max-width: 699px) { .stage.tracing .aerial-pill, .stage.tracing .cams { display: none; } }
   .trace-done { min-height: 44px; padding: 0 16px; border: 0; border-radius: 999px; background: #ffd59a; color: #1c1407; font: 700 14.5px var(--font-body); cursor: pointer; }
   .geo-row { flex-wrap: wrap; }
+  @media (max-width: 400px) { .ov.cams button { padding-inline: 8px; min-width: 36px; } .ov.cams { max-width: calc(100vw - 20px); } }
 </style>
 
 </head>
@@ -2352,11 +2353,7 @@
   $("traceDone2").addEventListener("click", () => $("traceDone").click());
   $("siteCtx").addEventListener("change", e => { site.context = e.target.value || ""; save(); });
   async function siteFromGeo(lon, lat, label, keep) {
-    if (!keep) {
-      lastGeo = { lon, lat, label };
-      // the address stands on a very large parcel (golf, park, estate): no garden to outline, the salesperson traces the area
-      try { const c = await parcelAt(lon, lat, true); if (c) { const F0 = geoFrame(lon, lat, 0), r = outerRing(c.geometry).map(p => F0.to(p[0], p[1])); if (polyArea(r) > 6000) return siteFromZone(lon, lat, label); } } catch (e) { /* the usual search goes on */ }
-    }
+    if (!keep) lastGeo = { lon, lat, label };
     geoMsg("Recherche de la parcelle au cadastre…");
     const parcel = await parcelAt(lon, lat, !!keep);
     if (!parcel) { geoMsg("Aucune parcelle trouvée à cet endroit. Essayez l'adresse exacte du terrain."); return; }
