@@ -52,7 +52,8 @@
   V.p = V.p.filter(p => p && typeof p.u === "string" && (/^https:\/\//.test(p.u) || /^img\//.test(p.u))).slice(0, 6);
   const IA = /[?&]demo=blender-ia\b/.test(location.search);
   if (/[?&]demo=blender/.test(location.search)) V = { n: "Jardin de démonstration · " + (IA ? "Blender + IA" : "rendu Blender"), p: [1, 2, 3].map(i => ({ u: "img/demo/blender-" + (IA ? "ia-" : "") + i + ".jpg", e: IA ? 2 : 1, ...[{ x: -2.5, z: 12.5, y: 0.193 }, { x: 2.5, z: 3.5, y: -2.471 }, { x: 9.5, z: 2.5, y: -2.088 }][i - 1], l: String(i) })) };
-  document.getElementById("name").textContent = "Visite 360° · " + String(V.n || "votre jardin").slice(0, 80);
+  // real photo strips do not go all the way round: the page does not call them a 360° visit
+  document.getElementById("name").textContent = (V.p.length && V.p.every(p => p.c > 0.3 && Array.isArray(p.t)) ? "Visite · " : "Visite 360° · ") + String(V.n || "votre jardin").slice(0, 80);
   const renderer = new T.WebGLRenderer({ antialias: true }); renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1)); renderer.outputEncoding = T.sRGBEncoding; document.body.prepend(renderer.domElement);
   const scene = new T.Scene(), camera = new T.PerspectiveCamera(62, 1, 0.01, 10);
   // two kinds of panoramas: cylindrical 21:9 (AI) or full-sphere 2:1 (Blender, "e": 1)
