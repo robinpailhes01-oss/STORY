@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="robots" content="noindex, nofollow">
+<title>Visite de votre projet · Vertificiel</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0b1410; overflow: hidden; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #fff; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  canvas { display: block; width: 100vw; height: 100dvh; touch-action: none; }
+  .glass { background: rgba(16,24,20,.62); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+  .brand { position: fixed; left: 16px; top: calc(14px + env(safe-area-inset-top, 0px)); font-weight: 800; font-size: 17px; text-shadow: 0 1px 6px rgba(0,0,0,.55); pointer-events: none; max-width: calc(100vw - 32px); }
+  .brand small { display: block; font-weight: 500; font-size: 12.5px; opacity: .9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .brand em { display: block; font-style: normal; font-weight: 400; font-size: 10.5px; opacity: .8; }
+  .tip { position: fixed; left: 50%; bottom: calc(150px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); padding: 10px 16px; border-radius: 999px; font-size: 14px; font-weight: 600; white-space: nowrap; pointer-events: none; transition: opacity .6s; }
+  .joy { position: fixed; left: 18px; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); width: 112px; height: 112px; border-radius: 50%; touch-action: none; box-shadow: inset 0 0 0 2px rgba(255,255,255,.35); }
+  .joy i { position: absolute; left: 50%; top: 50%; width: 50px; height: 50px; margin: -25px 0 0 -25px; border-radius: 50%; background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,.4); pointer-events: none; }
+  .pts { position: fixed; right: 14px; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 4px; padding: 4px; border-radius: 999px; }
+  .pts button { min-width: 52px; min-height: 52px; padding: 0 14px; border: 0; border-radius: 999px; background: transparent; color: #fff; font: 700 15px inherit; cursor: pointer; }
+  .pts button[aria-pressed="true"] { background: #fff; color: #16392c; }
+  .load { position: fixed; inset: 0; display: grid; place-items: center; background: #0b1410; font-size: 15px; text-align: center; padding: 24px; transition: opacity .4s; }
+  [hidden] { display: none !important; }
+</style>
+<script type="importmap">
+  { "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+      "@sparkjsdev/spark": "https://cdn.jsdelivr.net/npm/@sparkjsdev/spark@2.4.0/dist/spark.module.js" } }
+</script>
+</head>
+<body>
+<div class="brand">Vertificiel<small id="name">Visite de votre projet</small><em>Projection indicative, non contractuelle</em></div>
+<div class="tip glass" id="tip">Joystick pour marcher · glissez pour regarder</div>
+<div class="joy glass" id="joy" role="application" aria-label="Joystick pour marcher"><i></i></div>
+<div class="pts glass" id="pts" hidden></div>
+<div class="load" id="load">Chargement de la visite…<br>(quelques secondes)</div>
+<script type="module">
+import * as T from "three";
+import { SparkRenderer, SplatMesh } from "@sparkjsdev/spark";
+// The visit travels in the link: #<base64url of { n: name, w: [{ u: splat file (World Labs CDN), k: metric scale, o: ground offset, l: label, r: walkable radius in m }] }>
+let V = null;
+try { const h = location.hash.slice(1); if (h) V = JSON.parse(decodeURIComponent(escape(atob(h.replace(/-/g, "+").replace(/_/g, "/"))))); } catch (e) { V = null; }
+const load = document.getElementById("load");
+const ok = w => w && typeof w.u === "string" && /^https:\/\/cdn\.marble\.worldlabs\.ai\/[\w\-./]+\.spz$/.test(w.u) && w.k > 0 && w.k < 100;
+const worlds = V && Array.isArray(V.w) ? V.w.filter(ok).slice(0, 8) : [];
+if (!worlds.length) { load.textContent = "Ce lien de visite est incomplet. Demandez un nouveau lien à votre conseiller Vertificiel."; throw new Error("no world"); }
+document.getElementById("name").textContent = "Visite · " + String(V.n || "votre projet").slice(0, 80);
+const EYE = 1.6, renderer = new T.WebGLRenderer({ antialias: false }); renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1)); document.body.prepend(renderer.domElement); const cv = renderer.domElement;
+const scene = new T.Scene(), camera = new T.PerspectiveCamera(70, 1, 0.05, 500); scene.background = new T.Color(0x9cc3ea);
+scene.add(new SparkRenderer({ renderer }));
+let mesh = null, cur = -1, yaw = 0, pitch = 0, R = 8; const P = new T.Vector3(0, EYE, 0);
+function show(i) {
+  const w = worlds[i]; if (!w || i === cur) return; cur = i; load.hidden = false; load.style.opacity = 1;
+  if (mesh) { scene.remove(mesh); mesh.dispose && mesh.dispose(); }
+  // Marble files: raw OpenCV frame -> metres (scale), ground at y = 0, then turned 180° around X for three.js
+  const g = new SplatMesh({ url: w.u }); const holder = new T.Group(); g.scale.setScalar(w.k); g.position.y = -(w.o || 0); holder.add(g); holder.rotation.x = Math.PI; scene.add(holder); mesh = holder;
+  R = w.r > 1 ? Math.min(60, w.r) : 8; P.set(0, EYE, 0); yaw = 0; pitch = -0.05;
+  (g.initialized || Promise.resolve()).then(() => { load.style.opacity = 0; setTimeout(() => { load.hidden = true; }, 400); }).catch(() => { load.textContent = "Cette visite n'est plus disponible. Demandez un nouveau lien à votre conseiller Vertificiel."; });
+  [...bar.children].forEach((b, k) => b.setAttribute("aria-pressed", String(k === i)));
+}
+const bar = document.getElementById("pts");
+if (worlds.length > 1) { bar.hidden = false; worlds.forEach((w, i) => { const b = document.createElement("button"); b.textContent = String(w.l || i + 1).slice(0, 14); b.addEventListener("click", () => show(i)); bar.appendChild(b); }); }
+// joystick to walk, finger to look
+const joy = document.getElementById("joy"), knob = joy.firstElementChild, keys = {}; let jx = 0, jy = 0, jid = null;
+const hush = () => { document.getElementById("tip").style.opacity = 0; };
+const aim = e => { const r = joy.getBoundingClientRect(), Rr = r.width / 2, dx = e.clientX - r.left - Rr, dy = e.clientY - r.top - Rr, d = Math.hypot(dx, dy), k = d > Rr ? Rr / d : 1; jx = dx * k / Rr; jy = dy * k / Rr; knob.style.transform = "translate(" + (jx * (Rr - 25)) + "px," + (jy * (Rr - 25)) + "px)"; };
+joy.addEventListener("pointerdown", e => { e.preventDefault(); e.stopPropagation(); joy.setPointerCapture(e.pointerId); jid = e.pointerId; aim(e); hush(); });
+joy.addEventListener("pointermove", e => { if (e.pointerId === jid) aim(e); });
+const rest = e => { if (e.pointerId !== jid) return; jid = null; jx = jy = 0; knob.style.transform = ""; };
+joy.addEventListener("pointerup", rest); joy.addEventListener("pointercancel", rest);
+const look = new Map();
+cv.addEventListener("pointerdown", e => { cv.setPointerCapture(e.pointerId); look.set(e.pointerId, [e.clientX, e.clientY]); hush(); });
+cv.addEventListener("pointermove", e => { const p = look.get(e.pointerId); if (!p) return; const k = 0.005; yaw -= (e.clientX - p[0]) * k; pitch = Math.max(-1.2, Math.min(1.2, pitch - (e.clientY - p[1]) * k)); look.set(e.pointerId, [e.clientX, e.clientY]); });
+const up = e => look.delete(e.pointerId); cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
+addEventListener("keydown", e => { keys[e.key.toLowerCase()] = true; hush(); }); addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
+let last = performance.now(), vx = 0, vz = 0;
+renderer.setAnimationLoop(now => {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const kx = (keys.d ? 1 : 0) - (keys.q || keys.a ? 1 : 0), ky = (keys.s || keys.arrowdown ? 1 : 0) - (keys.z || keys.w || keys.arrowup ? 1 : 0), turn = (keys.arrowright ? 1 : 0) - (keys.arrowleft ? 1 : 0);
+  yaw -= turn * 1.5 * dt; const mx = jx || kx, my = jy || ky, SP = 1.6;
+  const tx = (-Math.sin(yaw) * -my + Math.cos(yaw) * mx) * SP, tz = (-Math.cos(yaw) * -my - Math.sin(yaw) * mx) * SP, a = 1 - Math.exp(-dt * 8);
+  vx += (tx - vx) * a; vz += (tz - vz) * a; P.x += vx * dt; P.z += vz * dt;
+  const d = Math.hypot(P.x, P.z); if (d > R) { P.x *= R / d; P.z *= R / d; }      // stay where the world is detailed
+  const w = innerWidth, h = innerHeight; if (cv.width !== Math.round(w * renderer.getPixelRatio()) || cv.height !== Math.round(h * renderer.getPixelRatio())) { renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+  camera.position.copy(P); camera.rotation.set(pitch, yaw, 0, "YXZ"); renderer.render(scene, camera);
+});
+show(0);
+window.__go = (x, z, deg, p) => { P.set(x, EYE, z); yaw = -deg * Math.PI / 180; pitch = p || 0; };
+</script>
+</body>
+</html>
