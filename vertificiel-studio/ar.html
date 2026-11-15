@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Dalles à taille réelle · Vertificiel</title>
+<style>
+  :root { --bg: #0f1a15; --card: #18261f; --ink: #f3f1ea; --soft: #b9c4bc; --accent: #ffd59a; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: calc(20px + env(safe-area-inset-top, 0px)) 16px 40px; }
+  h1 { font-size: 24px; margin: 0 0 6px; } p.lead { color: var(--soft); margin: 0 0 22px; font-size: 15px; line-height: 1.45; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 520px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border-radius: 18px; overflow: hidden; }
+  .card a { display: block; position: relative; color: inherit; text-decoration: none; }
+  .card img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; }
+  .card .go { position: absolute; left: 12px; right: 12px; bottom: 12px; padding: 14px; border-radius: 999px; background: rgba(255,255,255,.94); color: #16392c; font-weight: 800; text-align: center; font-size: 16px; }
+  .card.n .go { background: var(--accent); color: #1c1407; }
+  .card h2 { font-size: 16px; margin: 12px 14px 4px; } .card p { margin: 0 14px 14px; color: var(--soft); font-size: 13.5px; }
+  .how { margin-top: 22px; background: var(--card); border-radius: 18px; padding: 14px 16px; font-size: 14px; color: var(--soft); line-height: 1.5; }
+  .how b { color: var(--ink); } .note { font-size: 12px; color: var(--soft); margin-top: 16px; }
+  .warn { display: none; margin-bottom: 16px; padding: 12px 14px; border-radius: 12px; background: #3a2a14; color: var(--accent); font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Vos dalles, chez vous, à taille réelle</h1>
+  <p class="lead">Posez un échantillon de 2,4 × 2,4 m de dalles Vertificiel sur votre sol, à travers l'appareil photo de votre téléphone, et tournez autour.</p>
+  <div class="warn" id="warn">Ouvrez cette page sur un iPhone, un iPad ou un téléphone Android pour voir les dalles chez vous.</div>
+  <div class="grid">
+    <div class="card"><a id="aJour" href="img/ar/dalles-jour.usdz" rel="ar"><img src="img/ar/apercu-jour.jpg" alt="Dalles en travertin posées en diagonale avec joints de gazon, de jour"><span class="go">Voir chez moi · jour</span></a>
+      <h2>De jour</h2><p>Dalles de travertin 80 × 80 cm en diagonale, joints de gazon synthétique de 10 cm.</p></div>
+    <div class="card n"><a id="aNuit" href="img/ar/dalles-nuit.usdz" rel="ar"><img src="img/ar/apercu-nuit.jpg" alt="Les mêmes dalles de nuit, lignes LED allumées dans les joints"><span class="go">Voir chez moi · LED</span></a>
+      <h2>De nuit, LED allumées</h2><p>Les mêmes dalles avec les lignes LED blanc chaud dans chaque joint.</p></div>
+  </div>
+  <div class="how"><b>Comment faire :</b> touchez un bouton, visez le sol quelques secondes en bougeant doucement le téléphone, puis l'échantillon se pose. Déplacez-le avec un doigt, tournez autour en marchant. Pour l'effet LED, essayez dans une pièce sombre ou le soir.</div>
+  <p class="note">Échantillon indicatif, non contractuel. Les couleurs varient selon l'écran et la lumière.</p>
+</main>
+<script>
+  const ua = navigator.userAgent, ios = /iP(hone|ad|od)/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1), android = /Android/.test(ua);
+  if (android) ["Jour", "Nuit"].forEach(k => {      // Android: Google's Scene Viewer opens the .glb file
+    const a = document.getElementById("a" + k), file = new URL("img/ar/dalles-" + k.toLowerCase() + ".glb", location.href).href;
+    a.removeAttribute("rel"); a.href = "intent://arvr.google.com/scene-viewer/1.2?file=" + encodeURIComponent(file) + "&mode=ar_only&resizable=false&title=" + encodeURIComponent("Dalles Vertificiel") + "#Intent;scheme=https;package=com.google.ar.core;action=android.intent.action.VIEW;S.browser_fallback_url=" + encodeURIComponent(location.href) + ";end;";
+  });
+  if (!ios && !android) { document.getElementById("warn").style.display = "block"; document.querySelectorAll(".card a").forEach(a => a.addEventListener("click", e => e.preventDefault())); }
+</script>
+</body>
+</html>
