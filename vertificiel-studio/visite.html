@@ -28,6 +28,13 @@
   .joy i { position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%; background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,.4); pointer-events: none; }
   @media (max-width: 520px) { .joy { left: 12px; bottom: calc(80px + env(safe-area-inset-bottom, 0px)); width: 88px; height: 88px; } .tip { bottom: calc(184px + env(safe-area-inset-bottom, 0px)) !important; } }
   @media (min-width: 521px) and (max-width: 900px) { .joy { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); } }
+  /* plan of the site: aerial photo with the viewpoints, tap one to go there */
+  .plan { position: fixed; right: 12px; top: calc(64px + env(safe-area-inset-top, 0px)); width: 120px; height: 120px; border-radius: 14px; overflow: hidden; border: 2px solid rgba(255,255,255,.85); box-shadow: 0 2px 12px rgba(0,0,0,.45); background: #223 center / cover no-repeat; cursor: pointer; transition: width .25s, height .25s; }
+  .plan.big { width: min(86vw, 420px); height: min(86vw, 420px); }
+  .plan button { position: absolute; transform: translate(-50%, -50%); min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; border: 2px solid #fff; background: rgba(22,57,44,.85); color: #fff; font: 700 11px system-ui, sans-serif; cursor: pointer; white-space: nowrap; }
+  .plan:not(.big) button span { display: none; }
+  .plan button[aria-pressed="true"] { background: #ffd59a; color: #1c1407; }
+  .plan i { position: absolute; width: 30px; height: 34px; margin: -34px 0 0 -15px; transform-origin: 50% 100%; clip-path: polygon(50% 100%, 0 0, 100% 0); background: linear-gradient(to top, rgba(255,213,154,.95), rgba(255,213,154,.15)); pointer-events: none; }
   [hidden] { display: none !important; }
   /* phones: the legal mention sits under the title instead of running into it */
   @media (max-width: 600px) { body .legal { right: auto; left: 16px; top: calc(54px + env(safe-area-inset-top, 0px)); font-size: 10.5px; } .brand { max-width: calc(100vw - 32px); } }
@@ -46,6 +53,7 @@
 <div class="joy glass" id="joy" role="application" aria-label="Joystick : à gauche et à droite pour tourner, vers le haut pour avancer"><i></i></div>
 <div class="pts glass" id="pts" hidden></div>
 <div class="dn glass" id="dn" hidden><button type="button" id="dnBefore" aria-pressed="false" aria-label="Voir le lieu aujourd'hui" hidden>Avant</button><button type="button" id="dnDay" aria-pressed="true" aria-label="Voir le projet de jour">☀︎</button><button type="button" id="dnNight" aria-pressed="false" aria-label="Voir le projet de nuit">☾</button></div>
+<div class="plan" id="plan" hidden role="group" aria-label="Plan du site : touchez un point de vue"><i id="cone"></i></div>
 <div class="load" id="load">Chargement de la visite…</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -83,6 +91,13 @@
   document.getElementById("dnNight").addEventListener("click", () => { if (V.p[cur] && V.p[cur].n) setMode("night"); });
   document.getElementById("dnBefore").addEventListener("click", () => { if (V.p[cur] && V.p[cur].b) setMode("before"); });
   const hots = V.p.map((p, i) => { const b = document.createElement("button"); b.className = "hot"; b.innerHTML = "↑<span>" + (i + 1) + "</span>"; b.setAttribute("aria-label", "Aller au point " + (i + 1)); b.hidden = true; b.addEventListener("click", () => show(i)); document.body.appendChild(b); return b; });
+  // plan: V.m = aerial photo URL; each point has mx, my (0..1 on the photo) and optionally d (direction it faces, degrees from north)
+  const plan = document.getElementById("plan"), cone = document.getElementById("cone"), planBtns = [];
+  if (typeof V.m === "string" && (/^https:\/\//.test(V.m) || /^img\//.test(V.m)) && V.p.some(p => p.mx >= 0)) {
+    plan.hidden = false; plan.style.backgroundImage = "url('" + relay(V.m).replace(/'/g, "%27") + "')";
+    plan.addEventListener("click", e => { if (e.target === plan) plan.classList.toggle("big"); });
+    V.p.forEach((p, i) => { if (!(p.mx >= 0 && p.mx <= 1 && p.my >= 0 && p.my <= 1)) return; const b = document.createElement("button"); b.innerHTML = (i + 1) + "<span> " + String(p.l || "").slice(0, 14).replace(/[<>&]/g, "") + "</span>"; b.style.left = p.mx * 100 + "%"; b.style.top = p.my * 100 + "%"; b.addEventListener("click", e => { e.stopPropagation(); plan.classList.remove("big"); show(i); }); plan.appendChild(b); planBtns[i] = b; });
+  }
   const bar = document.getElementById("pts");
   if (V.p.length > 1) { bar.hidden = false; V.p.forEach((p, i) => { const b = document.createElement("button"); b.textContent = /^\d*$/.test(String(p.l || "")) ? i + 1 : String(p.l).slice(0, 14); b.setAttribute("aria-label", "Point de vue " + (i + 1)); b.addEventListener("click", () => show(i)); bar.appendChild(b); }); }
   function show(i) {
@@ -101,7 +116,7 @@
         cyl.visible = sph.visible = band.visible = false; if (!same) { yaw = 0; vc = 0; zoom = 1; }
       } else
       yaw = head == null ? 0 : (V.p[i].y || 0) - head;
-      [...bar.children].forEach((b, k) => b.setAttribute("aria-pressed", String(k === i)));
+      [...bar.children].forEach((b, k) => b.setAttribute("aria-pressed", String(k === i))); planBtns.forEach((b, k) => b && b.setAttribute("aria-pressed", String(k === i)));
       document.getElementById("dnDay").setAttribute("aria-pressed", String(m === "day")); document.getElementById("dnNight").setAttribute("aria-pressed", String(m === "night")); document.getElementById("dnBefore").setAttribute("aria-pressed", String(m === "before"));
       document.getElementById("dnNight").disabled = !V.p[i].n; document.getElementById("dnBefore").disabled = !V.p[i].b;
       walk = 0; hold = busy; busy = false; cv.style.transform = ""; cv.style.opacity = 1;
@@ -109,6 +124,10 @@
     }, undefined, () => { document.getElementById("load").textContent = "Cette visite n'est plus disponible. Demandez un nouveau lien à votre conseiller Vertificiel."; document.getElementById("load").hidden = false; document.getElementById("load").style.opacity = 1; });
   }
   const v3 = new T.Vector3();
+  function aimCone() {      // on the plan, a light cone shows where the visitor is looking
+    const p = V.p[cur]; if (plan.hidden || !p || !(p.d >= 0)) { cone.hidden = true; return; }
+    cone.hidden = false; cone.style.left = p.mx * 100 + "%"; cone.style.top = p.my * 100 + "%"; cone.style.transform = "rotate(" + (p.d - yaw * 180 / Math.PI) + "deg)";
+  }
   function draw() {
     const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.fov = fov; camera.updateProjectionMatrix();
     if (part) {
@@ -116,10 +135,10 @@
       const a = w / h, hh = Math.min((part.t[1] - part.t[0]) / 2, Math.tan(Math.min(part.c / 2 - 0.005, 0.87)) / a) / zoom, hw = hh * a, hf = Math.atan(hw), ym = Math.max(0, part.c / 2 - hf), n = camera.near;
       vc = Math.max(part.t[0] + hh, Math.min(part.t[1] - hh, vc)); yaw = Math.max(-ym, Math.min(ym, yaw)); hfNow = hf; hhNow = hh;
       camera.projectionMatrix.makePerspective(-hw * n, hw * n, (vc + hh) * n, (vc - hh) * n, n, camera.far); camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
-      camera.rotation.set(0, yaw, 0, "YXZ"); camera.updateMatrixWorld(); renderer.render(scene, camera); hots.forEach(b => { b.hidden = true; }); return;
+      camera.rotation.set(0, yaw, 0, "YXZ"); camera.updateMatrixWorld(); renderer.render(scene, camera); aimCone(); hots.forEach(b => { b.hidden = true; }); return;
     }
     const lim = sphere === 1 ? 1.45 : sphere === 2 ? Math.max(0, 1.34 - fov * Math.PI / 360) : Math.max(0, Math.atan(K) - fov * Math.PI / 360 - 0.02); pitch = Math.max(-lim, Math.min(lim, pitch));
-    camera.rotation.set(pitch, yaw, 0, "YXZ"); camera.updateMatrixWorld(); renderer.render(scene, camera);
+    camera.rotation.set(pitch, yaw, 0, "YXZ"); camera.updateMatrixWorld(); renderer.render(scene, camera); aimCone();
     // arrows towards the other points, on the ground where they stand
     hots.forEach((b, i) => {
       if (i === cur || cur < 0) { b.hidden = true; return; }
