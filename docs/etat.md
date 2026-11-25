@@ -7,7 +7,7 @@
 
 ## Golf (prospect d'Armand)
 - 5 points : Entrée, Allée, Esplanade, Greens, Practice ; photos originales dans le dossier Drive VERTIFICIEL.
-- Défaut connu : au Practice, les dalles sont alignées sur l'allée au lieu d'être en losange (3 essais).
+- Dallage posé par calcul (plus par l'IA) : mêmes dalles 80 x 80 en vraie pierre (photo 1648), joints 10 cm, en losange à 45° de chaque allée, dans des zones tracées à la main sur chaque vue. Nuit également par calcul : LED exactement dans les joints. Images « golf2-* » dans le dossier Drive.
 - Emplacements des points sur le plan estimés à l'œil, à faire valider par Robin.
 
 ## Écarté
