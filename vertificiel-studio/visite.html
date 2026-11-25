@@ -76,7 +76,7 @@
     band = new T.Mesh(new T.SphereGeometry(1, 96, 64, 0, 2 * Math.PI, (Math.PI - 2 * Math.PI * 9 / 21 / 2) / 2, 2 * Math.PI * 9 / 21 / 2), mat);      // "e": 2, a 21:9 band of a sphere, ±77°
   scene.add(cyl, sph, band); sph.visible = band.visible = false; let sphere = false;
   const loader = new T.TextureLoader(); loader.setCrossOrigin("anonymous");
-  let cur = -1, yaw = 0, pitch = 0, fov = 62, vel = 0, last = 0, mode = "day";
+  let cur = -1, yaw = 0, pitch = 0, fov = 62, vel = 0, last = 0, mode = "day"; let loadTicket = 0;
   // "c" + "t": a real photo strip that covers only part of the turn (c radians wide, from tan(elevation) t[0] up to t[1]).
   // The view then never leaves the photographed part: nothing is invented around it.
   let part = null, pmesh = null, vc = 0, zoom = 1, hfNow = 0.5, hhNow = 0.5;
@@ -107,7 +107,9 @@
     const head = cur >= 0 ? (V.p[cur].y || 0) - yaw : null, m = mode === "night" && V.p[i].n ? "night" : mode === "before" && V.p[i].b ? "before" : "day";
     // our stored panoramas come through the studio's relay (their host sends no CORS header, which a 3D view needs)
     const src = relay(m === "night" ? V.p[i].n : m === "before" ? V.p[i].b : V.p[i].u);
+    const ticket = ++loadTicket;      // only the last request may show its image (a slower earlier one is dropped)
     loader.load(src, tex => {
+      if (ticket !== loadTicket) { tex.dispose(); return; }
       tex.encoding = T.sRGBEncoding; tex.wrapS = T.RepeatWrapping; tex.repeat.x = -1; tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
       if (mat.map) mat.map.dispose(); mat.map = tex; mat.needsUpdate = true; cur = i;
       sphere = V.p[i].e === 1 ? 1 : V.p[i].e === 2 ? 2 : 0; sph.visible = sphere === 1; band.visible = sphere === 2; cyl.visible = !sphere;
