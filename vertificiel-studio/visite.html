@@ -64,7 +64,7 @@
   let V = null;
   try { const h = location.hash.slice(1); if (h) V = JSON.parse(decodeURIComponent(escape(atob(h.replace(/-/g, "+").replace(/_/g, "/"))))); } catch (e) { V = null; }
   if (!V || !Array.isArray(V.p) || !V.p.length) V = { n: "Jardin de démonstration", p: [{ u: "img/demo/pano-test.jpg", x: 0, z: 0, y: 0, l: "1" }] };
-  V.p = V.p.filter(p => p && typeof p.u === "string" && (/^https:\/\//.test(p.u) || /^img\//.test(p.u))).slice(0, 6);
+  V.p = V.p.filter(p => p && typeof p.u === "string" && (/^https:\/\//.test(p.u) || /^img\//.test(p.u) || /^gd:[\w-]{20,80}$/.test(p.u))).slice(0, 8);
   const IA = /[?&]demo=blender-ia\b/.test(location.search);
   if (/[?&]demo=blender/.test(location.search)) V = { n: "Jardin de démonstration · " + (IA ? "Blender + IA" : "rendu Blender"), p: [1, 2, 3].map(i => ({ u: "img/demo/blender-" + (IA ? "ia-" : "") + i + ".jpg", e: IA ? 2 : 1, ...[{ x: -2.5, z: 12.5, y: 0.193 }, { x: 2.5, z: 3.5, y: -2.471 }, { x: 9.5, z: 2.5, y: -2.088 }][i - 1], l: String(i) })) };
   // real photo strips do not go all the way round: the page does not call them a 360° visit
@@ -81,10 +81,12 @@
   // The view then never leaves the photographed part: nothing is invented around it.
   let part = null, pmesh = null, vc = 0, zoom = 1, hfNow = 0.5, hhNow = 0.5;
   V.p.forEach(p => { if (!(p.c > 0.3 && p.c < 6.2 && Array.isArray(p.t) && p.t[1] - p.t[0] > 0.2)) { delete p.c; delete p.t; } });
-  const relay = u => (/^https:\/\/tempfile\.redpandaai\.co\//.test(u) ? "api/render?img=" + encodeURIComponent(u) : u);
-  V.p.forEach(p => { if (typeof p.n !== "string" || !/^https:\/\//.test(p.n)) delete p.n; });
+  // images: "gd:<id>" = a file of the Google Drive visit folder; our hosted panoramas go through the studio's relay (no CORS header there)
+  const relay = u => (/^gd:[\w-]{20,80}$/.test(u) ? "api/render?gd=" + u.slice(3) : /^https:\/\/tempfile\.redpandaai\.co\//.test(u) ? "api/render?img=" + encodeURIComponent(u) : u);
+  const okSrc = u => typeof u === "string" && (/^https:\/\//.test(u) || /^gd:[\w-]{20,80}$/.test(u));
+  V.p.forEach(p => { if (!okSrc(p.n)) delete p.n; });
   const dn = document.getElementById("dn"); dn.hidden = !V.p.some(p => p.n);
-  V.p.forEach(p => { if (typeof p.b !== "string" || !/^https:\/\//.test(p.b)) delete p.b; });
+  V.p.forEach(p => { if (!okSrc(p.b)) delete p.b; });
   dn.hidden = !V.p.some(p => p.n || p.b); document.getElementById("dnBefore").hidden = !V.p.some(p => p.b); document.getElementById("dnNight").hidden = !V.p.some(p => p.n);
   const setMode = m => { if (m !== mode && cur >= 0) { mode = m; show(cur); } };
   document.getElementById("dnDay").addEventListener("click", () => setMode("day"));
@@ -93,7 +95,7 @@
   const hots = V.p.map((p, i) => { const b = document.createElement("button"); b.className = "hot"; b.innerHTML = "↑<span>" + (i + 1) + "</span>"; b.setAttribute("aria-label", "Aller au point " + (i + 1)); b.hidden = true; b.addEventListener("click", () => show(i)); document.body.appendChild(b); return b; });
   // plan: V.m = aerial photo URL; each point has mx, my (0..1 on the photo) and optionally d (direction it faces, degrees from north)
   const plan = document.getElementById("plan"), cone = document.getElementById("cone"), planBtns = [];
-  if (typeof V.m === "string" && (/^https:\/\//.test(V.m) || /^img\//.test(V.m)) && V.p.some(p => p.mx >= 0)) {
+  if (typeof V.m === "string" && (okSrc(V.m) || /^img\//.test(V.m)) && V.p.some(p => p.mx >= 0)) {
     plan.hidden = false; plan.style.backgroundImage = "url('" + relay(V.m).replace(/'/g, "%27") + "')";
     plan.addEventListener("click", e => { if (e.target === plan) plan.classList.toggle("big"); });
     V.p.forEach((p, i) => { if (!(p.mx >= 0 && p.mx <= 1 && p.my >= 0 && p.my <= 1)) return; const b = document.createElement("button"); b.innerHTML = (i + 1) + "<span> " + String(p.l || "").slice(0, 14).replace(/[<>&]/g, "") + "</span>"; b.style.left = p.mx * 100 + "%"; b.style.top = p.my * 100 + "%"; b.addEventListener("click", e => { e.stopPropagation(); plan.classList.remove("big"); show(i); }); plan.appendChild(b); planBtns[i] = b; });

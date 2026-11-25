@@ -240,6 +240,18 @@ export default async function handler(req, res) {
       return res.status(200).send(buf);
     } catch (e) { return res.status(502).end(); }
   }
+  // the same, for visit images kept in Robin's Google Drive (files shared by link): they do not expire
+  if (req.method === "GET" && req.query.gd) {
+    const id = String(req.query.gd);
+    if (!/^[A-Za-z0-9_-]{20,80}$/.test(id)) return res.status(400).end();
+    try {
+      const r = await fetch(`https://drive.usercontent.google.com/download?id=${id}&export=view`); if (!r.ok) return res.status(404).end();
+      const buf = Buffer.from(await r.arrayBuffer());
+      if (buf.length > 4.2e6 || buf[0] !== 0xff || buf[1] !== 0xd8) return res.status(404).end();      // JPEG only (a private file answers with a sign-in page)
+      res.setHeader("Content-Type", "image/jpeg"); res.setHeader("Cache-Control", "public, max-age=2592000, immutable"); res.setHeader("Access-Control-Allow-Origin", "*");
+      return res.status(200).send(buf);
+    } catch (e) { return res.status(502).end(); }
+  }
   const key = process.env.KIE_AI_API_KEY;
   if (!key) return res.status(500).json({ error: "serveur de rendu non configuré" });
   if (process.env.STUDIO_CODE && req.headers["x-studio-code"] !== process.env.STUDIO_CODE) return res.status(401).json({ error: "code d'accès invalide" });
