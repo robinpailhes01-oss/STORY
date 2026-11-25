@@ -76,7 +76,7 @@
     band = new T.Mesh(new T.SphereGeometry(1, 96, 64, 0, 2 * Math.PI, (Math.PI - 2 * Math.PI * 9 / 21 / 2) / 2, 2 * Math.PI * 9 / 21 / 2), mat);      // "e": 2, a 21:9 band of a sphere, ±77°
   scene.add(cyl, sph, band); sph.visible = band.visible = false; let sphere = false;
   const loader = new T.TextureLoader(); loader.setCrossOrigin("anonymous");
-  let cur = -1, yaw = 0, pitch = 0, fov = 62, vel = 0, last = 0, mode = "day"; let loadTicket = 0;
+  let cur = -1, yaw = 0, pitch = 0, fov = 62, vel = 0, last = 0, mode = "day"; let loadTicket = 0, want = -1;      // want: the point asked for, even while its image is still loading
   // "c" + "t": a real photo strip that covers only part of the turn (c radians wide, from tan(elevation) t[0] up to t[1]).
   // The view then never leaves the photographed part: nothing is invented around it.
   let part = null, pmesh = null, vc = 0, zoom = 1, hfNow = 0.5, hhNow = 0.5;
@@ -88,10 +88,10 @@
   const dn = document.getElementById("dn"); dn.hidden = !V.p.some(p => p.n);
   V.p.forEach(p => { if (!okSrc(p.b)) delete p.b; });
   dn.hidden = !V.p.some(p => p.n || p.b); document.getElementById("dnBefore").hidden = !V.p.some(p => p.b); document.getElementById("dnNight").hidden = !V.p.some(p => p.n);
-  const setMode = m => { if (m !== mode && cur >= 0) { mode = m; show(cur); } };
+  const setMode = m => { if (m !== mode && want >= 0) { mode = m; show(want, true); } };
   document.getElementById("dnDay").addEventListener("click", () => setMode("day"));
-  document.getElementById("dnNight").addEventListener("click", () => { if (V.p[cur] && V.p[cur].n) setMode("night"); });
-  document.getElementById("dnBefore").addEventListener("click", () => { if (V.p[cur] && V.p[cur].b) setMode("before"); });
+  document.getElementById("dnNight").addEventListener("click", () => { if (V.p[want] && V.p[want].n) setMode("night"); });
+  document.getElementById("dnBefore").addEventListener("click", () => { if (V.p[want] && V.p[want].b) setMode("before"); });
   const hots = V.p.map((p, i) => { const b = document.createElement("button"); b.className = "hot"; b.innerHTML = "↑<span>" + (i + 1) + "</span>"; b.setAttribute("aria-label", "Aller au point " + (i + 1)); b.hidden = true; b.addEventListener("click", () => show(i)); document.body.appendChild(b); return b; });
   // plan: V.m = aerial photo URL; each point has mx, my (0..1 on the photo) and optionally d (direction it faces, degrees from north)
   const plan = document.getElementById("plan"), cone = document.getElementById("cone"), planBtns = [];
@@ -103,6 +103,7 @@
   const bar = document.getElementById("pts");
   if (V.p.length > 1) { bar.hidden = false; V.p.forEach((p, i) => { const b = document.createElement("button"); b.textContent = /^\d*$/.test(String(p.l || "")) ? i + 1 : String(p.l).slice(0, 14); b.setAttribute("aria-label", "Point de vue " + (i + 1)); b.addEventListener("click", () => show(i)); bar.appendChild(b); }); }
   function show(i) {
+    want = i;
     // keep looking in the same direction of the garden when moving to another point
     const head = cur >= 0 ? (V.p[cur].y || 0) - yaw : null, m = mode === "night" && V.p[i].n ? "night" : mode === "before" && V.p[i].b ? "before" : "day";
     // our stored panoramas come through the studio's relay (their host sends no CORS header, which a 3D view needs)
